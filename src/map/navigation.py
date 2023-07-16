@@ -1,10 +1,11 @@
-from src.stats.statistics import Speed
+from src.map.movement import MovementCost
 import heapq
 
 class NavNode:
     def __init__(self, position):
         self.position = position
         self.edges = []
+        self.previous = None
 
     def add_edge(self, neighbor, costs):
         self.edges.append(NavEdge(neighbor, costs))
@@ -48,29 +49,40 @@ class NavAgent:
     def get_reachable_nodes(self, graph, start_position):
         start_node = graph.nodes[start_position]
         distances = {node: float('inf') for node in graph.nodes}
-        distances[start_node] = 0
+        previous = {node: None for node in graph.nodes}
+        distances[start_node.position] = MovementCost(0)
 
-        queue = [(0, start_node)]
-        reachable_nodes = {}
+        queue = [(MovementCost(0), start_node)]
+        reachable_nodes = {start_node: self.speed}
 
         while queue:
+
             current_distance, current_node = heapq.heappop(queue)
 
-            if current_distance > distances[current_node]:
+            if current_distance > distances[current_node.position]:
                 continue
 
             for edge in current_node.edges:
                 neighbor = edge.neighbor
-                distance = current_distance + min(cost for cost in edge.costs.values() if cost is not None)
+                distance = current_distance + edge.costs
 
-                if distance < distances[neighbor]:
-                    distances[neighbor] = distance
+                if distance < distances[neighbor.position] and self.speed.can_move(distance):
+                    distances[neighbor.position] = distance
+                    previous[neighbor.position] = current_node
                     heapq.heappush(queue, (distance, neighbor))
 
-                for move_type, cost in edge.costs.items():
-                    if cost is not None and getattr(self.speed, move_type) >= cost:
+                for move_type in edge.costs.cost_types:
+                    cost = getattr(edge.costs, move_type)
+                    if cost is not None and getattr(self.speed - current_distance, self.speed.get_attribute_for(move_type)) >= cost:
                         remaining_speed = self.speed.duplicate()
-                        remaining_speed.move(cost)
+                        remaining_speed.move(current_distance)
                         reachable_nodes[neighbor] = remaining_speed
+        
+        paths = {node: [] for node in graph.nodes}
+        for node in graph.nodes:
+            previous_node = previous[node]
+            while previous_node is not None:
+                paths[node].insert(0, previous_node.position)
+                previous_node = previous[previous_node.position]
 
-        return reachable_nodes
+        return reachable_nodes, paths

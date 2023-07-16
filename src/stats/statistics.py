@@ -1,3 +1,4 @@
+from src.map.movement import MovementCost
 from src.util.resettable_value import ResettableValue
 
 class Stat:
@@ -61,9 +62,19 @@ class Speed:
         self._climb = ResettableValue(climb) if climb is not None else None
         self._burrow = ResettableValue(burrow) if burrow is not None else None
 
+    def get_attribute_for(self, cost):
+        cost_pair_dict = {
+            'walking': 'value',
+            'flying': 'fly',
+            'swimming': 'swim',
+            'climbing': 'climb',
+            'burrowing': 'burrow'
+        }
+        return cost_pair_dict[cost]
+
     @property
     def highest_speed(self):
-        return max(self._value, self._fly, self._swim, self._climb, self._burrow)
+        return max(self._value.value, self._fly.value, self._swim.value, self._climb.value, self._burrow.value)
 
     @property
     def value(self):
@@ -99,7 +110,7 @@ class Speed:
 
     @property
     def burrow(self):
-        return self._burrow if self._burrow is not None else None
+        return self._burrow.value if self._burrow is not None else None
 
     @burrow.setter
     def burrow(self, new_value):
@@ -109,12 +120,36 @@ class Speed:
     def hover(self):
         return self._hover
 
-    def move(self, amount):
-        self._value.value -= amount
-        self._fly.value -= amount
-        self._swim.value -= amount
-        self._climb.value -= amount
-        self._burrow.value -= amount
+    def _get_min_move_cost(self, movement_cost):
+        if not isinstance(movement_cost, MovementCost):
+            raise TypeError("movement_cost must be a MovementCost object")
+        
+        min_cost = None
+        for cost_attr in movement_cost.cost_types:
+            speed = getattr(self, self.get_attribute_for(cost_attr))
+            cost = getattr(movement_cost, cost_attr)
+
+            if cost is not None and cost <= speed:
+                if min_cost is None or cost < min_cost:
+                    min_cost = cost
+        return min_cost
+    
+    def can_move(self, movement_cost):
+        return self._get_min_move_cost(movement_cost) is not None
+
+    def move(self, movement_cost):
+        min_cost = self._get_min_move_cost(movement_cost)
+
+        if min_cost is None:
+            return False
+
+        self._value.value -= min_cost
+        self._fly.value = max(0, self._fly.value - min_cost)
+        self._swim.value = max(0, self._swim.value - min_cost)
+        self._climb.value = max(0, self._climb.value - min_cost)
+        self._burrow.value = max(0, self._burrow.value - min_cost)
+
+        return True
 
     def reset(self):
         self.value.reset()
@@ -125,6 +160,9 @@ class Speed:
 
     def duplicate(self):
         return Speed(self._value.value, self._fly.value, self._hover, self._swim.value, self._climb.value, self._burrow.value)
+
+    def __str__(self):
+        return str(self._value) + " ft." + ("" if self._fly is None else " (fly " + str(self._fly) + " ft.)") + ("" if self._swim is None else " (swim " + str(self._swim) + " ft.)") + ("" if self._climb is None else " (climb " + str(self._climb) + " ft.)") + ("" if self._burrow is None else " (burrow " + str(self._burrow) + " ft.)") + ("" if not self._hover else " (hover)")
 
     def __add__(self, other):
         if isinstance(other, Speed):
@@ -137,6 +175,24 @@ class Speed:
             )
         else:
             raise TypeError("Unsupported operand type: can only add two Speed objects")
+
+    def __sub__(self, other):
+        if isinstance(other, Speed):
+            return Speed(
+                self._value.value - other.value,
+                self.fly - other.fly,
+                self.swim - other.swim,
+                self.climb - other.climb,
+                self.burrow - other.burrow,
+            )
+        elif isinstance(other, MovementCost):
+            return Speed(
+                self._value.value - other.walking,
+                self.fly - (other.flying if other.flying is not None else 0),
+                self.swim - (other.swimming if other.swimming is not None else 0),
+                self.climb - (other.climbing if other.climbing is not None else 0),
+                self.burrow - (other.burrowing if other.burrowing is not None else 0),
+            )
 
 class Proficiencies:
     # Skills

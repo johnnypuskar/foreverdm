@@ -2,7 +2,8 @@
 import json
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from src.map.pathfind import NavGraph
+from src.map.navigation import NavGraph
+from src.map.movement import MovementCost
 
 class Map:
 
@@ -123,8 +124,8 @@ class Map:
         self._navgraph = NavGraph()
         tile_pairs = set()
 
-        for y in range(self._width):
-            for x in range(self._height):
+        for x in range(self._width):
+            for y in range(self._height):
                 # For each cell, look at the 3x3 square centered on it
                 for dx in [-1, 0, 1]:
                     for dy in [-1, 0, 1]:
@@ -145,8 +146,22 @@ class Map:
             tile_1 = self.get_tile(pair[0][0], pair[0][1])
             tile_2 = self.get_tile(pair[1][0], pair[1][1])
 
-            tile_1_costs = tile_1.movement_cost_onto(tile_2)
-            tile_2_costs = tile_2.movement_cost_onto(tile_1)
+            tile_1_costs = None
+            tile_2_costs = None
+            diagonal = tile_1.x != tile_2.x and tile_1.y != tile_2.y
+
+            if diagonal:
+                x_diff = tile_2.x - tile_1.x
+                y_diff = tile_2.y - tile_1.y
+
+                corner_tile_1 = self.get_tile(tile_1.x + x_diff, tile_1.y)
+                corner_tile_2 = self.get_tile(tile_1.x, tile_1.y + y_diff)
+
+                tile_1_costs = tile_1.corner_movement_cost_onto(tile_2, corner_tile_1, corner_tile_2)
+                tile_2_costs = tile_2.corner_movement_cost_onto(tile_1, corner_tile_2, corner_tile_1)
+            else:
+                tile_1_costs = tile_1.movement_cost_onto(tile_2)
+                tile_2_costs = tile_2.movement_cost_onto(tile_1)
 
             if tile_1_costs is not None:
                 self._navgraph.add_edge(pair[0], pair[1], tile_1_costs)
@@ -155,15 +170,17 @@ class Map:
 
         return self._navgraph
 
-    def text_visualization(self):
-
-        map_string = ""
+    def text_visualization(self, reachable = {}):
+        map_string = "\n  " + (" " * len(str(self.height - 1)))
+        for x in range(self.width):
+            map_string += "  " + str(x) + (" " * (1 - int(x / 10))) + " "
+        map_string += "\n"
         for y in range(self.height):
             row_string_middle = " " + (" " * (1 - int(y / 10))) + str(y) + " " 
             row_string_top = " " * len(row_string_middle)
             row_string_bottom = " " * len(row_string_middle)
             for x in range(self.width):
-                tile_strings = self.get_tile(x, y).text_visualization()
+                tile_strings = self.get_tile(x, y).text_visualization(None if (x, y) not in reachable else "(x)")
                 row_string_top += tile_strings[0]
                 row_string_middle += tile_strings[1]
                 row_string_bottom += tile_strings[2]
@@ -200,70 +217,6 @@ class Map:
             for y in map_array[x]:
                 pass
         return battlemap
-
-class MovementCost():
-    def __init__(self, walking, flying = None, swimming = None, climbing = None, burrowing = None):
-        self._walking = walking
-        self._flying = walking if flying is None else flying
-        self._swimming = swimming
-        self._climbing = climbing
-        self._burrowing = burrowing
-    
-    @property
-    def walking(self):
-        return self._walking
-    
-    @property
-    def flying(self):
-        return self._flying
-    
-    @property
-    def swimming(self):
-        return self._swimming
-    
-    @property
-    def climbing(self):
-        return self._climbing
-    
-    @property
-    def burrowing(self):
-        return self._burrowing
-    
-    @property
-    def highest_speed(self):
-        return max(filter(lambda v: v is not None, (self.walking, self.flying, self.swimming, self.climbing, self.burrowing)))
-
-    @staticmethod
-    def from_minimum_costs(first, second):
-        if isinstance(first, MovementCost) and isinstance(second, MovementCost):
-            return MovementCost(
-                min(first.walking, second.walking),
-                min(filter(lambda v: v is not None, (first.flying, second.flying)), default=None),
-                min(filter(lambda v: v is not None, (first.swimming, second.swimming)), default=None),
-                min(filter(lambda v: v is not None, (first.climbing, second.climbing)), default=None),
-                min(filter(lambda v: v is not None, (first.burrowing, second.burrowing)), default=None)
-            )
-        else:
-            raise TypeError("Unsupported operand type: can only add two MovementCost objects")
-        
-    def __add__(self, other):
-        if isinstance(other, MovementCost):
-            return MovementCost(
-                self._walking + other.walking,
-                sum(filter(lambda v: v is not None, (self.flying, other.flying))) if not (self._flying is None and other.flying is None) else None,
-                sum(filter(lambda v: v is not None, (self.swimming, other.swimming))) if not (self._swimming is None and other.swimming is None) else None,
-                sum(filter(lambda v: v is not None, (self.climbing, other.climbing))) if not (self._climbing is None and other.climbing is None) else None,
-                sum(filter(lambda v: v is not None, (self.burrowing, other.burrowing))) if not (self._burrowing is None and other.burrowing is None) else None
-            )
-    
-    def __radd__(self, other):
-        if isinstance(other, MovementCost):
-            return self.__add__(other)
-        else:
-            raise TypeError("Unsupported operand type: can only add two MovementCost objects")
-    
-    def __lt__(self, other):
-        return self.highest_speed < other.highest_speed
 
 class MapTile:
     def __init__(self, position = (-1, -1), passable = True, solid = False, movement_cost = MovementCost(5, 5), prop = None, wall_top = None, wall_bottom = None, wall_left = None, wall_right = None):
@@ -347,16 +300,16 @@ class MapTile:
         offset_directions = 2
 
         if self.x < other.x:
-            horizontal_wall = self._wall_left
-        elif self.x > other.x:
             horizontal_wall = self._wall_right
+        elif self.x > other.x:
+            horizontal_wall = self._wall_left
         else:
             offset_directions -= 1
 
         if self.y < other.y:
-            horizontal_wall = self._wall_top
-        elif self.y > other.y:
             vertical_wall = self._wall_bottom
+        elif self.y > other.y:
+            vertical_wall = self._wall_top
         else:
             offset_directions -= 1
             
@@ -383,8 +336,31 @@ class MapTile:
             return other.movement_cost + MovementCost.from_minimum_costs(MovementCost(0) if horizontal_wall is None else horizontal_wall.movement_penalty,
                                                                             MovementCost(0) if vertical_wall is None else vertical_wall.movement_penalty)
             
+    def corner_movement_cost_onto(self, other, horizontal_corner, vertical_corner):
+        if other.solid or horizontal_corner.solid or vertical_corner.solid:
+            return None
 
-    def text_visualization(self):
+        if self.x == other.x or self.y == other.y:
+            print("Corner movement cost function called for adjacent tiles. Use movement_cost_onto instead.")
+            return self.movement_cost_onto(other)
+
+        horizontal_wall = self._wall_left if self.x > other.x else self._wall_right
+        vertical_wall = self._wall_bottom if self.y < other.y else self._wall_top
+
+        horizontal_corner_wall = horizontal_corner.wall_bottom if other.y > horizontal_corner.y else horizontal_corner.wall_top
+        vertical_corner_wall = vertical_corner.wall_left if other.x < vertical_corner.x else vertical_corner.wall_right
+
+        if any(wall is not None and not wall.passable for wall in [horizontal_wall, vertical_wall, horizontal_corner_wall, vertical_corner_wall]):
+            return None
+
+        max_horizontal_cost = max([MovementCost(0)] + [wall.movement_penalty for wall in [horizontal_wall, horizontal_corner_wall] if wall is not None])
+        max_vertical_cost = max([MovementCost(0)] + [wall.movement_penalty for wall in [vertical_wall, vertical_corner_wall] if wall is not None])
+
+        min_corner_cost = min(max_horizontal_cost, max_vertical_cost)
+
+        return other.movement_cost + min_corner_cost
+
+    def text_visualization(self, center_text = None):
         CORNER_PIECES = ["─┘", "└─", "─┐", "┌─", "═╛", "╘═", "═╕", "╒═", "─╜", "╙─", "─╖", "╓─", "═╝", "╚═", "═╗", "╔═"]
         EDGE_PIECES = ["─", "═", "│","║", "D", "D", "D", "D"]
 
@@ -395,6 +371,9 @@ class MapTile:
             TILE_REPRESENTATION = "###"
         elif not self.passable:
             TILE_REPRESENTATION = "pit"
+        
+        if center_text is not None:
+            TILE_REPRESENTATION = center_text
 
         def zero_or(value, condition):
             return value if condition else 0

@@ -1,5 +1,7 @@
 import unittest
 from src.map.battlemap import *
+from src.map.navigation import *
+from src.stats.statistics import Speed
 import sys
 
 class TestMap(unittest.TestCase):
@@ -67,9 +69,20 @@ class TestMap(unittest.TestCase):
         print(grid.get_tile(7, 11).wall_bottom)
 
     def test_pathfinding(self):
-        grid = Map(3, 3)
+        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/ForeverDM/ForeverDM/data/test_map.fdm")
 
-        print(grid.calculate_navgraph())
+
+        graph = grid.calculate_navgraph()
+        agent = NavAgent(Speed(30))
+        reachable, paths = agent.get_reachable_nodes(graph, (3, 10))
+
+        print("\n" + grid.text_visualization([node.position for node in reachable]))
+
+        # Print out amount of reachable nodes
+        print(f"Reachable nodes: {len(reachable)}")
+
+        for node in reachable:
+            print(f"Node {node.position} - {paths[node.position]}")
 
 
 class TestTiles(unittest.TestCase):
