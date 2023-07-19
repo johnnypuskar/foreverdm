@@ -103,7 +103,6 @@ class TestMap(unittest.TestCase):
         self.assertFalse(grid.get_tile(1, 1).solid)
         self.assertEqual(grid.get_tile(1, 1).movement_cost.walking, 5)
         self.assertEqual(grid.get_tile(10, 2).movement_cost.walking, 10)
-        tile = grid.get_tile(12, 3)
         self.assertIsNone(grid.get_tile(13, 3).movement_cost.walking)
 
         # Testing for obstacles obstructing cover across full map
@@ -111,24 +110,61 @@ class TestMap(unittest.TestCase):
 
         # Testing for no obstructions over hole tiles
         self.assertEqual(grid.calculate_cover((1, 1), (1, 7)), 0)
-        
-        print(str(grid))
-        print(grid.get_tile(7, 11).wall_bottom)
 
 
 class TestNavigation(unittest.TestCase):
-    def test_pathfinding(self):
+    def test_speed(self):
         grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
-        # grid = Map(10, 10)
-        
-        print("\n" + str(grid))
-        # grid.update_tiles_max_size()
-        # grid.calculate_navgraph()
 
-        # agent = NavAgent(Speed(100), Size.GARGANTUAN)
-        # reachable, paths, _ = agent.get_reachable_nodes(grid, (1, 1))
+        # Creating pathfinding agents of varying speeds
+        slow_agent = NavAgent(Speed(10), Size.MEDIUM)
+        agent = NavAgent(Speed(30), Size.MEDIUM)
+        fast_agent = NavAgent(Speed(50), Size.MEDIUM)
 
-        # print("\n" + grid.text_visualization(reachable))
+        # Testing that slowest agent can only reach 2 additional tiles away
+        reachable, _, _ = slow_agent.get_reachable_nodes(grid, (8, 1))
+
+        for i in range(1, 4):
+            self.assertIn((8, i), reachable.keys())
+        self.assertNotIn((8, 4), reachable.keys())
+
+        # Testing that normal agent can reach 6 additional tiles away
+        reachable, _, _ = agent.get_reachable_nodes(grid, (8, 1))
+
+        for i in range(1, 8):
+            self.assertIn((8, i), reachable.keys())
+        self.assertNotIn((8, 8), reachable.keys())
+
+        # Testing that fast agent can reach 10 additional tiles away
+        reachable, _, _ = fast_agent.get_reachable_nodes(grid, (8, 1))
+
+        for i in range(1, 12):
+            self.assertIn((8, i), reachable.keys())
+        self.assertNotIn((8, 12), reachable.keys())
+    
+    def test_difficult_terrain(self):
+        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        agent = NavAgent(Speed(10), Size.MEDIUM)
+
+        # Testing that difficult terrain costs extra movement
+        next, turns, full_path = agent.get_movement_to(grid, (9, 5), (14, 5))
+        self.assertEqual(turns, 4)
+
+        # Testing that pathfinding can go around difficult terrain
+        next, turns, full_path = agent.get_movement_to(grid, (9, 2), (13, 2))
+        self.assertIn((11, 1), full_path)
+        self.assertEqual(turns, 2)
+    
+    def test_pits(self):
+        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        agent = NavAgent(Speed(30), Size.MEDIUM)
+
+        # Testing that pits are impassable
+        reachable, paths, _ = agent.get_reachable_nodes(grid, (4, 8))
+        print("\n",grid.get_map_as_string(reachable))
+        self.assertListEqual([(4, 8), (5, 8)], list(reachable.keys()))
+
+
 
 class TestTiles(unittest.TestCase):
     def test_map_tile(self):

@@ -82,8 +82,9 @@ class NavAgent:
             if end_of_movement:
                 ending_nodes.add(current_node.position)
         
-        paths = {node: [] for node in map.navgraph.nodes}
-        for node in map.navgraph.nodes:
+        paths = {}
+        for node in reachable_nodes:
+            paths[node] = []
             previous_node = previous[node]
             while previous_node is not None:
                 paths[node].insert(0, previous_node.position)
@@ -124,6 +125,6 @@ class NavAgent:
                     next_position = paths[next_position]
                     full_path.insert(0, next_position)
                 return next_position, turn, full_path
-        return None, -1
+        return None, -1, None
                 
                 

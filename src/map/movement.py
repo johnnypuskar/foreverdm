@@ -56,11 +56,11 @@ class MovementCost():
     def __add__(self, other):
         if isinstance(other, MovementCost):
             return MovementCost(
-                sum(filter(lambda v: v is not None, (self.walking, other.walking))) if not (self._walking is None and other.walking is None) else None,
-                sum(filter(lambda v: v is not None, (self.flying, other.flying))) if not (self._flying is None and other.flying is None) else None,
-                sum(filter(lambda v: v is not None, (self.swimming, other.swimming))) if not (self._swimming is None and other.swimming is None) else None,
-                sum(filter(lambda v: v is not None, (self.climbing, other.climbing))) if not (self._climbing is None and other.climbing is None) else None,
-                sum(filter(lambda v: v is not None, (self.burrowing, other.burrowing))) if not (self._burrowing is None and other.burrowing is None) else None
+                sum(filter(lambda v: v is not None, (self.walking, other.walking))) if not any(v is None for v in (self.walking, other.walking)) else None,
+                sum(filter(lambda v: v is not None, (self.flying, other.flying))) if not any(v is None for v in (self.flying, other.flying)) else None,
+                sum(filter(lambda v: v is not None, (self.swimming, other.swimming))) if not any(v is None for v in (self.swimming, other.swimming)) else None,
+                sum(filter(lambda v: v is not None, (self.climbing, other.climbing))) if not any(v is None for v in (self.climbing, other.climbing)) else None,
+                sum(filter(lambda v: v is not None, (self.burrowing, other.burrowing))) if not any(v is None for v in (self.burrowing, other.burrowing)) else None
             )
     
     def __radd__(self, other):

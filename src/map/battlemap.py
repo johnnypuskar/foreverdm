@@ -47,7 +47,7 @@ class Map:
     def within_boundaries(self, x, y):
         return (0 <= x < self._width) and (0 <= y < self._height)
 
-    def update_tiles_max_size(self):
+    def calculate_tiles_max_size(self):
         for x in range(self._width):
             for y in range(self._height):
                 self.get_tile(x, y).max_token_size = self.calculate_max_size_at(x, y)
@@ -249,6 +249,7 @@ class Map:
         return movement_cost
             
     def calculate_navgraph(self):
+        self.calculate_tiles_max_size()
         self._navgraph = NavGraph()
 
         # Create a set of all pairs of adjacent and diagonal tiles
@@ -271,9 +272,9 @@ class Map:
         # Add tiles as nodes to the navgraph
         for pair in tile_pairs:
             if pair[0] not in self._navgraph.nodes:
-                self._navgraph.add_node(pair[0], self.calculate_max_size_at(pair[0][0], pair[0][1]))
+                self._navgraph.add_node(pair[0], self.get_tile(pair[0][0], pair[0][1]).max_token_size)
             if pair[1] not in self._navgraph.nodes:
-                self._navgraph.add_node(pair[1], self.calculate_max_size_at(pair[1][0], pair[1][1]))
+                self._navgraph.add_node(pair[1], self.get_tile(pair[1][0], pair[1][1]).max_token_size)
 
             # Add node neighbors
             if self.calculate_movement_cost(pair[0], pair[1]) is not None:
@@ -299,10 +300,12 @@ class Map:
             for x in range(width):
                 for y in range(height):
                     map_grid.set_tile(x, y, MapTile.from_data(map_data["map"][y][x]))
+            
+            map_grid.calculate_navgraph()
 
             return map_grid
 
-    def __str__(self):
+    def get_map_as_string(self, highlighted = []):
         string_width = 6 * self._width + 4
         
         def insert_into_map_string(m_string, x, y, row_1, row_2, row_3):
@@ -384,7 +387,10 @@ class Map:
                 if wall_down:
                     middle_row = str(GridLine.with_wall(True, True, False, False))
                 
-                middle_row += self.get_tile(x, y).center_string
+                if (x, y) in highlighted:
+                    middle_row += "(@)"
+                else:
+                    middle_row += self.get_tile(x, y).center_string
 
                 if wall_middle_right:
                     middle_row += str(GridLine.with_wall(True, True, False, False))
@@ -423,6 +429,9 @@ class Map:
 
         return map_string[:string_width * (self._height * 2 + 1) - 1]
 
+    def __str__(self):
+        return self.get_map_as_string()
+
 class MapTile:
     def __init__(self, position = (-1, -1), movement_cost = MovementCost(5, 5), prop = None, wall_top = None, wall_bottom = None, wall_left = None, wall_right = None):
         self._position = position
@@ -460,7 +469,7 @@ class MapTile:
 
     @property
     def movement_cost(self):
-        return self._movement_cost + (MovementCost(None) if (self._prop is None) else self._prop.movement_penalty)
+        return self._movement_cost + (MovementCost(0) if (self._prop is None) else self._prop.movement_penalty)
 
     @property
     def cover(self):
@@ -511,7 +520,7 @@ class MapTile:
             TILE_REPRESENTATION = "###"
         elif self._movement_cost.walking is None:
             TILE_REPRESENTATION = "pit"
-        elif self.movement_cost.walking > 5:
+        elif self._movement_cost.walking > 5:
             if self._movement_cost.swimming is not None and self._movement_cost.swimming > 0:
                 TILE_REPRESENTATION = "~~~"
             else:
