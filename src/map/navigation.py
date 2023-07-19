@@ -2,87 +2,128 @@ from src.map.movement import MovementCost
 import heapq
 
 class NavNode:
-    def __init__(self, position):
+    def __init__(self, position, max_size):
         self.position = position
-        self.edges = []
+        self.neighbors = set()
         self.previous = None
+        self.max_size = max_size
 
-    def add_edge(self, neighbor, costs):
-        self.edges.append(NavEdge(neighbor, costs))
-
-class NavEdge:
-    def __init__(self, neighbor, costs):
-        self.neighbor = neighbor
-        self.costs = costs
+    def add_neighbor(self, neighbor):
+        self.neighbors.add(neighbor)
 
 class NavGraph:
     def __init__(self):
         self.nodes = {}
 
-    def add_node(self, position):
+    def add_node(self, position, max_size):
         if position in self.nodes:
             return
-        node = NavNode(position)
+        node = NavNode(position, max_size)
         self.nodes[position] = node
         return node
 
-    def add_edge(self, from_position, to_position, costs):
+    def connect_neighbor(self, from_position, to_position):
         if from_position not in self.nodes or to_position not in self.nodes:
-            raise ValueError("Both nodes must exist before creating an edge.")
-        self.nodes[from_position].add_edge(self.nodes[to_position], costs)
-
-    def __str__(self):
-        to_return = ""
-        for node in self.nodes:
-            to_return += str(node) + ": ["
-            for edge in self.nodes[node].edges:
-                to_return += str(edge.neighbor.position) + ", "
-            if self.nodes[node].edges:
-                to_return = to_return[:-2]
-            to_return += "]\n"
-        return to_return
+            raise ValueError("Both nodes must exist to connect as neighbors.")
+        self.nodes[from_position].add_neighbor(self.nodes[to_position])
 
 class NavAgent:
-    def __init__(self, speed):
+    def __init__(self, speed, size):
         self.speed = speed
+        self.size = size
 
-    def get_reachable_nodes(self, graph, start_position):
-        start_node = graph.nodes[start_position]
-        distances = {node: float('inf') for node in graph.nodes}
-        previous = {node: None for node in graph.nodes}
+    def get_reachable_nodes(self, map, start_position, ignore_positions = []):
+        start_node = map.navgraph.nodes[start_position]
+        distances = {node: float('inf') for node in map.navgraph.nodes}
+        previous = {node: None for node in map.navgraph.nodes}
         distances[start_node.position] = MovementCost(0)
 
         queue = [(MovementCost(0), start_node)]
-        reachable_nodes = {start_node: self.speed}
+        reachable_nodes = {start_position: self.speed}
+        ending_nodes = set()
 
         while queue:
-
             current_distance, current_node = heapq.heappop(queue)
 
             if current_distance > distances[current_node.position]:
                 continue
+            
+            end_of_movement = True
 
-            for edge in current_node.edges:
-                neighbor = edge.neighbor
-                distance = current_distance + edge.costs
+            for neighbor_pos in current_node.neighbors:
 
-                if distance < distances[neighbor.position] and self.speed.can_move(distance):
-                    distances[neighbor.position] = distance
-                    previous[neighbor.position] = current_node
-                    heapq.heappush(queue, (distance, neighbor))
+                if neighbor_pos in ignore_positions:
+                    continue
 
-                for move_type in edge.costs.cost_types:
-                    cost = getattr(edge.costs, move_type)
+                neighbor = map.navgraph.nodes[neighbor_pos]
+                edge_cost = map.calculate_movement_cost(current_node.position, neighbor.position, self.size)
+                
+                if edge_cost is None:
+                    continue
+
+                distance = current_distance + edge_cost
+
+                if self.speed.can_move(distance) and self.size <= neighbor.max_size:
+                    end_of_movement = False
+                    if distance < distances[neighbor.position]:
+                        distances[neighbor.position] = distance
+                        previous[neighbor.position] = current_node
+                        
+                        heapq.heappush(queue, (distance, neighbor))
+
+                for move_type in MovementCost.cost_types:
+                    cost = getattr(edge_cost, move_type)
                     if cost is not None and getattr(self.speed - current_distance, self.speed.get_attribute_for(move_type)) >= cost:
                         remaining_speed = self.speed.duplicate()
                         remaining_speed.move(current_distance)
-                        reachable_nodes[neighbor] = remaining_speed
+                        reachable_nodes[neighbor_pos] = remaining_speed
+                        break
+            
+            if end_of_movement:
+                ending_nodes.add(current_node.position)
         
-        paths = {node: [] for node in graph.nodes}
-        for node in graph.nodes:
+        paths = {node: [] for node in map.navgraph.nodes}
+        for node in map.navgraph.nodes:
             previous_node = previous[node]
             while previous_node is not None:
                 paths[node].insert(0, previous_node.position)
                 previous_node = previous[previous_node.position]
 
-        return reachable_nodes, paths
+        return reachable_nodes, paths, ending_nodes
+    
+    def get_movement_to(self, map, start_position, end_position):
+        path_start_nodes = {start_position: None}
+        paths = {}
+        visitable_nodes = set()
+        turn = 1
+
+        while path_start_nodes:
+            min_distance_node = None
+            min_distance = None
+            possible_path_endings = {}
+            new_visitable_nodes = set()
+            for path_start in path_start_nodes:
+                reachable, _, path_endings = self.get_reachable_nodes(map, path_start, visitable_nodes)
+                if end_position in reachable:
+                    if min_distance_node is None or reachable[end_position] < min_distance:
+                        min_distance_node = path_start
+                        min_distance = reachable[end_position]
+                new_visitable_nodes.update(reachable.keys())
+                for path_end_position in path_endings:
+                    possible_path_endings[path_end_position] = path_start
+            
+            if min_distance_node is None:
+                paths.update(possible_path_endings)
+                path_start_nodes = possible_path_endings
+                visitable_nodes.update(new_visitable_nodes)
+                turn += 1
+            else:
+                next_position = min_distance_node
+                full_path = [min_distance_node, end_position]
+                while paths[next_position] in paths:
+                    next_position = paths[next_position]
+                    full_path.insert(0, next_position)
+                return next_position, turn, full_path
+        return None, -1
+                
+                

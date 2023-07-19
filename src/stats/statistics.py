@@ -193,6 +193,10 @@ class Speed:
                 self.climb - (other.climbing if other.climbing is not None else 0),
                 self.burrow - (other.burrowing if other.burrowing is not None else 0),
             )
+    
+    def __lt__(self, other):
+        if isinstance(other, Speed):
+            return self.highest_speed < other.highest_speed
 
 class Proficiencies:
     # Skills

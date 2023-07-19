@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 from src.map.navigation import NavGraph
 from src.map.movement import MovementCost
+from src.util.constants import Size
+from src.util.grid_print import GridLine
 
 class Map:
 
@@ -32,14 +34,64 @@ class Map:
     def height(self):
         return self._height
 
+    @property
+    def navgraph(self):
+        return self._navgraph
+
     def get_tile(self, x, y):
         return self._grid[int(y)][int(x)]
     
-    def set_tile(self, coordinates: Tuple[int, int], tile):
-        self._grid[int(coordinates[1])][int(coordinates[0])] = tile
-    
     def set_tile(self, x: int, y: int, tile):
         self._grid[int(y)][int(x)] = tile
+
+    def within_boundaries(self, x, y):
+        return (0 <= x < self._width) and (0 <= y < self._height)
+
+    def update_tiles_max_size(self):
+        for x in range(self._width):
+            for y in range(self._height):
+                self.get_tile(x, y).max_token_size = self.calculate_max_size_at(x, y)
+
+    def calculate_max_size_at(self, x, y):
+        tile = self.get_tile(x, y)
+        max_size = Size.MEDIUM
+        tile_range = 1
+        while max_size != Size.GARGANTUAN:
+            for dx in range(tile_range):
+                for dy in range(tile_range):
+                    # Ignore previously checked tiles
+                    if dx < tile_range - 1 and dy < tile_range - 1:
+                        continue
+
+                    # If any of the tiles are out of bounds, then the max size is the previous size
+                    if not self.within_boundaries(x + dx, y + dy) or not self.within_boundaries(x + dx + 1, y + dy + 1):
+                        return max_size
+                    
+                    horizontal_tile = self.get_tile(x + dx + 1, y + dy)
+                    vertical_tile = self.get_tile(x + dx, y + dy + 1)
+                    diagonal_tile = self.get_tile(x + dx + 1, y + dy + 1)
+
+                    # If any of the tiles are solid, then the max size is the previous size
+                    if any([tile.solid for tile in [tile, horizontal_tile, vertical_tile, diagonal_tile]]):
+                        return max_size
+
+                    # If any of the tiles have walls intersecting the center, then the max size is the previous size
+                    if any([wall is not None for wall in [tile.wall_toward(1, 0), 
+                                                          tile.wall_toward(0, 1), 
+                                                          horizontal_tile.wall_toward(-1, 0),
+                                                          horizontal_tile.wall_toward(0, 1),
+                                                          vertical_tile.wall_toward(1, 0),
+                                                          vertical_tile.wall_toward(0, -1),
+                                                          diagonal_tile.wall_toward(-1, 0),
+                                                          diagonal_tile.wall_toward(0, -1)]]):
+                        return max_size
+                    
+                    # If any of the tiles have walking movement costs that are None (cannot be stood on), then the max size is the previous size
+                    if any([tile.movement_cost.walking is None for tile in [tile, horizontal_tile, vertical_tile, diagonal_tile]]):
+                        return max_size
+            max_size = Size.next_size(max_size)
+            tile_range += 1
+        return max_size
 
     def calculate_cover(self, attacking, defending):
         # get_integer_points(start, end) - determines the points which would potentially overlap walls
@@ -120,10 +172,87 @@ class Map:
 
         return highest_cover
 
+    def calculate_movement_cost(self, from_pos, to_pos, size = 0):
+        # Returns the cost of moving from one tile to another
+        # Size is factored in, assuming positions are at the top left of the token and tiles are 5x5ft
+        # Will return None if the tiles are not adjacent, or if the move is to the same tile
+        # Will return None if the move is not possible due to obstruction
+
+        # Returns none if locations are outside of map boundaries
+        if not self.within_boundaries(from_pos[0], from_pos[1]) or not self.within_boundaries(to_pos[0], to_pos[1]):
+            return None
+
+        # Returns none if movement locations are invalid
+        if abs(from_pos[0] - to_pos[0]) > 1 or abs(from_pos[1] - to_pos[1]) > 1 or from_pos == to_pos:
+            return None
+        
+        # Returns none if tile cannot accomodate token size
+        if self.get_tile(to_pos[0], to_pos[1]).max_token_size < size:
+            return None
+
+        # Gets destination Tile and returns none if Tile is solid
+        to_tile = self.get_tile(to_pos[0], to_pos[1])
+        if to_tile.solid:
+            return None
+
+        from_tile = self.get_tile(from_pos[0], from_pos[1])
+        movement_direction = (to_pos[0] - from_pos[0], to_pos[1] - from_pos[1])
+
+        movement_cost = None
+        if movement_direction[0] == 0 or movement_direction[1] == 0:
+            # Adjacent movement
+            wall = from_tile.wall_toward(movement_direction[0], movement_direction[1])
+            if wall is None:
+                movement_cost = to_tile.movement_cost
+            elif not wall.passable:
+                return None
+            else:
+                movement_cost = to_tile.movement_cost + wall.movement_penalty
+        else:
+            # Diagonal movement
+            hx, hy = from_pos[0] + movement_direction[0], from_pos[1]
+            vx, vy = from_pos[0], from_pos[1] + movement_direction[1]
+
+            horizontal_tile = self.get_tile(hx, hy)
+            vertical_tile = self.get_tile(vx, vy)
+
+            # Create lists of walls that must be considered for movement
+            horizontal_walls = [wall for wall in [from_tile.wall_toward(movement_direction[0], 0), horizontal_tile.wall_toward(0, movement_direction[1])] if wall is not None]
+            vertical_walls = [wall for wall in [from_tile.wall_toward(0, movement_direction[1]), vertical_tile.wall_toward(movement_direction[0], 0)] if wall is not None]
+
+            # Returns none if any walls are impassable        
+            if any(not wall.passable for wall in horizontal_walls + vertical_walls):
+                return None
+            
+            movement_cost = to_tile.movement_cost + min(sum([MovementCost(0)] + [wall.movement_cost for wall in horizontal_walls]), sum([MovementCost(0)] + [wall.movement_cost for wall in vertical_walls]))
+        
+        # Handle sizes larger than Medium
+        if size > Size.MEDIUM:
+            alt_movement_cost = None
+            for cols in range(1, int(size / Size.GRID_SIZE)):
+                alt_movement_cost = self.calculate_movement_cost((from_pos[0] + cols, from_pos[1]), (to_pos[0] + cols, to_pos[1]))
+                if alt_movement_cost is None:
+                    return None
+                movement_cost = max(movement_cost, alt_movement_cost)
+
+            for rows in range(1, int(size / Size.GRID_SIZE)):
+                alt_movement_cost = self.calculate_movement_cost((from_pos[0], from_pos[1] + rows), (to_pos[0], to_pos[1] + rows))
+                if alt_movement_cost is None:
+                    return None
+                movement_cost = max(movement_cost, alt_movement_cost)
+            
+            alt_movement_cost = self.calculate_movement_cost((from_pos[0] + 1, from_pos[1] + 1), (to_pos[0] + 1, to_pos[1] + 1), size - Size.GRID_SIZE)
+            if alt_movement_cost is None:
+                return None
+            
+            movement_cost = max(movement_cost, alt_movement_cost)
+        return movement_cost
+            
     def calculate_navgraph(self):
         self._navgraph = NavGraph()
-        tile_pairs = set()
 
+        # Create a set of all pairs of adjacent and diagonal tiles
+        tile_pairs = set()
         for x in range(self._width):
             for y in range(self._height):
                 # For each cell, look at the 3x3 square centered on it
@@ -136,59 +265,23 @@ class Map:
                         nx, ny = x + dx, y + dy
                         # Check if the neighboring cell is within the map
                         if 0 <= nx < self._width and 0 <= ny < self._height:
-                            # sort the pair before adding to the set, to avoid duplicates
+                            # Sort the pair before adding to the set, to avoid duplicates
                             tile_pairs.add(tuple(sorted([(x, y), (nx, ny)])))
 
+        # Add tiles as nodes to the navgraph
         for pair in tile_pairs:
-            self._navgraph.add_node(pair[0])
-            self._navgraph.add_node(pair[1])
-            
-            tile_1 = self.get_tile(pair[0][0], pair[0][1])
-            tile_2 = self.get_tile(pair[1][0], pair[1][1])
+            if pair[0] not in self._navgraph.nodes:
+                self._navgraph.add_node(pair[0], self.calculate_max_size_at(pair[0][0], pair[0][1]))
+            if pair[1] not in self._navgraph.nodes:
+                self._navgraph.add_node(pair[1], self.calculate_max_size_at(pair[1][0], pair[1][1]))
 
-            tile_1_costs = None
-            tile_2_costs = None
-            diagonal = tile_1.x != tile_2.x and tile_1.y != tile_2.y
-
-            if diagonal:
-                x_diff = tile_2.x - tile_1.x
-                y_diff = tile_2.y - tile_1.y
-
-                corner_tile_1 = self.get_tile(tile_1.x + x_diff, tile_1.y)
-                corner_tile_2 = self.get_tile(tile_1.x, tile_1.y + y_diff)
-
-                tile_1_costs = tile_1.corner_movement_cost_onto(tile_2, corner_tile_1, corner_tile_2)
-                tile_2_costs = tile_2.corner_movement_cost_onto(tile_1, corner_tile_2, corner_tile_1)
-            else:
-                tile_1_costs = tile_1.movement_cost_onto(tile_2)
-                tile_2_costs = tile_2.movement_cost_onto(tile_1)
-
-            if tile_1_costs is not None:
-                self._navgraph.add_edge(pair[0], pair[1], tile_1_costs)
-            if tile_2_costs is not None:
-                self._navgraph.add_edge(pair[1], pair[0], tile_2_costs)
-
+            # Add node neighbors
+            if self.calculate_movement_cost(pair[0], pair[1]) is not None:
+                self._navgraph.nodes[pair[0]].add_neighbor(pair[1])
+            if self.calculate_movement_cost(pair[1], pair[0]) is not None:
+                self._navgraph.nodes[pair[1]].add_neighbor(pair[0])
+        
         return self._navgraph
-
-    def text_visualization(self, reachable = {}):
-        map_string = "\n  " + (" " * len(str(self.height - 1)))
-        for x in range(self.width):
-            map_string += "  " + str(x) + (" " * (1 - int(x / 10))) + " "
-        map_string += "\n"
-        for y in range(self.height):
-            row_string_middle = " " + (" " * (1 - int(y / 10))) + str(y) + " " 
-            row_string_top = " " * len(row_string_middle)
-            row_string_bottom = " " * len(row_string_middle)
-            for x in range(self.width):
-                tile_strings = self.get_tile(x, y).text_visualization(None if (x, y) not in reachable else "(x)")
-                row_string_top += tile_strings[0]
-                row_string_middle += tile_strings[1]
-                row_string_bottom += tile_strings[2]
-            map_string += row_string_top + "\n" + row_string_middle + "\n" + row_string_bottom + "\n"
-        map_string += "  " + (" " * len(str(self.height - 1)))
-        for x in range(self.width):
-            map_string += "  " + str(x) + (" " * (1 - int(x / 10))) + " "
-        return map_string.encode("utf-16").decode("utf-16")
 
     @staticmethod
     def load_from_file(path: str):
@@ -208,23 +301,136 @@ class Map:
                     map_grid.set_tile(x, y, MapTile.from_data(map_data["map"][y][x]))
 
             return map_grid
-        return None
 
-    @staticmethod
-    def dev_create(map_array: List[List[int]]):
-        battlemap = Map(len(map_array[0]), len(map_array))
-        for x in map_array:
-            for y in map_array[x]:
-                pass
-        return battlemap
+    def __str__(self):
+        string_width = 6 * self._width + 4
+        
+        def insert_into_map_string(m_string, x, y, row_1, row_2, row_3):
+            tile_text_index = (y * string_width * 2) + 6 * x
+
+            m_string = m_string[:tile_text_index] + row_1 + map_string[tile_text_index + len(row_1):]
+            m_string = m_string[:tile_text_index + string_width] + row_2 + map_string[tile_text_index + string_width + len(row_2):]
+            m_string = m_string[:tile_text_index + 2 * string_width] + row_3 + map_string[tile_text_index + 2 * string_width + len(row_3):]
+
+            return m_string
+
+
+        map_string = ("[/]" * (3 * self._width - 1) + "\n") * (1 + 2 * self._height)
+
+        TILE_CHAR_WIDTH = 9
+
+        for x in range(self._width):
+            for y in range(self._height):
+
+                # Top Row
+                wall_up = False
+                wall_down = False
+                wall_left = False
+                wall_right = False 
+
+                try:
+                    if y > 0:
+                        wall_up = self.get_tile(x, y - 1).wall_left is not None or self.get_tile(x - 1, y - 1).wall_right is not None
+                except IndexError:
+                    pass
+
+                try:
+                    wall_down = self.get_tile(x, y).wall_left is not None or self.get_tile(x - 1, y).wall_right is not None
+                except IndexError:
+                    pass
+
+                try:
+                    wall_right = self.get_tile(x, y).wall_top is not None or self.get_tile(x, y - 1).wall_bottom is not None
+                except IndexError:
+                    pass
+
+                try:
+                    if x > 0:
+                        wall_left = self.get_tile(x - 1, y).wall_top is not None or self.get_tile(x - 1, y - 1).wall_bottom is not None
+                except IndexError:
+                    pass
+
+                top_row = str(GridLine.without_wall(GridLine.CORNER))
+                if any([wall_up, wall_down, wall_left, wall_right]):
+                    top_row = str(GridLine.with_wall(wall_up, wall_down, wall_left, wall_right))
+
+                if wall_right:
+                    top_row += str(GridLine.with_wall(False, False, True, True))
+                else:
+                    top_row += str(GridLine.without_wall(GridLine.HORIZONTAL))
+                
+                wall_side_up = False
+                wall_side_down = self.get_tile(x, y).wall_right is not None
+
+                try:
+                    wall_side_up = self.get_tile(x, y - 1).wall_right is not None
+                except IndexError:
+                    pass
+
+                if any([wall_side_up, wall_side_down, wall_right]):
+                    top_row += str(GridLine.with_wall(wall_side_up, wall_side_down, wall_right, False))
+                else:
+                    top_row += str(GridLine.without_wall(GridLine.CORNER))
+
+                # Middle Row
+                wall_middle_right = False
+
+                try:
+                    wall_middle_right = self.get_tile(x, y).wall_right is not None or self.get_tile(x + 1, y).wall_left is not None
+                except IndexError:
+                    pass
+
+                middle_row = str(GridLine.without_wall(GridLine.VERTICAL))
+                if wall_down:
+                    middle_row = str(GridLine.with_wall(True, True, False, False))
+                
+                middle_row += self.get_tile(x, y).center_string
+
+                if wall_middle_right:
+                    middle_row += str(GridLine.with_wall(True, True, False, False))
+                else:
+                    middle_row += str(GridLine.without_wall(GridLine.VERTICAL))
+
+                # Bottom Row
+                wall_bottom_left = False
+                wall_bottom_right = self.get_tile(x, y).wall_bottom is not None
+
+                try:
+                    wall_bottom_left = self.get_tile(x - 1, y).wall_bottom is not None
+                except IndexError:
+                    pass
+                
+                bottom_row = str(GridLine.without_wall(GridLine.CORNER))
+                if any([wall_bottom_left, wall_down, wall_bottom_right]):
+                    bottom_row = str(GridLine.with_wall(wall_down, False, wall_bottom_left, wall_bottom_right))
+                
+                if wall_bottom_right:
+                    bottom_row += str(GridLine.with_wall(False, False, True, True))
+                else:
+                    bottom_row += str(GridLine.without_wall(GridLine.HORIZONTAL))
+                
+                if any([wall_bottom_right, wall_side_down]):
+                    bottom_row += str(GridLine.with_wall(wall_side_down, False, wall_bottom_right, False))
+                else:
+                    bottom_row += str(GridLine.without_wall(GridLine.CORNER))
+                
+                if x == self._width - 1:
+                    top_row += "\n"
+                    middle_row += "\n"
+                    bottom_row += "\n"
+
+                map_string = insert_into_map_string(map_string, x, y, top_row, middle_row, bottom_row)
+
+        return map_string[:string_width * (self._height * 2 + 1) - 1]
 
 class MapTile:
-    def __init__(self, position = (-1, -1), passable = True, solid = False, movement_cost = MovementCost(5, 5), prop = None, wall_top = None, wall_bottom = None, wall_left = None, wall_right = None):
+    def __init__(self, position = (-1, -1), movement_cost = MovementCost(5, 5), prop = None, wall_top = None, wall_bottom = None, wall_left = None, wall_right = None):
         self._position = position
         self._movement_cost = movement_cost
-        self._passable = passable
-        self._solid = solid
+        self._solid = movement_cost.has_no_movement
         self._prop = prop
+
+        self.max_token_size = Size.MEDIUM
 
         self._wall_top = wall_top
         self._wall_bottom = wall_bottom
@@ -233,7 +439,7 @@ class MapTile:
 
     @staticmethod
     def from_data(load_data):
-        return MapTile((load_data["x"], load_data["y"]), load_data["passable"], load_data["solid"], MovementCost(load_data["movement_cost"], load_data["movement_cost"]), load_data["prop"], WallFactory.from_data(load_data["walls"]["top"]), WallFactory.from_data(load_data["walls"]["bottom"]), WallFactory.from_data(load_data["walls"]["left"]), WallFactory.from_data(load_data["walls"]["right"]))
+        return MapTile((load_data["x"], load_data["y"]),MovementCost(load_data["movement_cost"]["walking"], load_data["movement_cost"]["flying"], load_data["movement_cost"]["swimming"], load_data["movement_cost"]["climbing"], load_data["movement_cost"]["burrowing"]), load_data["prop"], WallFactory.from_data(load_data["walls"]["top"]), WallFactory.from_data(load_data["walls"]["bottom"]), WallFactory.from_data(load_data["walls"]["left"]), WallFactory.from_data(load_data["walls"]["right"]))
 
     @property
     def position(self):
@@ -246,9 +452,6 @@ class MapTile:
     @property
     def y(self):
         return self._position[1]
-
-    @property
-    def passable(self):
         return self._passable and (self._prop is None or self._prop.passable)
 
     @property
@@ -257,7 +460,7 @@ class MapTile:
 
     @property
     def movement_cost(self):
-        return self._movement_cost + (MovementCost(0) if (self._prop is None) else self._prop.movement_penalty)
+        return self._movement_cost + (MovementCost(None) if (self._prop is None) else self._prop.movement_penalty)
 
     @property
     def cover(self):
@@ -270,6 +473,20 @@ class MapTile:
     @prop.setter
     def prop(self, new_value):
         self._prop = new_value
+
+    def wall_toward(self, x_dir, y_dir):
+        if x_dir != 0 and y_dir != 0:
+            raise ValueError("Cannot return single wall in diagonal direction.")
+        if x_dir == 0:
+            if y_dir == 1:
+                return self._wall_bottom
+            elif y_dir == -1:
+                return self._wall_top
+        else:
+            if x_dir == 1:
+                return self._wall_right
+            elif x_dir == -1:
+                return self._wall_left
 
     @property
     def wall_top(self):
@@ -287,111 +504,20 @@ class MapTile:
     def wall_right(self):
         return self._wall_right
 
-    def movement_cost_onto(self, other):
-        # Only takes into account the wall data on this tile and the inherent tile movement cost of the other tile.
-        # Returns None if either the wall or the other tile are solid and therefore impassable.
-        # Diagonals return value only if vertical and horizonal movement are possible.
-        if other.solid:
-            return None
-        
-        horizontal_wall = None
-        vertical_wall = None
-
-        offset_directions = 2
-
-        if self.x < other.x:
-            horizontal_wall = self._wall_right
-        elif self.x > other.x:
-            horizontal_wall = self._wall_left
-        else:
-            offset_directions -= 1
-
-        if self.y < other.y:
-            vertical_wall = self._wall_bottom
-        elif self.y > other.y:
-            vertical_wall = self._wall_top
-        else:
-            offset_directions -= 1
-            
-        if offset_directions == 0:
-            # Case to return None movement cost for moving onto tile at same coordinates
-            return None
-        elif offset_directions == 1:
-            if self.y == other.y:
-                if horizontal_wall is None:
-                    return other.movement_cost
-                elif not horizontal_wall.passable:
-                    return None
-            else:
-                if vertical_wall is None:
-                    return other.movement_cost
-                elif not vertical_wall.passable:
-                    return None
-            return other.movement_cost + (horizontal_wall.movement_penalty if self.y == other.y else vertical_wall.movement_penalty)
-        else:
-            if horizontal_wall and not horizontal_wall.passable:
-                return None
-            elif vertical_wall and not vertical_wall.passable:
-                return None
-            return other.movement_cost + MovementCost.from_minimum_costs(MovementCost(0) if horizontal_wall is None else horizontal_wall.movement_penalty,
-                                                                            MovementCost(0) if vertical_wall is None else vertical_wall.movement_penalty)
-            
-    def corner_movement_cost_onto(self, other, horizontal_corner, vertical_corner):
-        if other.solid or horizontal_corner.solid or vertical_corner.solid:
-            return None
-
-        if self.x == other.x or self.y == other.y:
-            print("Corner movement cost function called for adjacent tiles. Use movement_cost_onto instead.")
-            return self.movement_cost_onto(other)
-
-        horizontal_wall = self._wall_left if self.x > other.x else self._wall_right
-        vertical_wall = self._wall_bottom if self.y < other.y else self._wall_top
-
-        horizontal_corner_wall = horizontal_corner.wall_bottom if other.y > horizontal_corner.y else horizontal_corner.wall_top
-        vertical_corner_wall = vertical_corner.wall_left if other.x < vertical_corner.x else vertical_corner.wall_right
-
-        if any(wall is not None and not wall.passable for wall in [horizontal_wall, vertical_wall, horizontal_corner_wall, vertical_corner_wall]):
-            return None
-
-        max_horizontal_cost = max([MovementCost(0)] + [wall.movement_penalty for wall in [horizontal_wall, horizontal_corner_wall] if wall is not None])
-        max_vertical_cost = max([MovementCost(0)] + [wall.movement_penalty for wall in [vertical_wall, vertical_corner_wall] if wall is not None])
-
-        min_corner_cost = min(max_horizontal_cost, max_vertical_cost)
-
-        return other.movement_cost + min_corner_cost
-
-    def text_visualization(self, center_text = None):
-        CORNER_PIECES = ["─┘", "└─", "─┐", "┌─", "═╛", "╘═", "═╕", "╒═", "─╜", "╙─", "─╖", "╓─", "═╝", "╚═", "═╗", "╔═"]
-        EDGE_PIECES = ["─", "═", "│","║", "D", "D", "D", "D"]
-
+    @property
+    def center_string(self):
         TILE_REPRESENTATION = "   "
-        if self.movement_cost.walking > 5:
-            TILE_REPRESENTATION = " * "
-        elif self.solid:
+        if self.solid:
             TILE_REPRESENTATION = "###"
-        elif not self.passable:
+        elif self._movement_cost.walking is None:
             TILE_REPRESENTATION = "pit"
+        elif self.movement_cost.walking > 5:
+            if self._movement_cost.swimming is not None and self._movement_cost.swimming > 0:
+                TILE_REPRESENTATION = "~~~"
+            else:
+                TILE_REPRESENTATION = " * "
         
-        if center_text is not None:
-            TILE_REPRESENTATION = center_text
-
-        def zero_or(value, condition):
-            return value if condition else 0
-
-        h_pipe_pos = 1
-        v_pipe_pos = 2
-        h_pipe_wall = 4
-        v_pipe_wall = 8
-
-        edge_wall = 1
-        edge_vert = 2
-        edge_door = 4
-
-        return (
-            CORNER_PIECES[h_pipe_pos + v_pipe_pos + zero_or(h_pipe_wall, self.wall_top is not None) + zero_or(v_pipe_wall, self.wall_left)] + EDGE_PIECES[zero_or(edge_door, isinstance(self.wall_top, TileDoor)) + zero_or(edge_wall, self.wall_top is not None)] + CORNER_PIECES[v_pipe_pos + zero_or(h_pipe_wall, self.wall_top is not None) + zero_or(v_pipe_wall, self.wall_right)],
-            EDGE_PIECES[zero_or(edge_door, isinstance(self.wall_left, TileDoor)) + edge_vert + zero_or(edge_wall, self.wall_left is not None)] + TILE_REPRESENTATION + EDGE_PIECES[zero_or(edge_door, isinstance(self.wall_right, TileDoor)) + edge_vert + zero_or(edge_wall, self.wall_right is not None)],
-            CORNER_PIECES[h_pipe_pos + zero_or(h_pipe_wall, self.wall_bottom is not None) + zero_or(v_pipe_wall, self.wall_left)] + EDGE_PIECES[zero_or(edge_door, isinstance(self.wall_bottom, TileDoor)) + zero_or(edge_wall, self.wall_bottom is not None)] + CORNER_PIECES[zero_or(h_pipe_wall, self.wall_bottom is not None) + zero_or(v_pipe_wall, self.wall_right)]
-            )
+        return TILE_REPRESENTATION
 
 class Interactable(ABC):
     _use_action = False
@@ -492,8 +618,6 @@ class TileDoor(TileWall):
     def interact(self):
         self._cover = self._closed_cover_value - self._cover
         self._passable = not self._passable
-
-
 
 class MapProp(Interactable):
     def __init__(self, cover, movement_penalty, passable, use_action = False, use_bonus_action = False, use_reaction = False, use_movement = False, use_object_interaction = False, interaction = None):

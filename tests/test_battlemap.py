@@ -49,59 +49,102 @@ class TestMap(unittest.TestCase):
         self.assertEqual(grid.calculate_cover((2, 6), (18, 4)), 2)
         self.assertEqual(grid.calculate_cover((2, 6), (17, 6)), 2)
 
+    def test_update_max_size(self):
+        grid = Map(5, 5)
+        grid.update_tiles_max_size()
+
+        # Testing that size is bounded by the edges of the map
+        self.assertEqual(grid.get_tile(0, 0).max_token_size, Size.GARGANTUAN)
+        self.assertEqual(grid.get_tile(1, 1).max_token_size, Size.GARGANTUAN)
+        self.assertEqual(grid.get_tile(2, 2).max_token_size, Size.HUGE)
+        self.assertEqual(grid.get_tile(3, 3).max_token_size, Size.LARGE)
+        self.assertEqual(grid.get_tile(4, 4).max_token_size, Size.MEDIUM)
+
+        self.assertEqual(grid.get_tile(0, 1).max_token_size, Size.GARGANTUAN)
+        self.assertEqual(grid.get_tile(0, 2).max_token_size, Size.HUGE)
+        self.assertEqual(grid.get_tile(0, 3).max_token_size, Size.LARGE)
+        self.assertEqual(grid.get_tile(0, 4).max_token_size, Size.MEDIUM)
+
+        self.assertEqual(grid.get_tile(1, 0).max_token_size, Size.GARGANTUAN)
+        self.assertEqual(grid.get_tile(2, 0).max_token_size, Size.HUGE)
+        self.assertEqual(grid.get_tile(3, 0).max_token_size, Size.LARGE)
+        self.assertEqual(grid.get_tile(4, 0).max_token_size, Size.MEDIUM)
+        
+        # Placing a wall on the map
+        grid.set_tile(1, 2, MapTile((1, 2), wall_right = TileWall(cover = 3, passable = False)))
+        grid.set_tile(2, 2, MapTile((2, 2), wall_left = TileWall(cover = 3, passable = False)))
+        grid.update_tiles_max_size()
+
+        # Testing that size is bounded by horizontal walls
+        self.assertEqual(grid.get_tile(0, 0).max_token_size, Size.LARGE)
+        self.assertEqual(grid.get_tile(1, 1).max_token_size, Size.MEDIUM)
+        self.assertEqual(grid.get_tile(2, 2).max_token_size, Size.HUGE)
+        self.assertEqual(grid.get_tile(1, 2).max_token_size, Size.MEDIUM)
+        self.assertEqual(grid.get_tile(2, 1).max_token_size, Size.HUGE)
+
+        grid.set_tile(3, 4, MapTile((3, 4), wall_top = TileWall(cover = 3, passable = False)))
+        grid.set_tile(3, 3, MapTile((3, 3), wall_bottom = TileWall(cover = 3, passable = False)))
+        grid.update_tiles_max_size()
+
+        # Testing that size is bounded by vertical walls
+        self.assertEqual(grid.get_tile(2, 2).max_token_size, Size.LARGE)
+        self.assertEqual(grid.get_tile(3, 3).max_token_size, Size.MEDIUM)
+
+
 
     def test_load_file(self):
         # Load test map
-        TEST_MAP_PATH = "C:/Users/johnn/Programming/Python/ForeverDM/ForeverDM/data/test_map.fdm"
-        grid = Map.load_from_file(TEST_MAP_PATH)
+        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
         
         # Testing various known points for loaded properties
-        self.assertFalse(grid.get_tile(3, 1).passable)
-        self.assertEqual(grid.get_tile(2, 4).movement_cost.walking, 10)
+        self.assertEqual(grid.width, 16)
+        self.assertEqual(grid.height, 16)
+        self.assertTrue(grid.get_tile(0, 0).solid)
+        self.assertFalse(grid.get_tile(1, 1).solid)
+        self.assertEqual(grid.get_tile(1, 1).movement_cost.walking, 5)
+        self.assertEqual(grid.get_tile(10, 2).movement_cost.walking, 10)
+        tile = grid.get_tile(12, 3)
+        self.assertIsNone(grid.get_tile(13, 3).movement_cost.walking)
 
         # Testing for obstacles obstructing cover across full map
-        self.assertEqual(grid.calculate_cover((1, 1), (14, 12)), 3)
+        self.assertEqual(grid.calculate_cover((1, 1), (14, 14)), 3)
 
         # Testing for no obstructions over hole tiles
         self.assertEqual(grid.calculate_cover((1, 1), (1, 7)), 0)
         
-        print(grid.text_visualization())
+        print(str(grid))
         print(grid.get_tile(7, 11).wall_bottom)
 
+
+class TestNavigation(unittest.TestCase):
     def test_pathfinding(self):
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/ForeverDM/ForeverDM/data/test_map.fdm")
+        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        # grid = Map(10, 10)
+        
+        print("\n" + str(grid))
+        # grid.update_tiles_max_size()
+        # grid.calculate_navgraph()
 
+        # agent = NavAgent(Speed(100), Size.GARGANTUAN)
+        # reachable, paths, _ = agent.get_reachable_nodes(grid, (1, 1))
 
-        graph = grid.calculate_navgraph()
-        agent = NavAgent(Speed(30))
-        reachable, paths = agent.get_reachable_nodes(graph, (3, 10))
-
-        print("\n" + grid.text_visualization([node.position for node in reachable]))
-
-        # Print out amount of reachable nodes
-        print(f"Reachable nodes: {len(reachable)}")
-
-        for node in reachable:
-            print(f"Node {node.position} - {paths[node.position]}")
-
+        # print("\n" + grid.text_visualization(reachable))
 
 class TestTiles(unittest.TestCase):
     def test_map_tile(self):
-        tile = MapTile(passable = False, movement_cost = MovementCost(10), prop = None)
+        tile = MapTile(movement_cost = MovementCost(10), prop = None)
 
         # Testing properties were assigned properly
-        self.assertFalse(tile.passable)
         self.assertEqual(tile.movement_cost.walking, 10)
         self.assertEqual(tile.cover, 0)
         self.assertIsNone(tile.prop)
 
     def test_map_tile_prop(self):
         prop = MapProp(1, MovementCost(5), False)
-        tile = MapTile(passable = True, movement_cost = MovementCost(10), prop = None)
+        tile = MapTile(movement_cost = MovementCost(10), prop = None)
 
         # Testing properties were assigned properly
         self.assertIsNone(tile.prop)
-        self.assertTrue(tile.passable)
         self.assertEqual(tile.movement_cost.walking, 10)
         self.assertEqual(tile.cover, 0)
 
@@ -110,7 +153,6 @@ class TestTiles(unittest.TestCase):
 
         # Testing prop correctly modifies tile properties
         self.assertEqual(tile.prop, prop)
-        self.assertFalse(tile.passable)
         self.assertEqual(tile.movement_cost.walking, 15)
         self.assertEqual(tile.cover, 1)
 

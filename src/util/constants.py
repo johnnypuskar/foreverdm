@@ -55,3 +55,10 @@ class Size:
     LARGE = 10
     HUGE = 15
     GARGANTUAN = 20
+
+    GRID_SIZE = 5
+
+    @staticmethod
+    def next_size(size):
+        sizes = [Size.TINY, Size.MEDIUM, Size.LARGE, Size.HUGE, Size.GARGANTUAN]
+        return sizes[min(5, sizes.index(size) + 1)]
