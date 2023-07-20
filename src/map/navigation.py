@@ -10,6 +10,9 @@ class NavNode:
 
     def add_neighbor(self, neighbor):
         self.neighbors.add(neighbor)
+    
+    def __lt__(self, other):
+        return self.position < other.position
 
 class NavGraph:
     def __init__(self):
@@ -36,9 +39,9 @@ class NavAgent:
         start_node = map.navgraph.nodes[start_position]
         distances = {node: float('inf') for node in map.navgraph.nodes}
         previous = {node: None for node in map.navgraph.nodes}
-        distances[start_node.position] = MovementCost(0)
+        distances[start_node.position] = 0
 
-        queue = [(MovementCost(0), start_node)]
+        queue = [(0, start_node)]
         reachable_nodes = {start_position: self.speed}
         ending_nodes = set()
 
@@ -65,25 +68,22 @@ class NavAgent:
 
                 if self.speed.can_move(distance) and self.size <= neighbor.max_size:
                     end_of_movement = False
-                    if distance < distances[neighbor.position]:
-                        distances[neighbor.position] = distance
+                    expended = current_distance + (self.speed - current_distance).get_min_move_cost(edge_cost)
+                    if expended < distances[neighbor.position]:
+                        distances[neighbor.position] = expended
                         previous[neighbor.position] = current_node
                         
-                        heapq.heappush(queue, (distance, neighbor))
+                        heapq.heappush(queue, (expended, neighbor))
 
-                for move_type in MovementCost.cost_types:
-                    cost = getattr(edge_cost, move_type)
-                    if cost is not None and getattr(self.speed - current_distance, self.speed.get_attribute_for(move_type)) >= cost:
                         remaining_speed = self.speed.duplicate()
-                        remaining_speed.move(current_distance)
+                        remaining_speed -= expended
                         reachable_nodes[neighbor_pos] = remaining_speed
-                        break
             
-            if end_of_movement:
+            if end_of_movement and current_node.position not in ignore_positions:
                 ending_nodes.add(current_node.position)
         
         paths = {}
-        for node in reachable_nodes:
+        for node in map.navgraph.nodes:
             paths[node] = []
             previous_node = previous[node]
             while previous_node is not None:
@@ -121,7 +121,7 @@ class NavAgent:
             else:
                 next_position = min_distance_node
                 full_path = [min_distance_node, end_position]
-                while paths[next_position] in paths:
+                while next_position in paths and paths[next_position] in paths:
                     next_position = paths[next_position]
                     full_path.insert(0, next_position)
                 return next_position, turn, full_path

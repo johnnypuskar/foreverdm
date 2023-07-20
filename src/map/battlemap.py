@@ -377,7 +377,6 @@ class Map:
 
                 # Middle Row
                 wall_middle_right = False
-
                 try:
                     wall_middle_right = self.get_tile(x, y).wall_right is not None or self.get_tile(x + 1, y).wall_left is not None
                 except IndexError:
@@ -469,7 +468,7 @@ class MapTile:
 
     @property
     def movement_cost(self):
-        return self._movement_cost + (MovementCost(0) if (self._prop is None) else self._prop.movement_penalty)
+        return self._movement_cost + (MovementCost(0, 0, 0, 0, 0) if (self._prop is None) else self._prop.movement_penalty)
 
     @property
     def cover(self):

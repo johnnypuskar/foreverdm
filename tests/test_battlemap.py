@@ -51,7 +51,7 @@ class TestMap(unittest.TestCase):
 
     def test_update_max_size(self):
         grid = Map(5, 5)
-        grid.update_tiles_max_size()
+        grid.calculate_tiles_max_size()
 
         # Testing that size is bounded by the edges of the map
         self.assertEqual(grid.get_tile(0, 0).max_token_size, Size.GARGANTUAN)
@@ -73,7 +73,7 @@ class TestMap(unittest.TestCase):
         # Placing a wall on the map
         grid.set_tile(1, 2, MapTile((1, 2), wall_right = TileWall(cover = 3, passable = False)))
         grid.set_tile(2, 2, MapTile((2, 2), wall_left = TileWall(cover = 3, passable = False)))
-        grid.update_tiles_max_size()
+        grid.calculate_tiles_max_size()
 
         # Testing that size is bounded by horizontal walls
         self.assertEqual(grid.get_tile(0, 0).max_token_size, Size.LARGE)
@@ -84,7 +84,7 @@ class TestMap(unittest.TestCase):
 
         grid.set_tile(3, 4, MapTile((3, 4), wall_top = TileWall(cover = 3, passable = False)))
         grid.set_tile(3, 3, MapTile((3, 3), wall_bottom = TileWall(cover = 3, passable = False)))
-        grid.update_tiles_max_size()
+        grid.calculate_tiles_max_size()
 
         # Testing that size is bounded by vertical walls
         self.assertEqual(grid.get_tile(2, 2).max_token_size, Size.LARGE)
@@ -147,11 +147,11 @@ class TestNavigation(unittest.TestCase):
         agent = NavAgent(Speed(10), Size.MEDIUM)
 
         # Testing that difficult terrain costs extra movement
-        next, turns, full_path = agent.get_movement_to(grid, (9, 5), (14, 5))
+        next_pos, turns, full_path = agent.get_movement_to(grid, (9, 5), (14, 5))
         self.assertEqual(turns, 4)
 
         # Testing that pathfinding can go around difficult terrain
-        next, turns, full_path = agent.get_movement_to(grid, (9, 2), (13, 2))
+        next_pos, turns, full_path = agent.get_movement_to(grid, (9, 2), (13, 2))
         self.assertIn((11, 1), full_path)
         self.assertEqual(turns, 2)
     
@@ -163,6 +163,28 @@ class TestNavigation(unittest.TestCase):
         reachable, paths, _ = agent.get_reachable_nodes(grid, (4, 8))
         print("\n",grid.get_map_as_string(reachable))
         self.assertListEqual([(4, 8), (5, 8)], list(reachable.keys()))
+    
+    def test_water(self):
+        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/water_test_small.fdm")
+        
+        print("\n",grid.get_map_as_string())
+
+        agent = NavAgent(Speed(20), Size.MEDIUM)
+        swimmer_agent = NavAgent(Speed(20, 0, 10), Size.MEDIUM)
+
+        reachable, paths, _ = swimmer_agent.get_reachable_nodes(grid, (0, 0))
+        next_pos, turns, full_path = swimmer_agent.get_movement_to(grid, (0, 0), (4, 0))
+
+        print(paths[(4, 0)])
+        # for node in reachable:
+        #     print(node,"-",reachable[node])
+        #     print(paths[node])
+        #     print("\n")
+
+        self.assertEqual(turns, 2)
+        self.assertIn((3, 0), full_path)
+
+
 
 
 
