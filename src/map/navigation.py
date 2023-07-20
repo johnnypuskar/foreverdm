@@ -100,15 +100,15 @@ class NavAgent:
 
         while path_start_nodes:
             min_distance_node = None
-            min_distance = None
+            remaining_speed = None
             possible_path_endings = {}
             new_visitable_nodes = set()
             for path_start in path_start_nodes:
                 reachable, _, path_endings = self.get_reachable_nodes(map, path_start, visitable_nodes)
                 if end_position in reachable:
-                    if min_distance_node is None or reachable[end_position] < min_distance:
+                    if min_distance_node is None or reachable[end_position] > remaining_speed:
                         min_distance_node = path_start
-                        min_distance = reachable[end_position]
+                        remaining_speed = reachable[end_position]
                 new_visitable_nodes.update(reachable.keys())
                 for path_end_position in path_endings:
                     possible_path_endings[path_end_position] = path_start

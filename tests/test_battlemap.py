@@ -91,7 +91,6 @@ class TestMap(unittest.TestCase):
         self.assertEqual(grid.get_tile(3, 3).max_token_size, Size.MEDIUM)
 
 
-
     def test_load_file(self):
         # Load test map
         grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
@@ -165,27 +164,30 @@ class TestNavigation(unittest.TestCase):
         self.assertListEqual([(4, 8), (5, 8)], list(reachable.keys()))
     
     def test_water(self):
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/water_test_small.fdm")
+        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
         
-        print("\n",grid.get_map_as_string())
-
+        # Testing that water slows down non-swimmers
         agent = NavAgent(Speed(20), Size.MEDIUM)
+        next_pos, turns, full_path = agent.get_movement_to(grid, (8, 14), (14, 14))
+
+        self.assertEqual(turns, 3)
+        self.assertEqual(10, next_pos[0])
+
+        # Testing that swim speed allows faster movement through water
         swimmer_agent = NavAgent(Speed(20, 0, 10), Size.MEDIUM)
-
-        reachable, paths, _ = swimmer_agent.get_reachable_nodes(grid, (0, 0))
-        next_pos, turns, full_path = swimmer_agent.get_movement_to(grid, (0, 0), (4, 0))
-
-        print(paths[(4, 0)])
-        # for node in reachable:
-        #     print(node,"-",reachable[node])
-        #     print(paths[node])
-        #     print("\n")
+        next_pos, turns, full_path = swimmer_agent.get_movement_to(grid, (8, 14), (14, 14))
 
         self.assertEqual(turns, 2)
-        self.assertIn((3, 0), full_path)
+        self.assertEqual(11, next_pos[0])
 
+        # Testing that creatures cannot move onto land if they have only a swim speed\
+        fish_agent = NavAgent(Speed(0, 0, 50), Size.TINY)
+        reachable, _, _ = fish_agent.get_reachable_nodes(grid, (11, 11))
 
+        self.assertIn((9, 14), reachable.keys())
+        self.assertNotIn((12, 13), reachable.keys())
 
+        print("\n",grid.get_map_as_string(reachable))
 
 
 class TestTiles(unittest.TestCase):

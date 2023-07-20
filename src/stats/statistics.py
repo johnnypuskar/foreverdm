@@ -53,8 +53,8 @@ class HitPoints:
 
 class Speed:
     def __init__(self, value, fly = 0, swim = 0, climb = 0, burrow = 0, hover = False):
-        if (swim is not None and value < swim) or (climb is not None and value < climb) or (burrow is not None and value < burrow):
-            raise ValueError("Base walking speed cannot be less than swimming, climbing, or burrowing speeds.")
+        # if (swim is not None and value < swim) or (climb is not None and value < climb) or (burrow is not None and value < burrow):
+        #     raise ValueError("Base walking speed cannot be less than swimming, climbing, or burrowing speeds.")
         self._value = ResettableValue(value)
         self._fly = ResettableValue(fly)
         self._hover = hover
