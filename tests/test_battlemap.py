@@ -188,6 +188,21 @@ class TestNavigation(unittest.TestCase):
         self.assertListEqual(TEST_POOL_TILES, list(reachable.keys()))
 
         print(reachable.keys())
+    
+    def test_maze(self):
+        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+
+        MAZE_START = (1, 1)
+        MAZE_DEST = (4, 7)
+        MAZE_SOLUTION = [(1, 1), (2, 1), (2, 2), (3, 2), (3, 1), (4, 1), (4, 2), (4, 3), (4, 4), (3, 4), (3, 5), (4, 5), (5, 5), (5, 6), (6, 6), (6, 7), (5, 7)]
+
+        # Tests pathfinding agent ability to traverse maze in expected path
+        agent = NavAgent(Speed(100), Size.MEDIUM)
+        reachable, paths, _ = agent.get_reachable_nodes(grid, MAZE_START)
+
+        self.assertIn(MAZE_DEST, reachable.keys())
+        self.assertIn(MAZE_DEST, paths.keys())
+        self.assertListEqual(MAZE_SOLUTION, paths[MAZE_DEST])
 
 
 class TestTiles(unittest.TestCase):
