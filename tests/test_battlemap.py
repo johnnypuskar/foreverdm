@@ -1,3 +1,4 @@
+import os
 import unittest
 from src.map.battlemap import *
 from src.map.navigation import *
@@ -8,6 +9,13 @@ class TestMap(unittest.TestCase):
 
     def setUp(self) -> None:
         sys.stdout.reconfigure(encoding='utf-8')
+
+        test_dir = os.path.dirname(os.path.abspath(__file__))
+
+        self.TEST_LEVEL_SIZE = os.path.join(test_dir, "levels\\size_test_level.fdm")
+        self.TEST_LEVEL_TERRAIN = os.path.join(test_dir, "levels\\terrain_test_level.fdm")
+        self.TEST_LEVEL_WATER = os.path.join(test_dir, "levels\\water_test_small.fdm")
+
         return super().setUp()
 
     def test_setup(self):
@@ -93,7 +101,7 @@ class TestMap(unittest.TestCase):
 
     def test_load_file(self):
         # Load test map
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)
         
         # Testing various known points for loaded properties
         self.assertEqual(grid.width, 16)
@@ -112,8 +120,20 @@ class TestMap(unittest.TestCase):
 
 
 class TestNavigation(unittest.TestCase):
+
+    def setUp(self) -> None:
+        sys.stdout.reconfigure(encoding='utf-8')
+
+        test_dir = os.path.dirname(os.path.abspath(__file__))
+
+        self.TEST_LEVEL_SIZE = os.path.join(test_dir, "levels\\size_test_level.fdm")
+        self.TEST_LEVEL_TERRAIN = os.path.join(test_dir, "levels\\terrain_test_level.fdm")
+        self.TEST_LEVEL_WATER = os.path.join(test_dir, "levels\\water_test_small.fdm")
+
+        return super().setUp()
+
     def test_speed(self):
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)
 
         # Creating pathfinding agents of varying speeds
         slow_agent = NavAgent(Speed(10), Size.MEDIUM)
@@ -142,7 +162,7 @@ class TestNavigation(unittest.TestCase):
         self.assertNotIn((8, 12), reachable.keys())
     
     def test_difficult_terrain(self):
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)
         agent = NavAgent(Speed(10), Size.MEDIUM)
 
         # Testing that difficult terrain costs extra movement
@@ -155,7 +175,7 @@ class TestNavigation(unittest.TestCase):
         self.assertEqual(turns, 2)
     
     def test_pits(self):
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)
         agent = NavAgent(Speed(30), Size.MEDIUM)
 
         # Testing that pits are impassable
@@ -164,7 +184,7 @@ class TestNavigation(unittest.TestCase):
         self.assertListEqual([(4, 8), (5, 8)], list(reachable.keys()))
     
     def test_water(self):
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)
         
         # Testing that water slows down non-swimmers
         agent = NavAgent(Speed(20), Size.MEDIUM)
@@ -190,7 +210,7 @@ class TestNavigation(unittest.TestCase):
         print(reachable.keys())
     
     def test_maze(self):
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/terrain_test_level.fdm")
+        grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)
 
         MAZE_START = (1, 1)
         MAZE_DEST = (4, 7)
@@ -205,7 +225,7 @@ class TestNavigation(unittest.TestCase):
         self.assertListEqual(MAZE_SOLUTION, paths[MAZE_DEST])
     
     def test_size(self):
-        grid = Map.load_from_file("C:/Users/johnn/Programming/Python/AI_DM/data/size_test_level.fdm")
+        grid = Map.load_from_file(self.TEST_LEVEL_SIZE)
 
         tiny_agent = NavAgent(Speed(150), Size.TINY)
         small_agent = NavAgent(Speed(150), Size.SMALL)
