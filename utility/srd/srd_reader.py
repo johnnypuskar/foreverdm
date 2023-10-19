@@ -67,7 +67,7 @@ def convert_output(output, limit = -1):
         print("Quitting out...")
         return
     version_label = input("Enter a version label for this run: ")
-    openai.api_key = "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"
+    openai.api_key = json.load(open("config/api_config.json", "r"))["API_KEY"]
     to_return = []
     with open('output.txt', 'r') as file:
         line_count = len(file.readlines())
