@@ -67,35 +67,37 @@ def convert_output(output, limit = -1):
         print("Quitting out...")
         return
     version_label = input("Enter a version label for this run: ")
-    openai.api_key = json.load(open("config/api_config.json", "r"))["API_KEY"]
+    openai.api_key = json.load(open("bot/config/api_config.json", "r"))["API_KEY"]
     to_return = []
-    with open('output.txt', 'r') as file:
-        line_count = len(file.readlines())
-        file.seek(0)
-        index = 0
-        last_printed_percentage = -1
-        for line in file:
-            percentage = int((index / line_count) * 100)
-            if percentage != last_printed_percentage:
-                print(f"{percentage}% complete...")
-                last_printed_percentage = percentage
-            embed_entry = {"text": line}
-            index += 1
-            response = openai.Embedding.create(
-                input=line,
-                model="text-embedding-ada-002"
-            )
-            embed_entry["embedding"] = response['data'][0]['embedding']
-            to_return.append(embed_entry)
-            if limit > 0:
-                limit -= 1
-            if limit == 0:
-                break
-            time.sleep(0.02) # Delay added to prevent rate limiting
-    with open(f'utility/srd/vectors/embeddings_v{version_label}.json', 'w') as file:
+
+    line_count = len(output)
+    index = 0
+    last_printed_percentage = -1
+    for line in output:
+        percentage = int((index / line_count) * 100)
+        if percentage != last_printed_percentage:
+            print(f"{percentage}% complete...")
+            last_printed_percentage = percentage
+        embed_entry = {"text": line}
+        index += 1
+        # response = openai.Embedding.create(
+        #     input=line,
+        #     model="text-embedding-ada-002"
+        # )
+        embed_entry["embedding"] = [1, 1] #response['data'][0]['embedding']
+        to_return.append(embed_entry)
+        if limit > 0:
+            limit -= 1
+        if limit == 0:
+            break
+        # time.sleep(0.02) # Delay added to prevent rate limiting
+    
+    embeddings_json = {"version": f'v{version_label}', "embeddings": to_return}
+
+    with open(f'utility/srd/vectors/embeddings.json', 'w') as file:
         print("100% complete! Writing to file...")
-        json.dump(to_return, file)
-    print(f"Done! Saved to embeddings_v{version_label}.json")
+        json.dump(embeddings_json, file)
+    print(f"Done! Saved to embeddings.json")
 
 def main():
     entries = create_entries()
