@@ -28,4 +28,15 @@ class UseLimitedAbility(Ability):
             self._charges.value += additional_charges
 
     def __str__(self):
-        return str(self._name) + "(" + str(self._charges) + " of " + str(self._max_charges) + " uses left, " + str(self._description)
+        return f"{self._name}({self._charges}/{self._charges.initial} uses| {self._description})"
+
+class SpellcastingAbility(Ability):
+    def __init__(self, spellcasting_class, spell_attack_bonus, spell_save_dc, focus_items):
+        self._spellcasting_class = spellcasting_class
+        self._spell_attack_bonus = spell_attack_bonus
+        self._spell_save_dc = spell_save_dc
+        self._focus_items = focus_items
+        super().__init__("Spellcasting", f"Spellcasting for {spellcasting_class}")
+    
+    def __str__(self):
+        return f"{self._spellcasting_class} spellcasting[spell attack bonus({self._spell_attack_bonus}) spell save DC({self._spell_save_dc}) focus items({self._focus_items})]"

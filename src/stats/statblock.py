@@ -1,15 +1,17 @@
 from src.stats.statistics import Stat, Speed, HitPoints, Proficiencies
 from src.util.constants import CreatureType, Languages, Size
+from src.stats.profiles import StatProfile, AttackProfile, AttackedProfile, ModifierProfile, MoveProfile, SpellcastProfile
 import math
 
 class Statblock:
+
     def __init__(self, strength = 10, dexterity = 10, constitution = 10, intelligence = 10, wisdom = 10, charisma = 10, size = Size.MEDIUM, creature_type = CreatureType.HUMANOID,
                 proficiency_bonus = 2, proficiencies = Proficiencies(), languages = [Languages.COMMON], senses = [], damage_resistances = [], damage_immunities = [],
                 condition_immunities = [], hit_points = 4, max_hit_points = 4, armor_class = 10, speed = Speed(30), features = [], notes = ""):
         self._strength = Stat("strength", strength)
         self._dexterity = Stat("dexterity", dexterity)
         self._constitution = Stat("constitution", constitution)
-        self._constitution = Stat("intelligence", intelligence)
+        self._intelligence = Stat("intelligence", intelligence)
         self._wisdom = Stat("wisdom", wisdom)
         self._charisma = Stat("charisma", charisma)
 
@@ -32,57 +34,109 @@ class Statblock:
         self._conditions = dict()
         self._condition_immunities = condition_immunities
 
+        self._held_items = []
+
+        self._abilities = {
+            "attack": [],
+            "attacked": [],
+            "move": [],
+            "strength_check": [],
+            "dexterity_check": [],
+            "constitution_check": [],
+            "intelligence_check": [],
+            "wisdom_check": [],
+            "charisma_check": [],
+            "strength_save": [],
+            "dexterity_save": [],
+            "constitution_save": [],
+            "intelligence_save": [],
+            "wisdom_save": [],
+            "charisma_save": [],
+            "acrobatics": [],
+            "animal_handling": [],
+            "arcana": [],
+            "athletics": [],
+            "deception": [],
+            "history": [],
+            "insight": [],
+            "intimidation": [],
+            "investigation": [],
+            "medicine": [],
+            "nature": [],
+            "perception": [],
+            "performance": [],
+            "persuasion": [],
+            "religion": [],
+            "sleight_of_hand": [],
+            "stealth": [],
+            "survival": [],
+            "equipment": [],
+            "initiative": [],
+            "spellcast": []
+        }
+
+        self.STAT_PROFILES = {
+            "attack": self.stat_profile_attack
+        }
+
         self._notes = notes
        
-    # Stats
+    # Ability Scores
     @property
     def strength(self):
-        return self._strength.value
+        return self._strength
 
     @property
     def dexterity(self):
-        return self._dexterity.value
+        return self._dexterity
 
     @property
     def constitution(self):
-        return self._constitution.value
+        return self._constitution
 
     @property
     def intelligence(self):
-        return self._intelligence.value
+        return self._intelligence
 
     @property
     def wisdom(self):
-        return self._wisdom.value
+        return self._wisdom
 
     @property
     def charisma(self):
-        return self._charisma.value
+        return self._charisma
 
-    # Stat Modifiers
-    @property
-    def strength_modifier(self):
-        return math.floor((self._strength.value - 10) / 2.0)
+    # Other Stats
 
     @property
-    def dexterity_modifier(self):
-        return math.floor((self._dexterity.value - 10) / 2.0)
-
+    def size(self):
+        return self._size
+    
     @property
-    def constitution_modifier(self):
-        return math.floor((self._constitution.value - 10) / 2.0)
-
+    def creature_type(self):
+        return self._creature_type
+    
     @property
-    def intelligence_modifier(self):
-        return math.floor((self._intelligence.value - 10) / 2.0)
-
+    def armor_class(self):
+        return self._armor_class
+    
     @property
-    def wisdom_modifier(self):
-        return math.floor((self._wisdom.value - 10) / 2.0) 
+    def speed(self):
+        return self._speed
 
-    @property
-    def charisma_modifier(self):
-        return math.floor((self._charisma.value - 10) / 2.0)
+    # Equipment and Inventory
+
+
+
+    # Stat Profiles
+
+    def get_stat_profile(self, profile):
+        if profile not in self.STAT_PROFILES:
+            raise ValueError(f"Stat profile '{profile}' does not exist.")
+        return self.STAT_PROFILES[profile]()
+
+    def stat_profile_attack(self):
+        return AttackProfile(self._held_items, self._abilities["attack"])
 
     # Skills
     def skill_proficiency_bonus(self, proficiency):
@@ -107,6 +161,10 @@ class Statblock:
     @property
     def skill_deception(self):
         return self.charisma_modifier + self.skill_proficiency_bonus(Proficiencies.DECEPTION)
+
+    @property
+    def skill_history(self):
+        return self.intelligence_modifier + self.skill_proficiency_bonus(Proficiencies.HISTORY)
 
     @property
     def skill_insight(self):

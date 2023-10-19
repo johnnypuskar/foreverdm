@@ -1,3 +1,4 @@
+import math
 from src.map.movement import MovementCost
 from src.util.resettable_value import ResettableValue
 
@@ -8,11 +9,19 @@ class Stat:
         self._modifiers = []
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def value(self):
         value = self._base_value
         for modifier in self._modifiers:
             value += modifier.value
         return value
+
+    @property
+    def modifier(self):
+        return math.floor((self.value - 10) / 2.0)
 
     def add_modifier(self, modifier):
         self._modifiers.append(modifier)
