@@ -4,7 +4,7 @@ from src.api.character_classifier import CharacterClassifier
 
 test_system = "You are an AI D&D 5e assistant, and will answer any questions about the system as close to the rules as possible."
 
-API_KEY = json.load(open("config/api_config.json", "r"))["API_KEY"]
+API_KEY = json.load(open("bot/config/api_config.json", "r"))["API_KEY"]
 
 api = CharacterClassifier(API_KEY)
 
