@@ -5,4 +5,5 @@ services:
     ports:
       - "5432:5432"
     environment:
+      POSTGRES_DB: "foreverdm-db"
       POSTGRES_PASSWORD: ${DB_PASSWORD}
