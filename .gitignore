@@ -1,5 +1,6 @@
 __pycache__/
 .vscode/settings.json
-bot/config/api_config.json
+config/api_config.json
+config/db_config.json
 database/config/db_config.json
 .env
