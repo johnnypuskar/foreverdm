@@ -1,7 +1,7 @@
 import json
 import psycopg2
 
-class Database:
+class DatabaseAccess:
     def __init__(self, config):
         config = json.load(open("database/config/db_config.json", "r"))[config]
         self.conn = psycopg2.connect(**config)
