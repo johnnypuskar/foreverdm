@@ -10,7 +10,11 @@ class Token:
         self._can_bonus_action = True
         self._can_free_interaction = True
         self._can_reaction = True
-    
+
+    @property
+    def statblock(self):
+        return self._statblock
+
     @property
     def position(self):
         return self._position
