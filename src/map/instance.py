@@ -19,7 +19,6 @@ class Instance:
 
         return f"TOKEN POSITIONS: {tokens_context} | INTERACTABLES: {interactables_context}"
 
-    
     def add_token(self, token, position):
         if token in self.tokens:
             raise ValueError(f"Token {token} already exists within instance.")
@@ -33,6 +32,12 @@ class Instance:
         if token not in self.tokens:
             raise ValueError(f"Token {token} does not exist within instance: {self.tokens}")
         self.tokens.remove(token)
+
+    def add_map_prop(self, prop, position):
+        self.map.add_prop(prop, position)
+    
+    def remove_map_prop(self, prop):
+        self.map.remove_prop(prop)
 
     def load_map(self, new_map):
         self.map = new_map
