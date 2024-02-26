@@ -1,7 +1,10 @@
 import json
 import openai
 
-class APIWrapper:
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+class GPTAPIWrapper:
     def __init__(self, key, config, system_default):
         self._config = config
         openai.api_key = key
@@ -36,3 +39,36 @@ class APIWrapper:
 
         # Return message
         return completion
+
+class GeminiAPIWrapper:
+    def __init__(self, key):
+        genai.configure(api_key = key)
+    
+    def get_tokens(self, content):
+        model = genai.GenerativeModel('gemini-pro')
+        tokens = model.count_tokens(content)
+        return tokens
+
+    def send_request(self, message):
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(message,
+            safety_settings=[
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_ONLY_HIGH"
+                },
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_ONLY_HIGH"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_ONLY_HIGH"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_ONLY_HIGH"
+                }
+            ]
+        )
+        return response.text

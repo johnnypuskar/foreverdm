@@ -1,6 +1,4 @@
 import unittest
-from src.stats.conditions import Condition
-from src.map.token import Token
 from src.stats.statistics import Stat, StatModifier
 
 class TestTokens(unittest.TestCase):

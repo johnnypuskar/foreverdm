@@ -4,8 +4,11 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 from src.map.navigation import NavGraph
 from src.map.movement import MovementCost
+from src.map.interactable import Interactable
 from src.util.constants import Size
 from src.util.grid_print import GridLine
+
+import google.ai.generativelanguage as glm
 
 class Map:
 
@@ -25,6 +28,8 @@ class Map:
             self._grid.append([])
             for x in range(self._width):
                 self._grid[y].append(MapTile((x, y)))
+        
+        self._interactables = []
     
     @property
     def width(self):
@@ -38,6 +43,20 @@ class Map:
     def navgraph(self):
         return self._navgraph
 
+    @property
+    def interactables(self):
+        return self._interactables
+
+    def register_interactable(self, interactable):
+        if not isinstance(interactable, Interactable):
+            raise ValueError("Can only register Interactable objects.")
+        if interactable not in self._interactables:
+            self._interactables.append(interactable)
+    
+    def unregister_interactable(self, interactable):
+        if interactable in self._interactables:
+            self._interactables.remove(interactable)
+
     def get_tile(self, x, y):
         return self._grid[int(y)][int(x)]
     
@@ -46,6 +65,22 @@ class Map:
 
     def within_boundaries(self, x, y):
         return (0 <= x < self._width) and (0 <= y < self._height)
+
+    def reregister_interactables(self):
+        self._interactables.clear()
+        for y in range(self._height):
+            for x in range(self._width):
+                tile = self.get_tile(x, y)
+                if isinstance(tile.prop, Interactable):
+                    self.register_interactable(tile.prop)
+                if isinstance(tile.wall_top, Interactable):
+                    self.register_interactable(tile.wall_top)
+                if isinstance(tile.wall_bottom, Interactable):
+                    self.register_interactable(tile.wall_bottom)
+                if isinstance(tile.wall_left, Interactable):
+                    self.register_interactable(tile.wall_left)
+                if isinstance(tile.wall_right, Interactable):
+                    self.register_interactable(tile.wall_right)
 
     def calculate_tiles_max_size(self):
         for x in range(self._width):
@@ -284,6 +319,26 @@ class Map:
         
         return self._navgraph
 
+    def add_prop(self, prop, position: Tuple[int, int]):
+        if not isinstance(prop, MapProp):
+            raise ValueError("Can only add MapProp objects to map.")
+        if not self.within_boundaries(position[0], position[1]):
+            raise ValueError("Position must be within map boundaries.")
+        self.get_tile(position[0], position[1]).prop = prop
+        self.register_interactable(prop)
+
+    def remove_prop(self, prop):
+        if prop in self._interactables:
+            self.get_tile(prop.position[0], prop.position[1]).prop = None
+            self.unregister_interactable(prop)
+
+    def remove_prop_at(self, position: Tuple[int, int]):
+        if not self.within_boundaries(position[0], position[1]):
+            raise ValueError("Position must be within map boundaries.")
+        if self.get_tile(position[0], position[1]).prop is not None:
+            self.unregister_interactable(self.get_tile(position[0], position[1]).prop)
+        self.get_tile(position[0], position[1]).prop = None
+
     @staticmethod
     def load_from_file(path: str):
         with open(path, "r") as map_file:
@@ -302,6 +357,7 @@ class Map:
                     map_grid.set_tile(x, y, MapTile.from_data(map_data["map"][y][x]))
             
             map_grid.calculate_navgraph()
+            map_grid.reregister_interactables()
 
             return map_grid
 
@@ -441,9 +497,17 @@ class MapTile:
         self.max_token_size = Size.MEDIUM
 
         self._wall_top = wall_top
+        if isinstance(self._wall_top, Interactable):
+            self._wall_top.position = self._position
         self._wall_bottom = wall_bottom
+        if isinstance(self._wall_bottom, Interactable):
+            self._wall_bottom.position = self._position
         self._wall_left = wall_left
+        if isinstance(self._wall_left, Interactable):
+            self._wall_left.position = self._position
         self._wall_right = wall_right
+        if isinstance(self._wall_right, Interactable):
+            self._wall_right.position = self._position
 
     @staticmethod
     def from_data(load_data):
@@ -480,7 +544,11 @@ class MapTile:
 
     @prop.setter
     def prop(self, new_value):
-        self._prop = new_value
+        if isinstance(new_value, MapProp):
+            if self._prop is not None:
+                self._prop.position = None
+            self._prop = new_value
+            self._prop.position = self._position
 
     def wall_toward(self, x_dir, y_dir):
         if x_dir != 0 and y_dir != 0:
@@ -527,40 +595,40 @@ class MapTile:
         
         return TILE_REPRESENTATION
 
-class Interactable(ABC):
-    _use_action = False
-    _use_bonus_action = False
-    _use_reaction = False
-    _use_movement = False
-    _use_object_interaction = False
+# class Interactable(ABC):
+#     _use_action = False
+#     _use_bonus_action = False
+#     _use_reaction = False
+#     _use_movement = False
+#     _use_object_interaction = False
 
-    @abstractmethod
-    def interact(self):
-        pass
+#     @abstractmethod
+#     def interact(self):
+#         pass
 
-    @property
-    def interactable(self):
-        return self._use_action or self._use_bonus_action or self._use_reaction or self._use_movement
+#     @property
+#     def interactable(self):
+#         return self._use_action or self._use_bonus_action or self._use_reaction or self._use_movement
 
-    @property
-    def use_action(self):
-        return self._use_action
+#     @property
+#     def use_action(self):
+#         return self._use_action
 
-    @property
-    def use_bonus_action(self):
-        return self._use_bonus_action
+#     @property
+#     def use_bonus_action(self):
+#         return self._use_bonus_action
 
-    @property
-    def use_reaction(self):
-        return self._use_reaction
+#     @property
+#     def use_reaction(self):
+#         return self._use_reaction
     
-    @property
-    def use_movement(self):
-        return self._use_movement
+#     @property
+#     def use_movement(self):
+#         return self._use_movement
 
-    @property
-    def use_movement(self):
-        return self._use_object_interaction
+#     @property
+#     def use_movement(self):
+#         return self._use_object_interaction
 
 class WallFactory:
     @staticmethod
@@ -572,7 +640,7 @@ class WallFactory:
         elif wall_data["type"] == "door":
             return TileDoor.from_data(wall_data)
 
-class TileWall(Interactable):
+class TileWall:
     def __init__(self, cover = 3, passable = False, movement_penalty = MovementCost(0)):
         # cover value the wall provides: no cover = 0, half cover = 1, three-quarters cover = 2, full cover = 3
         self._cover = cover
@@ -597,48 +665,48 @@ class TileWall(Interactable):
     def movement_penalty(self):
         return self._movement_penalty
 
-    def interact(self):
-        pass
 
-class TileDoor(TileWall):
+class TileDoor(TileWall, Interactable):
     _use_object_interaction = True
 
-    def __init__(self, cover = 3, passable = False, movement_penalty = MovementCost(0), locked = False, lockpick_dc = 0, hidden = False, discover_dc = 0):
-        super().__init__(cover, passable, movement_penalty)
+    def __init__(self, name = "Door", description = "An unlocked door. Closed.", cover = 3, passable = False, movement_penalty = MovementCost(0)):
+        TileWall.__init__(self, cover, passable, movement_penalty)
+        Interactable.__init__(self, name, description)
         self._closed_cover_value = cover
-        self.locked = locked
-        self._lockpick_dc = lockpick_dc
-        self.hidden = hidden
-        self._discover_dc = discover_dc
+
+        self._position = None
 
     @staticmethod
     def from_data(load_data):
-        return TileDoor(load_data["cover"], load_data["passable"], MovementCost(load_data["movement_penalty"]), load_data["locked"], load_data["lockpick_dc"], load_data["hidden"], load_data["discover_dc"])
+        return TileDoor(load_data["cover"], load_data["passable"], MovementCost(load_data["movement_penalty"]))
 
-    @property
-    def pick_dc(self):
-        return self._lockpick_dc
+    def update_func_declaration(self):
+        return glm.FunctionDeclaration(
+            name = 'interact',
+            description = 'Sets the description of this door as a result of an interaction, as well as its opened boolean value.',
+            parameters = glm.Schema(
+                type = glm.Type.OBJECT,
+                properties = {
+                    'new_description': glm.Schema(type = glm.Type.STRING),
+                    'opened': glm.Schema(type = glm.Type.BOOLEAN)
+                },
+                required = ['new_description', 'opened']
+            )
+        )
 
-    @property
-    def discover_dc(self):
-        return self._discover_dc
-
-    def interact(self):
-        self._cover = self._closed_cover_value - self._cover
-        self._passable = not self._passable
+    def update(self, new_description, opened):
+        self._cover = 0 if opened else self._closed_cover_value
+        self._passable = opened
+        return super().update(new_description)
 
 class MapProp(Interactable):
-    def __init__(self, cover, movement_penalty, passable, use_action = False, use_bonus_action = False, use_reaction = False, use_movement = False, use_object_interaction = False, interaction = None):
-        super().__init__()
+    def __init__(self, name, description, cover = 0, movement_penalty = MovementCost(0), passable = True):
+        super().__init__(name, description)
         self._cover = cover
         self._movement_penalty = movement_penalty
         self._passable = passable
-        self._use_action = use_action
-        self._use_bonus_action = use_bonus_action
-        self._use_reaction = use_reaction
-        self._use_movement = use_movement
-        self._use_object_interaction = use_object_interaction
-        self._interaction = interaction
+
+        self._position = None
 
     @property
     def cover(self):
@@ -652,6 +720,30 @@ class MapProp(Interactable):
     def passable(self):
         return self._passable
 
-    def interact(self):
-        if self._interaction is not None:
-            return self._interaction()
+    def update_func_declaration(self):
+        return glm.FunctionDeclaration(
+            name = 'interact',
+            description = 'Sets the description of this door as a result of an interaction, as well as its opened boolean value.',
+            parameters = glm.Schema(
+                type = glm.Type.OBJECT,
+                properties = {
+                    'new_description': glm.Schema(type = glm.Type.STRING),
+                    'cover': glm.Schema(type = glm.Type.INTEGER, description = 'The cover value the prop provides, must be an integer 0-3 inclusive: 0 = no cover, 1 = half cover, 2 = three-quarters cover, 3 = full cover'),
+                    'movement_penalty': glm.Schema(type = glm.Type.OBJECT, description = 'The additional movement cost this prop incurs when moving over it with various movement types. Each penalty value must be an integer 0 or greater.', properties = {
+                        'walking': glm.Schema(type = glm.Type.INTEGER, description = 'Walking speed penalty.'),
+                        'flying': glm.Schema(type = glm.Type.INTEGER, description = 'Flying speed penalty.'),
+                        'swimming': glm.Schema(type = glm.Type.INTEGER, description = 'Swimming speed penalty.'),
+                        'climbing': glm.Schema(type = glm.Type.INTEGER, description = 'Climbing speed penalty.'),
+                        'burrowing': glm.Schema(type = glm.Type.INTEGER, description = 'Burrowing speed penalty.')
+                    }),
+                    'passable': glm.Schema(type = glm.Type.BOOLEAN, description = 'Whether or not this prop can be traversed over.')
+                },
+                required = ['new_description']
+            )
+        )
+
+    def update(self, new_description, cover = None, movement_penalty = None, passable = None):
+        self._cover = cover if cover is not None else self.cover
+        self._movement_penalty = movement_penalty if movement_penalty is not None else self.movement_penalty
+        self._passable = passable if passable is not None else self.passable
+        return super().update(new_description)

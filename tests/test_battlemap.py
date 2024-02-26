@@ -276,7 +276,7 @@ class TestTiles(unittest.TestCase):
         self.assertIsNone(tile.prop)
 
     def test_map_tile_prop(self):
-        prop = MapProp(1, MovementCost(5), False)
+        prop = MapProp("Rubble", "A pile of rubble", 1, MovementCost(5), True)
         tile = MapTile(movement_cost = MovementCost(10), prop = None)
 
         # Testing properties were assigned properly
@@ -301,45 +301,55 @@ class TestTiles(unittest.TestCase):
         self.assertEqual(wall.movement_penalty, 5)
 
     def test_tile_door(self):
-        door = TileDoor(3, False, 5)
+        door = TileDoor("Jail Cell Door", "A locked cell bar door. Closed.", 2, False, MovementCost(5))
         
         # Testing properties were assigned properly
+        self.assertEqual(door.name, "Jail Cell Door")
+        self.assertEqual(door.description, "A locked cell bar door. Closed.")
         self.assertFalse(door.passable)
-        self.assertEqual(door.cover, 3)
-        self.assertEqual(door.movement_penalty, 5)
+        self.assertEqual(door.cover, 2)
+        self.assertEqual(door.movement_penalty.walking, 5)
 
         # Testing properties are updated correctly when door is opened
-        door.interact()
+        door.update("An unlocked cell bar door. Opened.", True)
         self.assertTrue(door.passable)
         self.assertEqual(door.cover, 0)
-        self.assertEqual(door.movement_penalty, 5)
+        self.assertEqual(door.movement_penalty.walking, 5)
 
 
 class TestMapProp(unittest.TestCase):
-    def interact_1(self):
-        return 10
-
-    def interact_2(self):
-        return 20
 
     def test_properties(self):
-        prop1 = MapProp(2, 5, True, use_action=True, interaction=self.interact_1)
-        prop2 = MapProp(3, 10, False, use_reaction=True, interaction=self.interact_2)
+        prop1 = MapProp("Box", "A large wooden box", 1, MovementCost(5), True)
+        prop2 = MapProp("Statue", "A massive marble statue", 2, MovementCost(30), False)
         
         # Testing properties were assigned properly
-        self.assertEqual(prop1.cover, 2)
-        self.assertEqual(prop1.movement_penalty, 5)
+        self.assertEqual(prop1.name, "Box")
+        self.assertEqual(prop1.description, "A large wooden box")
+        self.assertEqual(prop1.cover, 1)
+        self.assertEqual(prop1.movement_penalty.walking, 5)
         self.assertTrue(prop1.passable)
         
         # Testing properties were assigned properly
-        self.assertEqual(prop2.cover, 3)
-        self.assertEqual(prop2.movement_penalty, 10)
+        self.assertEqual(prop2.name, "Statue")
+        self.assertEqual(prop2.description, "A massive marble statue")
+        self.assertEqual(prop2.cover, 2)
+        self.assertEqual(prop2.movement_penalty.walking, 30)
         self.assertFalse(prop2.passable)
 
     def test_interaction(self):
-        prop1 = MapProp(2, 5, True, use_action=True, interaction=self.interact_1)
-        prop2 = MapProp(3, 10, False, use_reaction=True, interaction=self.interact_2)
+        prop1 = MapProp("Box", "A large wooden box", 1, MovementCost(5), True)
         
-        # Testing interaction functions are assigned and work properly
-        self.assertEqual(prop1.interact(), 10)
-        self.assertEqual(prop2.interact(), 20)
+        # Testing interaction function updates values properly
+        prop1.update("The shattered remains of a large wooden box", 0, MovementCost(0))
+        self.assertEqual(prop1.description, "The shattered remains of a large wooden box")
+        self.assertEqual(prop1.cover, 0)
+        self.assertEqual(prop1.movement_penalty.walking, 0)
+        self.assertTrue(prop1.passable)
+
+        # Testing interaction function updates description but not values when they are not provided
+        prop1.update("The shattered remains of a large wooden box stacked neatly in a pile")
+        self.assertEqual(prop1.description, "The shattered remains of a large wooden box stacked neatly in a pile")
+        self.assertEqual(prop1.cover, 0)
+        self.assertEqual(prop1.movement_penalty.walking, 0)
+        self.assertTrue(prop1.passable)
