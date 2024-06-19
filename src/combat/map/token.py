@@ -31,7 +31,6 @@ class Token:
 
     @speed.setter
     def speed(self, value):
-        print(type(Speed(30)))
         if not isinstance(value, Speed):
             raise ValueError(f"Speed must be a Speed object, not {type(value)}.")
         self.__speed = value

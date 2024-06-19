@@ -1,7 +1,7 @@
-from src.map.battlemap import Map
-from src.map.movement import MovementCost
-from src.map.token import Token
-from src.map.navigation import NavAgent
+from src.combat.map.battlemap import Map
+from src.combat.map.movement import MovementCost
+from src.combat.map.token import Token
+from src.combat.map.navigation import NavAgent
 
 class Instance:
     def __init__(self, starting_map = None):
@@ -10,8 +10,9 @@ class Instance:
 
     def get_context(self):
         tokens_context = {}
-        for token in self.tokens:
-            tokens_context[token.statblock.name] = token.position
+        for i in range(len(self.tokens)):
+            token = self.tokens[i]
+            tokens_context[f"[ID={i}]{token.statblock.name}"] = token.position
         
         interactables_context = {}
         for interactable in self.map.interactables:

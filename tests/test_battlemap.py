@@ -1,7 +1,7 @@
 import os
 import unittest
-from src.map.battlemap import *
-from src.map.navigation import *
+from src.combat.map.battlemap import *
+from src.combat.map.navigation import *
 from src.stats.statistics import Speed
 import sys
 

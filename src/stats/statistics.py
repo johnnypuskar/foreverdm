@@ -1,5 +1,5 @@
 import math
-from src.map.movement import MovementCost
+from src.combat.map.movement import MovementCost
 from src.util.resettable_value import ResettableValue
 
 class Stat:

@@ -1,4 +1,4 @@
-from src.map.movement import MovementCost
+from src.combat.map.movement import MovementCost
 import heapq
 
 class NavNode:

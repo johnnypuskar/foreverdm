@@ -2,9 +2,9 @@
 import json
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from src.map.navigation import NavGraph
-from src.map.movement import MovementCost
-from src.map.interactable import Interactable
+from src.combat.map.navigation import NavGraph
+from src.combat.map.movement import MovementCost
+from src.combat.map.interactable import Interactable
 from src.util.constants import Size
 from src.util.grid_print import GridLine
 

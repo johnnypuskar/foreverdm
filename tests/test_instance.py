@@ -1,7 +1,7 @@
 import unittest, sys, os
-from src.map.instance import Instance, PositionOccupiedError
-from src.map.battlemap import Map
-from src.map.token import Token
+from src.combat.map.instance import Instance, PositionOccupiedError
+from src.combat.map.battlemap import Map
+from src.combat.map.token import Token
 from src.stats.statblock import Statblock
 
 class TestInstance(unittest.TestCase):

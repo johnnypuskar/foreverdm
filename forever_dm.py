@@ -1,26 +1,33 @@
 import json
 import os
-from src.api.api_wrapper import GeminiAPIWrapper
+from src.stats.item import Weapon
 from src.stats.statblock import Statblock
-from src.map.battlemap import Map, MapProp
-from src.map.instance import Instance
-from src.map.token import Token
 
-test_system = "You are an AI D&D 5e assistant, and will answer any questions about the system as close to the rules as possible."
+sword_json = '''
+{
+    "item": {
+        "name": "Shortsword",
+        "cost": 10,
+        "weight": 2,
+        "properties": ["finesse", "light"]
+    },
+    "abilities": [{
+        "type": "attack",
+        "class": "melee",
+        "target": {"type": "entity", "class": "input"},
+        "damage": {"type": "dice", "dice": "1d6"},
+        "type": "piercing"
+    }]
+}
+'''
 
-API_KEY = json.load(open("foreverdm/config/api_config.json", "r"))["GEMINI_API_KEY"]
+sword_data = json.loads(sword_json)
+sword = Weapon(sword_data["item"]["name"], sword_data["item"]["properties"], sword_data["abilities"])
 
-api = GeminiAPIWrapper(API_KEY)
 
-map = Map(5,3)
-prop = MapProp("Box", "A wooden box")
-map.add_prop(prop, (4, 2))
-
-instance = Instance(map)
-
-token = Token(Statblock("Fighter", "A level 1 fighter"))
-instance.add_token(token, (1, 1))
-
-prompt = f"What is in the room? ROOM: [{instance.get_context()}]"
-
-print("> ",prompt,"\n",api.send_request(prompt))
+soldier = Statblock("Soldier")
+print(soldier._abilities)
+soldier.equip(sword)
+print(soldier._abilities)
+soldier.unequip(sword)
+print(soldier._abilities)
