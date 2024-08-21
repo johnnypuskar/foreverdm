@@ -224,11 +224,11 @@ Used when the character with the effect references their damage resistances.
 - `list[string]`: A list of any additional damage types this effect grants resistance to, valid types are `acid`, `bludgeoning`, `cold`, `fire`, `force`, `lightning`, `necrotic`, `piercing`, `poison`, `psychic`, `radiant`, `slashing`, `thunder`
 
 ### `get_proficiencies()`
-Used when the character with the effect references their skill, tool, weapon, or armor proficiencies.
+Used when the character with the effect references their skill, saving throw, tool, weapon, or armor proficiencies.
 **Returns:**
-- `list[string]`: A list of any additional proficiencies this effect grants, valid proficiencies are: `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `religion`, `slight_of_hand`, `stealth`, `survival`, `strength_saving_throws`, `dexterity_saving_throws`, `constitution_saving_throws`, `intelligence_saving_throws`, `wisdom_saving_throws`, `charisma_saving_throws`, `light_armor`, `medium_armor`, `heavy_armor`, `shields`, `simple_weapons`, `martial_weapons`, `firearms`, `dice_gaming_sets`, `card_gaming_sets`, `bagpipes`, `drum`, `dulcimer`, `flute`, `lute`, `lyre`, `horn`, `pan_flute`, `shawm`, `viol`, `alchemists_supplies`, `brewers_supplies`, `calligraphers_supplies`, `carpenters_tools`, `cartographers_tools`, `cobblers_tools`, `cooks_utensils`, `glassblowers_tools`, `jewelers_tools`, `leatherworkers_tools`, `masons_tools`, `painters_supplies`, `potters_tools`, `smiths_tools`, `tinkers_tools`, `weavers_tools`, `woodcarvers_tools`, `navigators_tools`, `thieves_tools`, `land_vehicles`, `sea_vehicles`, `disguise_kit`, `forgery_kit`, `herbalism_kit`, `poisoners_kit`
+- `list[string]`: A list of zero, one or more additional proficiencies this effect grants, valid proficiency names are: `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `religion`, `slight_of_hand`, `stealth`, `survival`, `strength_saving_throws`, `dexterity_saving_throws`, `constitution_saving_throws`, `intelligence_saving_throws`, `wisdom_saving_throws`, `charisma_saving_throws`, `light_armor`, `medium_armor`, `heavy_armor`, `shields`, `simple_weapons`, `martial_weapons`, `firearms`, `dice_gaming_sets`, `card_gaming_sets`, `bagpipes`, `drum`, `dulcimer`, `flute`, `lute`, `lyre`, `horn`, `pan_flute`, `shawm`, `viol`, `alchemists_supplies`, `brewers_supplies`, `calligraphers_supplies`, `carpenters_tools`, `cartographers_tools`, `cobblers_tools`, `cooks_utensils`, `glassblowers_tools`, `jewelers_tools`, `leatherworkers_tools`, `masons_tools`, `painters_supplies`, `potters_tools`, `smiths_tools`, `tinkers_tools`, `weavers_tools`, `woodcarvers_tools`, `navigators_tools`, `thieves_tools`, `land_vehicles`, `sea_vehicles`, `disguise_kit`, `forgery_kit`, `herbalism_kit`, `poisoners_kit`
 
-### `saving_throw_give(type, target)`
+### `saving_throw_make(type, target)`
 Used when the character with the effect forces a target to make a saving throw
 **Parameters:**
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
@@ -236,15 +236,15 @@ Used when the character with the effect forces a target to make a saving throw
 **Returns:**
 - **RollResult**: Roll table created using the `RollResult()` helper function
 
-### `saving_throw_rec(type, trigger)`
+### `saving_throw_impose(type, trigger)`
 Used when the character with the effect is forced to make a saving throw by a triggering creature
 **Parameters:**
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
-- `trigger`: The Statblock of the triggering creature forcing the character with the effect to make the saving throw
+- `trigger`: The Statblock of the triggering creature or object forcing the character with the effect to make the saving throw
 **Returns:**
 - **RollResult**: Roll table created using the `RollResult()` helper function
 
-### `ability_check_give(type, target)`
+### `ability_check_make(type, target)`
 Used when the character with the effect makes an ability check
 **Parameters:**
 - `type`: The 3 letter key for the ability check ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
@@ -252,7 +252,7 @@ Used when the character with the effect makes an ability check
 **Returns:**
 - **RollResult**: Roll table created using the `RollResult()` helper function
 
-### `ability_check_rec(type, trigger)`
+### `ability_check_impose(type, trigger)`
 Used when a triggering creature makes an ability check against the creature with the effect
 **Parameters:**
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
@@ -260,7 +260,7 @@ Used when a triggering creature makes an ability check against the creature with
 **Returns:**
 - **RollResult**: Roll table created using the `RollResult()` helper function
 
-### `skill_check_give(skill, target)`
+### `skill_check_make(skill, target)`
 Used when the character with the effect makes an skill check
 **Parameters:**
 - `skill`: The skill for the check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
@@ -268,7 +268,7 @@ Used when the character with the effect makes an skill check
 **Returns:**
 - **RollResult**: Roll table created using the `RollResult()` helper function
 
-### `skill_check_rec(type, trigger)`
+### `skill_check_impose(type, trigger)`
 Used when a triggering creature makes an skill check against the creature with the effect
 **Parameters:**
 - `skill`: The skill for the check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
