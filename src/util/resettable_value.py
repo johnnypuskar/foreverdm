@@ -11,11 +11,17 @@ class ResettableValue:
     def initial(self):
         return self._initial
 
+    def add_capped(self, value):
+        self.value = min(self.value + value, self._initial)
+
     def reset(self):
         self.value = self._initial
 
     def __str__(self):
-        return str(self.value) + ' / ' + str(self._initial)
+        return f'({self.value}/{self._initial})'
+    
+    def __repr__(self):
+        return f'({self.value}/{self._initial})'
 
     def __lt__(self, other):
         if isinstance(other, ResettableValue):
@@ -28,6 +34,18 @@ class ResettableValue:
             return self.value > other.value
         elif isinstance(other, int):
             return self.value > other
+
+    def __le__(self, other):
+        if isinstance(other, ResettableValue):
+            return self.value <= other.value
+        elif isinstance(other, int):
+            return self.value <= other
+
+    def __ge__(self, other):
+        if isinstance(other, ResettableValue):
+            return self.value >= other.value
+        elif isinstance(other, int):
+            return self.value >= other
 
     def __add__(self, other):
         if isinstance(other, ResettableValue):

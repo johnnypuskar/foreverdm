@@ -2,4 +2,5 @@ openai
 tiktoken
 psycopg2
 lupa
+luaparser
 google-generativeai

@@ -62,3 +62,31 @@ class Size:
     def next_size(size):
         sizes = [Size.TINY, Size.MEDIUM, Size.LARGE, Size.HUGE, Size.GARGANTUAN]
         return sizes[min(5, sizes.index(size) + 1)]
+
+class Abilities:
+    STRENGTH = "str"
+    DEXTERITY = "dex"
+    CONSTITUTION = "con"
+    INTELLIGENCE = "int"
+    WISDOM = "wis"
+    CHARISMA = "cha"
+
+class Skills:
+    ACROBATICS = "acrobatics"
+    ANIMAL_HANDLING = "animal_handling"
+    ARCANA = "arcana"
+    ATHLETICS = "athletics"
+    DECEPTION = "deception"
+    HISTORY = "history"
+    INSIGHT = "insight"
+    INTIMIDATION = "intimidation"
+    INVESTIGATION = "investigation"
+    MEDICINE = "medicine"
+    NATURE = "nature"
+    PERCEPTION = "perception"
+    PERFORMANCE = "performance"
+    PERSUASION = "persuasion"
+    RELIGION = "religion"
+    SLEIGHT_OF_HAND = "sleight_of_hand"
+    STEALTH = "stealth"
+    SURVIVAL = "survival"
