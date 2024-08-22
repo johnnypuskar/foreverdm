@@ -273,7 +273,14 @@ class Statblock:
 
     ## Combat Statistics
     def get_armor_class(self):
-        return self._armor_class
+        effect_bonus_stats = self._effects.get_function_results("modify_armor_class", self)
+        base_armor_class = self._armor_class
+
+        if any(d["operation"] == "set" for d in effect_bonus_stats):
+            base_armor_class = max(d["value"] for d in effect_bonus_stats if d["operation"] == "set")
+        base_armor_class += sum(d["value"] for d in effect_bonus_stats if d["operation"] == "add")
+
+        return base_armor_class
     
     def roll_initiative(self):
         effect_roll_modifiers = self._effects.get_function_results("roll_initiative", self)
@@ -291,6 +298,9 @@ class Statblock:
     def ranged_attack_roll(self, target, damage_string):
         effect_bonus_stats = ['dex'] + self._effects.get_function_results("get_ranged_attack_stat", self)
         return self._attack_roll(target, max(effect_bonus_stats, key = lambda x: self.get_ability_modifier(x)), damage_string)
+
+    def ability_attack_roll(self, target, ability_name, damage_string):
+        pass
 
     def _attack_roll(self, target, attack_stat, damage_string):
         effect_roll_modifiers = self._effects.get_function_results("make_attack_roll", self, target)

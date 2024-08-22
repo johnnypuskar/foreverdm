@@ -285,8 +285,21 @@ Used to change the numerical value of a given stat on the character with the eff
   - `operation`: String
     - `set` sets the stat to the attached value
     - `add` adds the attached value to the existing stat
-  - `value`: Number
+  - `value`: Integer
     - The numeric value to either set or add to the stat
+
+### `modify_armor_class()`
+Used to change the numerical value of the character with the effect's armor class
+**Returns:**
+- **Table** with the following structure:
+  - `operation`: String
+    - `set` sets armor class to the attached value
+    - `add` adds the attached value to armor class
+  - `value`: Integer
+    - The numeric value to either set or add to armor class
+
+### `modify_speed()`
+
 
 ### `roll_initiative()`
 Used when the character with the effect rolls initiative
