@@ -142,7 +142,7 @@ The functions must always return a value adherent to the defined structure, even
 Many effect functions return a table of values representing modifiers the specified die roll will recieve, such as advantage or disadvantage, adding or subtracting a bonus from the result, or automatically succeeding or failing. This table is constructed using a system-defined helper function `RollModifier(modifiers)`, which takes in a table of modifiers to add to the roll and returns the full table.
 
 ### `RollModifier(modifiers)`
-Creates the table to designate the proper modifiers of a die roll from the specified parameter table
+Creates and returns the table to designate the proper modifiers of a die roll from the specified parameter table
 **Parameters:**
 - `modifiers`: A table with one or more of the following values set, undefined values will not be affected.
   - `advantage`: Boolean
@@ -167,6 +167,33 @@ return RollModifier({"auto_succeed": true})
 
 -- Return a default Roll table which doesn't affect the roll
 return RollModifier({})
+```
+
+## AddValue and SetValue Helper Functions
+
+Some effect functions return an operative modifier to a numerical stat, to either add some value to the stat or to set it to some value. This is represented using a table constructed with either the `AddValue(value)` or `SetValue(value)` system-defined helper functuions, which take in the numerical integer value to either set or add to the statistic.
+
+### `AddValue(value)`
+Creates and returns the table to define an add operation of some value
+**Parameters:**
+- `value`: The integer value to be added to the statistic in question
+
+### `SetValue(value)`
+Creates and returns the table to define an set operation of some value
+**Parameters:**
+- `value`: The integer value to set the statistic in question to
+
+#### AddValue and SetValue Examples
+
+```
+-- Return an Add operator table to add 5 to the statistic
+return AddValue(5)
+
+-- Return an Add operator table to subtract 3 from the statistic
+return AddValue(-3)
+
+-- Return a Set operator table to set the statistic value to 19
+return SetValue(19)
 ```
 
 ## Global Parameters

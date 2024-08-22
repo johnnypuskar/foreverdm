@@ -22,6 +22,14 @@ class Effect:
             return roll_mod
         end
 
+        function AddValue(value)
+            return {operation = "add", value = value}
+        end
+
+        function SetValue(value)
+            return {operation = "set", value = value}
+        end
+
         '''
         self._script = roll_result_script + script
     
