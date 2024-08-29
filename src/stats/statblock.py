@@ -132,7 +132,7 @@ class Statblock:
     def get_ability_modifier(self, ability):
         return self.get_ability_score(ability) // 2 - 5
 
-    
+
     ## Proficiencies and Skills
     def get_proficiency_bonus(self):
         return 2 + ((self.get_level() - 1) // 4)
@@ -302,7 +302,7 @@ class Statblock:
         return self._attack_roll(target, max(effect_bonus_stats, key = lambda x: self.get_ability_modifier(x)), damage_string)
 
     def ability_attack_roll(self, target, ability_name, damage_string):
-        pass
+        return self._attack_roll(target, ability_name, damage_string)
 
     def _attack_roll(self, target, attack_stat, damage_string):
         effect_roll_modifiers = self._effects.get_function_results("make_attack_roll", self, target)

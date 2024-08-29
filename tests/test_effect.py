@@ -136,6 +136,10 @@ class TestEffect(unittest.TestCase):
                 statblock:restore_hp(10)
             end
                         
+            function multiple_parameters(foo, bar)
+                statblock:multi_param(foo, bar)
+            end
+                        
             function receive_attack_roll(attacker)
                 statblock:add_effect("test_subeffect", 1)
             end
@@ -143,9 +147,17 @@ class TestEffect(unittest.TestCase):
         index.add(effect, 1)
 
         # Verify that a typical function call passes the arguments through normally
+         # Note: Due to the wrapper, the call parameters on the mock are indexed up by 1
         index.get_function_results("make_attack_roll", statblock, None)
         statblock.restore_hp.assert_called_once()
-        self.assertEqual(statblock.restore_hp.call_args[0][0], 10)
+        self.assertEqual(statblock.restore_hp.call_args[0][1], 10)
+
+        # Verify that multiple parameters are passed through correctly
+         # Note: Due to the wrapper, the call parameters on the mock are indexed up by 1
+        index.get_function_results("multiple_parameters", statblock, 15, -20)
+        statblock.multi_param.assert_called_once()
+        self.assertEqual(statblock.multi_param.call_args[0][1], 15)
+        self.assertEqual(statblock.multi_param.call_args[0][2], -20)
 
         # Verify that the wrapper add_effect call correctly passes a SubEffect object into the Statblock add_effect arguments
         index.get_function_results("receive_attack_roll", statblock, None)

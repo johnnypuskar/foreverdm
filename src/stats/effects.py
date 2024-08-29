@@ -111,58 +111,13 @@ class StatblockSubEffectWrapper:
         self._statblock = statblock
         self._effect = effect
     
-    def get_name(self):
-        return self._statblock.get_name()
-    
-    def trigger(self, trigger_name):
-        return self._statblock.trigger(trigger_name)
+    def __getitem__(self, key):
+        return getattr(self, key)
+        
+    def __getattr__(self, name):
+        return getattr(self._statblock, name)
     
     def add_effect(self, subeffect_name, duration):
         subeffect = SubEffect(subeffect_name, self._effect._script, self._effect._globals)
         return self._statblock.add_effect(subeffect, duration)
-
-    def get_level(self, class_level = None):
-        return self._statblock.get_level(class_level)
-    
-    def get_hit_points(self):
-        return self._statblock.get_hit_points()
-    
-    def get_max_hit_points(self):
-        return self._statblock.get_max_hit_points()
-
-    def restore_hp(self, amount):
-        return self._statblock.restore_hp(amount)
-
-    def add_temporary_hp(self, amount):
-        return self._statblock.add_temporary_hp(amount)
-
-    def take_damage(self, amount, type):
-        return self._statblock.take_damage(amount, type)
-    
-    def get_ability_score(self, ability):
-        return self._statblock.get_ability_score(ability)
-    
-    def get_ability_modifier(self, ability):
-        return self._statblock.get_ability_modifier(ability)
-    
-    def get_proficiency_bonus(self):
-        return self._statblock.get_proficiency_bonus()
-
-    def get_armor_class(self):
-        return self._statblock.get_armor_class()
-
-    def roll_initiative(self):
-        return self._statblock.roll_initiative()
-
-    def attack_roll(self, target):
-        return self._statblock.attack_roll(target)
-    
-    def get_attack_bonus_stat(self):
-        return self._statblock.get_attack_bonus_stat()
-
-    def get_base_speed(self):
-        return self._statblock.get_base_speed()
-    
-    def add_temporary_speed(self, amount):
-        return self._statblock.add_temporary_speed(amount)
     
