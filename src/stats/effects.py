@@ -101,7 +101,9 @@ class EffectIndex:
             effect = self._effects[effect_name]
             effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
             if effect.has_function(function_name):
-                results.append(effect.run(function_name, *args))
+                result = results.append(effect.run(function_name, *args))
+                if result is not None:
+                    results.append(result)
         return results
 
 class StatblockSubEffectWrapper:
