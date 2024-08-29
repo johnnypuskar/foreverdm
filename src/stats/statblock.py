@@ -121,16 +121,18 @@ class Statblock:
         effect_bonus_stats = self._effects.get_function_results("modify_stat", self, ability)
         base_stat = self._ability_scores[ability].value
 
-        base_stat += sum(d["value"] for d in effect_bonus_stats if d["operation"] == "add")
+        # First, set the base stat to the highest value any effect directly sets it to
         if any(d["operation"] == "set" for d in effect_bonus_stats):
             base_stat = max(d["value"] for d in effect_bonus_stats if d["operation"] == "set")
-        
+        # Then, add all the bonuses
+        base_stat += sum(d["value"] for d in effect_bonus_stats if d["operation"] == "add")
+
         return base_stat
 
     def get_ability_modifier(self, ability):
         return self.get_ability_score(ability) // 2 - 5
 
-
+    
     ## Proficiencies and Skills
     def get_proficiency_bonus(self):
         return 2 + ((self.get_level() - 1) // 4)
@@ -349,6 +351,21 @@ class Statblock:
     def get_base_speed(self):
         return self._speed
     
+    def get_walk_speed(self):
+        return self._speed.walk
+    
+    def get_swim_speed(self):
+        return self._speed.swim
+    
+    def get_climb_speed(self):
+        return self._speed.climb
+    
+    def get_fly_speed(self):
+        return self._speed.fly
+    
+    def get_burrow_speed(self):
+        return self._speed.burrow
+
     def add_temporary_speed(self, new_speed):
         self._speed += new_speed
 
