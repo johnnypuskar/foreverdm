@@ -304,6 +304,52 @@ class TestAbility(unittest.TestCase):
         result = index.run("composite.ability_a", None)
         self.assertEqual(expected, result[0])
 
+    @patch('src.stats.statblock.Statblock')
+    def test_statblock_wrapper(self, StatblockMock):
+        statblock = StatblockMock.return_value
+
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability = Ability("test_ability", '''
+            spellcasting_ability = "int"
+
+            function run(target)
+                return statblock:spell_attack_roll(target, "1d4")
+            end
+        ''')
+        other_ability = Ability("other_ability", '''
+            function run(target)
+                return statblock:melee_attack_roll(target, "2d4")
+            end
+        ''')
+        incorrect_ability = Ability("incorrect_ability", '''
+            function run(target)
+                return statblock:spell_attack_roll(target, "2d4")
+            end
+        ''')
+
+        # Add abilities to index
+        index.add(ability)
+        index.add(other_ability)
+        index.add(incorrect_ability)
+
+        # Run ability and verify it passed the correct arguments to the statblock
+        index.run("test_ability", statblock, None)
+        self.assertEqual(statblock.ability_attack_roll.call_args[0][0], None)
+        self.assertEqual(statblock.ability_attack_roll.call_args[0][1], "int")
+        self.assertEqual(statblock.ability_attack_roll.call_args[0][2], "1d4")
+
+        # Run melee ability and verify runs melee attack roll function
+        index.run("other_ability", statblock, None)
+        self.assertEqual(statblock.melee_attack_roll.call_args[0][1], None)
+        self.assertEqual(statblock.melee_attack_roll.call_args[0][2], "2d4")
+
+        # Verify that running a spell attack roll in an ability with no defined spellcasting ability raises an error
+        with self.assertRaises(ValueError):
+            index.run("incorrect_ability", statblock, None)
+
+
+
     def test_use_time(self):
         # Create test index and abilities
         index = AbilityIndex()

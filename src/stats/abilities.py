@@ -203,8 +203,9 @@ class AbilityIndex:
             raise ValueError(f"Ability {name} does not exist in index.")
         if self.get_ability(name).is_modifier:
             raise ValueError(f"Ability {name} is a modifier ability and cannot be run as a main ability")
-        self.get_ability(name).initialize({"statblock": statblock})
-        return self.get_ability(name).run(*args)
+        ability = self.get_ability(name)
+        ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
+        return ability.run(*args)
 
     def run_sequence(self, name, statblock, modifiers, *args):
         # Check if main run ability exists in index and is a run ability
@@ -218,7 +219,7 @@ class AbilityIndex:
         if ability.is_modifier:
             raise ValueError(f"Ability {name} is a modifier ability and cannot be run as a main ability.")
 
-        env = ability.initialize({"statblock": statblock})
+        env = ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
 
         # Store ability function in a variable for later reference to avoid overwriting the main ability function with a modifider that has the same name
         override_protection_script = f'''
@@ -278,7 +279,6 @@ class StatblockAbilityWrapper:
         return getattr(self._statblock, name)
     
     def spell_attack_roll(self, target, damage_string):
-        spellcasting_ability = self._ability._lua.get_defined_variables()["spellcasting_ability"]
-        if spellcasting_ability is None:
+        if "spellcasting_ability" not in self._ability._lua.get_defined_variables():
             raise ValueError(f"Spellcasting ability not defined in Ability {self._ability._name}.")
-        return self._statblock.ability_attack_roll(target, spellcasting_ability, damage_string)
+        return self._statblock.ability_attack_roll(target, self._ability._lua.globals["spellcasting_ability"], damage_string)
