@@ -135,7 +135,7 @@ An effect is any status that alters how a character acts or behaves, by changing
 
 A effect .lua file will contain function definitions and implementations that handle how that effect should affect those function calls. Effects will only ever implement the functions listed in this documentation.
 
-The functions must always return a value adherent to the defined structure, even in cases where it does not always affect the result. In such cases for most rolls, a default table with no effect would look like as follows: `{ advantage = false, disadvantage = false, bonus = 0, auto_succeed = false, auto_fail = false }`. A case where a function always returns such a table no matter what is redundant, and does not need to be included.
+In cases where a function runs, but is determined to have no effect - such as an effect which only activates under certain conditions - returning `nil` is the correct behavior to speficy that no modifications should be made for that case. Otherwise, functions must always return the correct type of value specified in the function documentation definition.
 
 ## RollModifier Helper Function
 
@@ -308,25 +308,12 @@ Used to change the numerical value of a given stat on the character with the eff
 **Parameters:**
 - `stat`: The stat to be modified, valid stats are `str`, `dex`, `con`, `int`, `wis`, `cha`, `max_hp`, `speed_walk`, `speed_fly`, `speed_swim`, `speed_burrow`, `speed_climb`, `armor_class`
 **Returns:**
-- **Table** with the following structure:
-  - `operation`: String
-    - `set` sets the stat to the attached value
-    - `add` adds the attached value to the existing stat
-  - `value`: Integer
-    - The numeric value to either set or add to the stat
+- **AddValue** or **SetValue**: Add or Set table created using `AddValue()` or `SetValue()` helper function
 
 ### `modify_armor_class()`
 Used to change the numerical value of the character with the effect's armor class
 **Returns:**
-- **Table** with the following structure:
-  - `operation`: String
-    - `set` sets armor class to the attached value
-    - `add` adds the attached value to armor class
-  - `value`: Integer
-    - The numeric value to either set or add to armor class
-
-### `modify_speed()`
-
+- **AddValue** or **SetValue**: Add or Set table created using `AddValue()` or `SetValue()` helper function
 
 ### `roll_initiative()`
 Used when the character with the effect rolls initiative
