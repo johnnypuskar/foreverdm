@@ -151,7 +151,6 @@ class CompositeAbility(Ability):
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
         return self._sub_abilities[sub_ability_name].run(*args)
-        
 
 class AbilityIndex:
     def __init__(self):
@@ -266,3 +265,20 @@ class AbilityIndex:
 
     def __repr__(self):
         return str(list(self._abilities.values()))
+
+class StatblockAbilityWrapper:
+    def __init__(self, statblock, ability):
+        self._statblock = statblock
+        self._ability = ability
+    
+    def __getitem__(self, key):
+        return getattr(self, key)
+        
+    def __getattr__(self, name):
+        return getattr(self._statblock, name)
+    
+    def spell_attack_roll(self, target, damage_string):
+        spellcasting_ability = self._ability._lua.get_defined_variables()["spellcasting_ability"]
+        if spellcasting_ability is None:
+            raise ValueError(f"Spellcasting ability not defined in Ability {self._ability._name}.")
+        return self._statblock.ability_attack_roll(target, spellcasting_ability, damage_string)
