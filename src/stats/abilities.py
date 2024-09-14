@@ -1,6 +1,7 @@
 from enum import Enum
 from src.util.time import UseTime
 from src.util.lua_manager import LuaManager
+from src.util.constants import ScriptData
 
 class Ability:
     def __init__(self, name, script, function_name = "run", globals = {}):
@@ -9,30 +10,19 @@ class Ability:
         self._globals = globals
         self._lua = None
 
-        header_script = '''
-            function UseTime(unit, value)
-                value = value or 1
-                if unit ~= "action" and unit ~= "bonus_action" and unit ~= "reaction" and unit ~= "minute" and unit ~= "hour" then
-                    error("Invalid unit for UseTime")
-                end
-                if (unit == "action" or unit == "bonus_action" or unit == "reaction") and value > 1 then
-                    error("Action use time cannot require more than 1 action")
-                end
-                if value <= 0 then
-                    error("UseTime value must be greater than 0")
-                end
-                return {unit = unit, value = value}
-            end
-
-            use_time = {unit = "undefined", value = -1}
-            can_modify = {}
-        '''
-        self._script = header_script + script
+        self._script = ScriptData.USE_TIME + ScriptData.DURATION + ScriptData.SPEED + script
 
         lua = LuaManager()
+        lua.execute("use_time = {unit = 'undefined', value = -1}")
+        lua.execute("can_modify = {}")
         lua.execute(self._script)
         self._is_modifier = len(list(lua.globals['can_modify'])) > 0
         self._use_time = UseTime.from_table(dict(lua.globals['use_time']))
+
+        if self._use_time.is_special:
+            self._use_delay = 0
+        else:
+            self._use_delay = self._use_time.minutes
 
     @property
     def header(self):
@@ -62,6 +52,9 @@ class Ability:
         lua = LuaManager()
         return lua.analyze_for_call(self._script, "target", "take_damage")
 
+    def reset_use_delay(self):
+        self._use_delay = self._use_time.minutes
+
     def set_lua(self, lua):
         self._lua = lua
         self._lua.execute(self._script)
@@ -76,6 +69,10 @@ class Ability:
         return self._lua
 
     def run(self, *args):
+        if self._use_delay > 0:
+            self._use_delay -= 1
+            # TODO: Put a real message in here
+            return (False, "MESSAGE WITH REMAINING USE DELAY TURNS")
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
         return self._lua.run(self._function_name, *args)
@@ -143,8 +140,10 @@ class CompositeAbility(Ability):
         return tuple(sub_ability_headers)
     
     def initialize(self, sub_ability_name, globals):
-        self._lua = self._sub_abilities[sub_ability_name].initialize(globals)
-        self._lua.append_globals(self._globals)
+        self._lua = LuaManager(self._globals)
+        self._lua.merge_globals(globals)
+        self._sub_abilities[sub_ability_name].set_lua(self._lua)
+
         return self._lua
 
     def run(self, sub_ability_name, *args):

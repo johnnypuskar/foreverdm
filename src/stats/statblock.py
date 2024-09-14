@@ -348,24 +348,20 @@ class Statblock:
             return True
     
     ## Speed and Movement
-    def get_base_speed(self):
-        return self._speed
+    def get_speed(self, type):
+        # TODO: Factor in effects and speed modifiers
+        match type:
+            case "walk":
+                return self._speed.walk
+            case "swim":
+                return self._speed.swim
+            case "climb":
+                return self._speed.climb
+            case "fly":
+                return self._speed.fly
+            case "burrow":
+                return self._speed.burrow
     
-    def get_walk_speed(self):
-        return self._speed.walk
-    
-    def get_swim_speed(self):
-        return self._speed.swim
-    
-    def get_climb_speed(self):
-        return self._speed.climb
-    
-    def get_fly_speed(self):
-        return self._speed.fly
-    
-    def get_burrow_speed(self):
-        return self._speed.burrow
-
     def add_temporary_speed(self, new_speed):
         self._speed += new_speed
 

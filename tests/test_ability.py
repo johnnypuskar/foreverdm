@@ -348,8 +348,6 @@ class TestAbility(unittest.TestCase):
         with self.assertRaises(ValueError):
             index.run("incorrect_ability", statblock, None)
 
-
-
     def test_use_time(self):
         # Create test index and abilities
         index = AbilityIndex()

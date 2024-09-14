@@ -48,6 +48,17 @@ class Timer():
     def __init__(self, time = 0):
         self._time = int(time)
     
+    @staticmethod
+    def from_table(time_table):
+        if time_table["unit"] not in ["round", "minute", "hour"]:
+            raise ValueError("Invalid time unit.")
+        value = time_table["value"]
+        if time_table["unit"] == "minute":
+            value *= 10
+        if time_table["unit"] == "hour":
+            value *= 600
+        return Timer(value)
+
     @property
     def timestamp(self):
         return self._time

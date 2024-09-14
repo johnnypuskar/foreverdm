@@ -90,3 +90,78 @@ class Skills:
     SLEIGHT_OF_HAND = "sleight_of_hand"
     STEALTH = "stealth"
     SURVIVAL = "survival"
+
+class ScriptData:
+    ROLL_RESULT = '''
+    function RollResult(modifiers)
+        roll_mod = {
+            advantage = false,
+            disadvantage = false,
+            bonus = 0,
+            auto_succeed = false,
+            auto_fail = false
+        }
+        for key, value in pairs(modifiers) do
+            roll_mod[key] = value
+        end
+        return roll_mod
+    end
+    '''
+
+    ADD_VALUE = '''
+    function AddValue(value)
+        return {operation = "add", value = value}
+    end
+    '''
+
+    SET_VALUE = '''
+    function SetValue(value)
+        return {operation = "set", value = value}
+    end
+    '''
+    
+    USE_TIME = '''
+    function UseTime(unit, value)
+        value = value or 1
+        if unit ~= "action" and unit ~= "bonus_action" and unit ~= "reaction" and unit ~= "minute" and unit ~= "hour" then
+            error("Invalid unit for UseTime")
+        end
+        if (unit == "action" or unit == "bonus_action" or unit == "reaction") and value > 1 then
+            error("Action use time cannot require more than 1 action")
+        end
+        if value <= 0 then
+            error("UseTime value must be greater than 0")
+        end
+        return {unit = unit, value = value}
+    end
+    '''
+
+    DURATION = '''
+    function Duration(unit, value)
+        value = value or 1
+        if unit ~= "round" and unit ~= "minute" and unit ~= "hour" then
+            error("Invalid unit for Duration")
+        end
+        if value <= 0 then
+            error("Duration value must be greater than 0")
+        end
+        return {unit = unit, value = value}
+    end
+    '''
+
+    SPEED = '''
+    function SpeedModifier(modifiers)
+        speed_mod = {
+            walk = {operation = "add", value = 0},
+            fly = {operation = "add", value = 0},
+            swim = {operation = "add", value = 0},
+            climb = {operation = "add", value = 0},
+            burrrow = {operation = "add", value = 0},
+            hover = false
+        }
+        for key, value in pairs(modifiers) do
+            speed_mod[key] = value
+        end
+        return speed_mod
+    end
+    '''

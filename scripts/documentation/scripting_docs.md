@@ -82,26 +82,29 @@ use_time = UseTime("reaction")
 use_time = UseTime("minute", 10)
 ```
 
-### GameTime Helper Function
+### Duration Helper Function
 
-Some global variables must be defined with certain syntax in order to be evaluated correctly. In the case of defining an amount of time it takes to use an ability, as when casting a spell, or the duration of some ability or effect, the GameTime helper function is used to define the use time for that ability.
+Some global variables must be defined with certain syntax in order to be evaluated correctly. In the case of defining the duration of time it takes to use an ability, as when casting a spell, or the duration of some effect, the Duration helper function is used to define the size of that window of time.
 
-#### `GameTime(value, units)`
+#### `Duration(value, unit)`
 Creates the time value specified, in the amount of units specified.
 **Parameters:**
-- `value`: the integer value of how much time is being defined
-- `units`: the unit of time, valid units are `round`, `minute` or `hour`
+- `unit`: the unit of time, valid units are `round`, `minute` or `hour`
+- `value`: the integer value of how much time is being defined, defaults to 1
 
-#### GameTime Examples
+#### Duration Examples
 ```
 -- Defines a period of time which lasts for 3 rounds of combat.
-GameTime(3, "round")
+Duration("round", 3)
+
+-- Defines a period of time which lasts for 1 minute.
+Duration("minute")
 
 -- Defines a period of time which lasts for 10 minutes.
-GameTime(10, "minute")
+Duration("minute", 10)
 
 -- Defines a period of time which lasts for 12 hours.
-GameTime(12, "hour")
+Duration("hour", 12)
 ```
 
 ### Spell Definitions
@@ -115,7 +118,7 @@ In the case of spells, there are 6 additional global values that must be defined
 - `spell_school` is defined with a string matching one of the following legal values: `abjuration`, `conjuration`, `divination`, `enchantment`, `evocation`, `illusion`, `necromancy`, `transmutation`
 
 #### `use_cost`
-- `use_cost` is defined with the UseCost() helper function by the casting time of the spell.
+- `use_cost` is defined with the UseCost() helper function to store the casting time of the spell.
 
 #### `spell_range`
 - `spell_range` is defined with an integer value as low as zero specifying the range of the spell in feet. A value of 0 is used in the case of a spell with range 'Self', and a value of 1 is used in the case of a spell with range 'Touch'. Perform unit conversion if required.
@@ -169,14 +172,19 @@ return RollModifier({"auto_succeed": true})
 return RollModifier({})
 ```
 
-## AddValue and SetValue Helper Functions
+## AddValue, MultiplyValue, and SetValue Helper Functions
 
-Some effect functions return an operative modifier to a numerical stat, to either add some value to the stat or to set it to some value. This is represented using a table constructed with either the `AddValue(value)` or `SetValue(value)` system-defined helper functuions, which take in the numerical integer value to either set or add to the statistic.
+Some effect functions return an operative modifier to a numerical stat, to either add some value to the stat, multiply it by some factor, or to set it to some value. This is represented using a table constructed with either the `AddValue(value)`, `MultiplyValue(value)`, or  `SetValue(value)` system-defined helper functuions, which take in the numerical integer value to either set or add to the statistic.
 
 ### `AddValue(value)`
 Creates and returns the table to define an add operation of some value
 **Parameters:**
 - `value`: The integer value to be added to the statistic in question
+
+## `MultiplyValue(value)`
+Creates and returns the table to define a multiply operation of some value
+**Parameters:**
+- `value`: The float value to multiply the statistic in question with
 
 ### `SetValue(value)`
 Creates and returns the table to define an set operation of some value
@@ -192,13 +200,52 @@ return AddValue(5)
 -- Return an Add operator table to subtract 3 from the statistic
 return AddValue(-3)
 
+-- Return a Multiply operator table to double the statistic
+return MultiplyValue(2.0)
+
+-- Return a Multiply operator table to half the statistic
+return MultiplyValue(0.5)
+
 -- Return a Set operator table to set the statistic value to 19
 return SetValue(19)
 ```
 
-## Global Parameters
+### SpeedModifier Helper Function
 
-Abilities may define global 
+A statblock has a speed value defined by up to 5 different types of movement, being `walk`, `fly`, `swim`, `climb`, and `burrow` speed, plus an additional `hover` flag, each determining how many feet of each type of movement can be moved on a single turn. A statblock may have 30 feet of walking speed, but only 15 feet of fly speed. Effects that modify the speed of a statblock must do so by using the `SpeedModifier(modifiers)` system-defined helper function, which allows the effect to add, multiply, and directly set the speed value of any or all of the 5 movement types.
+
+#### `SpeedModifier(modifiers)`
+Creates and returns a SpeedModifier table to define how an effect should affect the speed statistic
+**Parameters:**
+- `modifiers`: A table with one or more of the following values set, undefined values will not be affected
+  - `walk`: AddValue, MultiplyValue, or SetValue
+    - Math operator function to add to, multiply, or set the walk speed
+  - `fly`: AddValue, MultiplyValue, or SetValue
+    - Math operator function to add to, multiply, or set the fly speed
+  - `swim`: AddValue, MultiplyValue, or SetValue
+    - Math operator function to add to, multiply, or set the swim speed
+  - `climb`: AddValue, MultiplyValue, or SetValue
+    - Math operator function to add to, multiply, or set the climb speed
+  - `burrow`: AddValue, MultiplyValue, or SetValue
+    - Math operator function to add to, multiply, or set the burrow speed
+  - `hover`: Boolean
+    - `true` if their movement should be granted hovering status, defaults to false
+  
+#### SpeedModifier Examples
+
+```
+-- Return a SpeedModifier table to add 10 walking speed
+return SpeedModifier({walk = AddValue(10)})
+
+-- Return a SpeedModifier table to remove 15 walking speed and give 30 fly speed
+return SpeedModifier({walk = AddValue(-15), fly = SetValue(30)})
+
+-- Return a SpeedModifier table which gives 60 fly (hover) speed
+return SpeedModifier({fly = SetValue(60), hover = true})
+
+-- Return a SpeedModifier table to double all movement speed
+return SpeedModifier({walk = MultiplyValue(2.0), fly = MultiplyValue(2.0), swim = MultiplyValue(2.0), climb = MultiplyValue(2.0), burrow = MultiplyValue(2.0)})
+```
 
 ## Function Headers
 
@@ -308,12 +355,12 @@ Used to change the numerical value of a given stat on the character with the eff
 **Parameters:**
 - `stat`: The stat to be modified, valid stats are `str`, `dex`, `con`, `int`, `wis`, `cha`, `max_hp`, `speed_walk`, `speed_fly`, `speed_swim`, `speed_burrow`, `speed_climb`, `armor_class`
 **Returns:**
-- **AddValue** or **SetValue**: Add or Set table created using `AddValue()` or `SetValue()` helper function
+- **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiple, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
 
 ### `modify_armor_class()`
 Used to change the numerical value of the character with the effect's armor class
 **Returns:**
-- **AddValue** or **SetValue**: Add or Set table created using `AddValue()` or `SetValue()` helper function
+- **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiple, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
 
 ### `roll_initiative()`
 Used when the character with the effect rolls initiative
@@ -348,7 +395,7 @@ function run(...)
     end
   }
   -- Example application of effect
-  statblock:add_effect(effect)
+  statblock:add_effect("effect")
 end
 ```
 ## Defining Effect-Dependent Abilities

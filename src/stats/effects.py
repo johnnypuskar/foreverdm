@@ -1,4 +1,5 @@
 from src.util.lua_manager import LuaManager
+from src.util.constants import ScriptData
 
 class Effect:
     def __init__(self, name, script, globals = {}):
@@ -7,31 +8,7 @@ class Effect:
         self._lua = None
         self._duration = 0
 
-        roll_result_script = '''
-        function RollResult(modifiers)
-            roll_mod = {
-                advantage = false,
-                disadvantage = false,
-                bonus = 0,
-                auto_succeed = false,
-                auto_fail = false
-            }
-            for key, value in pairs(modifiers) do
-                roll_mod[key] = value
-            end
-            return roll_mod
-        end
-
-        function AddValue(value)
-            return {operation = "add", value = value}
-        end
-
-        function SetValue(value)
-            return {operation = "set", value = value}
-        end
-
-        '''
-        self._script = roll_result_script + script
+        self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.DURATION + script
     
     @property
     def duration(self):
