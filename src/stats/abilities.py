@@ -1,7 +1,8 @@
 from enum import Enum
 from src.util.time import UseTime
 from src.util.lua_manager import LuaManager
-from src.util.constants import ScriptData
+from src.util.constants import EventType, ScriptData
+from src.util.observer import Observer, Emitter
 
 class Ability:
     def __init__(self, name, script, function_name = "run", globals = {}):
@@ -16,6 +17,7 @@ class Ability:
         lua.execute("use_time = {unit = 'undefined', value = -1}")
         lua.execute("can_modify = {}")
         lua.execute(self._script)
+
         self._is_modifier = len(list(lua.globals['can_modify'])) > 0
         self._use_time = UseTime.from_table(dict(lua.globals['use_time']))
 
@@ -151,9 +153,59 @@ class CompositeAbility(Ability):
             raise RuntimeError("LuaManager not initialized.")
         return self._sub_abilities[sub_ability_name].run(*args)
 
-class AbilityIndex:
+class EffectDefinedAbility(Ability):
+    def __init__(self, name, script, function_name = "run", globals = {}):
+        self._name = name
+        self._function_name = function_name
+        self._globals = globals
+        self._lua = None
+
+        self._script = ScriptData.USE_TIME + ScriptData.SPEED + script
+
+        lua = LuaManager()
+        lua.execute(self._script)
+
+        ability_dict = dict(dict(lua.globals['abilities'])[name])
+        self._is_modifier = "can_modify" in ability_dict.keys() and len(list(ability_dict['can_modify'])) > 0
+        self._use_time = UseTime.from_table(dict(ability_dict['use_time']))
+
+        if self._use_time.is_special:
+            self._use_delay = 0
+        else:
+            self._use_delay = self._use_time.minutes
+
+        for key, value in lua.get_full_value(f"abilities.{name}").items():
+            if key not in self._globals and value is not None:
+                self._globals[key] = value
+
+    
+    def initialize(self, globals):
+        super().initialize(globals)
+        self._lua.merge_globals(dict(self._lua.globals['abilities'][self._name]))
+
+    def run(self, *args):
+        if self._use_delay > 0:
+            self._use_delay -= 1
+            # TODO: Put a real message in here
+            return (False, "MESSAGE WITH REMAINING USE DELAY TURNS")
+        if self._lua is None:
+            raise RuntimeError("LuaManager not initialized.")
+        return self._lua.run_nested(f"abilities.{self._name}.{self._function_name}", *args)
+
+
+class AbilityIndex(Observer, Emitter):
     def __init__(self):
+        super().__init__()
         self._abilities = {}
+
+    def signal(self, event: str, *data):
+        if event == EventType.ABILITY_EFFECT_ADDED:
+            # [data] = [ability_name, script, function_name = "run"]
+            effect_ability = EffectDefinedAbility(data[0], data[1], data[2])
+            self.add(effect_ability)
+        elif event == EventType.ABILITY_EFFECT_REMOVED:
+            # [data] = [ability_name]
+            self.remove(data[0])
 
     def add(self, ability: Ability):
         if ability._name in self._abilities:
@@ -197,8 +249,11 @@ class AbilityIndex:
             
             return self._abilities[name_split[0]].get_sub_ability(".".join(name_split[1:]))
 
+    def has_ability(self, name):
+        return name in self.get_all_keys()
+
     def run(self, name, statblock, *args):
-        if name not in self.get_all_keys():
+        if not self.has_ability(name):
             raise ValueError(f"Ability {name} does not exist in index.")
         if self.get_ability(name).is_modifier:
             raise ValueError(f"Ability {name} is a modifier ability and cannot be run as a main ability")
@@ -276,7 +331,7 @@ class StatblockAbilityWrapper:
         
     def __getattr__(self, name):
         return getattr(self._statblock, name)
-    
+
     def spell_attack_roll(self, target, damage_string):
         if "spellcasting_ability" not in self._ability._lua.get_defined_variables():
             raise ValueError(f"Spellcasting ability not defined in Ability {self._ability._name}.")

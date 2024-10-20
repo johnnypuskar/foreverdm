@@ -1,3 +1,5 @@
+use_time = UseTime("action", 1)
+
 function run()
     if not statblock:has_action() then
         return false, "No actions available."

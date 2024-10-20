@@ -310,6 +310,7 @@ class TestStatblock(unittest.TestCase):
         # Create effect
         effect = MagicMock(spec=Effect)
         effect._name = "test_effect"
+        effect._granted_abilities = []
 
         def test_has_function(function_name):
             return function_name == "make_attack_roll"
@@ -336,6 +337,7 @@ class TestStatblock(unittest.TestCase):
         # Create effect
         effect = MagicMock(spec=Effect)
         effect._name = "test_effect"
+        effect._granted_abilities = []
 
         def test_has_function(function_name):
             return function_name == "make_attack_roll"
@@ -373,6 +375,7 @@ class TestStatblock(unittest.TestCase):
         # Create effect
         effect = MagicMock(spec=Effect)
         effect._name = "test_effect"
+        effect._granted_abilities = []
 
         def test_has_function(function_name):
             return function_name == "make_attack_roll"
@@ -472,6 +475,7 @@ class TestStatblock(unittest.TestCase):
         # Create effect
         effect = MagicMock(spec=Effect)
         effect._name = "test_effect"
+        effect._granted_abilities = []
 
         def test_has_function(function_name):
             return function_name == "roll_initiative"
@@ -504,11 +508,27 @@ class TestStatblock(unittest.TestCase):
         self.assertFalse(roll_d20.call_args[0][0])
         self.assertTrue(roll_d20.call_args[0][1])
     
-    def test_base_speed(self):
+    def test_grant_ability_effects(self):
+        # Create statblock
+        statblock = Statblock("Tester")
+
+        # Create effect
+        
+
+    def test_speed(self):
         speed = MagicMock()
+        speed.walk = MagicMock(return_value = 30)
+        speed.swim = MagicMock(return_value = 25)
+        speed.fly = MagicMock(return_value = 20)
+        speed.climb = MagicMock(return_value = 15)
+        speed.burrow = MagicMock(return_value = 10)
         statblock = Statblock("Tester", speed = speed)
 
-        self.assertEqual(speed, statblock.get_base_speed())
+        self.assertEqual(30, statblock.get_speed("walk").return_value)
+        self.assertEqual(25, statblock.get_speed("swim").return_value)
+        self.assertEqual(20, statblock.get_speed("fly").return_value)
+        self.assertEqual(15, statblock.get_speed("climb").return_value)
+        self.assertEqual(10, statblock.get_speed("burrow").return_value)
 
     def test_temporary_speed(self):
         speed = MagicMock()

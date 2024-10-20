@@ -28,51 +28,51 @@ with open("foreverdm/scripts/actions/dash.lua", 'r', encoding='utf-8') as file:
 with open("foreverdm/scripts/spells/fire_bolt.lua", 'r', encoding='utf-8') as file:
     fire_bolt_script = file.read()
 
-# index = AbilityIndex()
+index = AbilityIndex()
 
-ability = Ability("fire_bolt", fire_bolt_script)
-ability.initialize({})
-print(ability._lua.get_defined_functions())
-print(ability._lua.get_function_script(ability._lua._lua.globals()["run"]))
+# ability = Ability("fire_bolt", fire_bolt_script)
+# ability.initialize({})
+# print(ability._lua.get_defined_functions())
+# print(ability._lua.get_function_script(ability._lua._lua.globals()["run"]))
 
-# a = Ability("ability_a", "function run(parameter)\n    return true, parameter\n end")
-# b = Ability("ability_b", "function run()\n    return true, 'Ability B.'\n end")
-# c_script = '''
-# function run()
-#     return true, 'Ability C.'
-# end
-# '''
-# c = Ability("ability_c", c_script)
-# d = Ability("ability_d", "function run()\n    return true, 'Ability D.'\n end")
+a = Ability("ability_a", "function run(parameter)\n    return true, parameter\n end")
+b = Ability("ability_b", "function run()\n    return true, 'Ability B.'\n end")
+c_script = '''
+function run()
+    return true, 'Ability C.'
+end
+'''
+c = Ability("ability_c", c_script)
+d = Ability("ability_d", "function run()\n    return true, 'Ability D.'\n end")
 
-# composite = CompositeAbility("composite", "")
-# composite.add(a)
-# composite.add(b)
+composite = CompositeAbility("composite", "")
+composite.add(a)
+composite.add(b)
 
-# mega_comp = CompositeAbility("mega_comp", "")
-# mega_comp.add(composite)
+mega_comp = CompositeAbility("mega_comp", "")
+mega_comp.add(composite)
 
-# top_level = CompositeAbility("top_level", "")
-# top_level.add(mega_comp)
+top_level = CompositeAbility("top_level", "")
+top_level.add(mega_comp)
 
-# index.add(c)
-# index.add(d)
-# index.add(top_level)
+index.add(c)
+index.add(d)
+index.add(top_level)
 
-# print(index.get_all_keys())
-# print(index.run("top_level.mega_comp.composite.ability_a", attacker))
+print(index.get_all_keys())
+print(index.run("top_level.mega_comp.composite.ability_a", attacker))
 
-# attack = Ability("attack", attack_script)
-# dash = Ability("dash", dash_script)
+attack = Ability("attack", attack_script)
+dash = Ability("dash", dash_script)
 # modifier = Ability("modifier", modifier_script, "modify")
 
-# attacker._abilities.add(attack)
-# attacker._abilities.add(dash)
+attacker._abilities.add(attack)
+attacker._abilities.add(dash)
 # attacker._abilities.add(modifier)
-# attacker._abilities.add(composite)
+attacker._abilities.add(composite)
 
-# for header in attacker._abilities.get_headers():
-#     print(header)
+for header in attacker._abilities.get_headers():
+    print(header)
 
 # print(attacker.name, attacker._hp, attacker._speed, f"{attacker._armor_class} AC")
 # print(target.name, target._hp, target._speed, f"{target._armor_class} AC")
@@ -94,3 +94,5 @@ print(ability._lua.get_function_script(ability._lua._lua.globals()["run"]))
 # print(target.__dict__)
 
 print(DiceParser.parse_string("1d4+2d6+3d8+4d10+5d12+6"))
+
+

@@ -1,6 +1,7 @@
 import unittest
-from unittest.mock import patch
-from foreverdm.src.util.time import UseTime
+from unittest.mock import MagicMock, patch
+from src.util.constants import EventType
+from src.util.time import UseTime
 from src.stats.abilities import AbilityIndex, Ability, CompositeAbility
 
 class TestAbility(unittest.TestCase):
@@ -305,6 +306,95 @@ class TestAbility(unittest.TestCase):
         self.assertEqual(expected, result[0])
 
     @patch('src.stats.statblock.Statblock')
+    def test_effect_granted_ability(self, StatblockMock):
+        ability_index = AbilityIndex()
+        effect_script = '''
+            abilities = {
+                test_ability = {
+                    use_time = UseTime("action"),
+                    run = function(target)
+                        return 15
+                    end
+                }
+            }
+        '''
+        
+        # Verify test ability is not in the index
+        self.assertNotIn("test_ability", ability_index._abilities.keys())
+
+        # Emit the signal containing the effect data
+        ability_index.signal(EventType.ABILITY_EFFECT_ADDED, "test_ability", effect_script, "run")
+
+        # Verify test ability was added to the index
+        self.assertIn("test_ability", ability_index._abilities.keys())
+
+        # Create a mock statblock and target and run the ability on the test target
+        statblock = StatblockMock.return_value
+        target = StatblockMock.return_value
+
+        expected = 15
+        returned = ability_index.run("test_ability", statblock, target)
+        self.assertEqual(expected, returned)
+
+        # Emit the signal to remove the ability
+        ability_index.signal(EventType.ABILITY_EFFECT_REMOVED, "test_ability")
+
+        # Verify test ability was removed from the index
+        self.assertNotIn("test_ability", ability_index._abilities.keys())
+    
+    @patch('src.stats.statblock.Statblock')
+    def test_effect_granted_multiple_abilities(self, StatblockMock):
+        ability_index = AbilityIndex()
+        effect_script = '''
+            abilities = {
+                first_ability = {
+                    use_time = UseTime("action"),
+                    run = function(target)
+                        return 15
+                    end
+                },
+                second_ability = {
+                    use_time = UseTime("bonus_action"),
+                    run = function(target)
+                        return 25
+                    end
+                }
+            }
+        '''
+
+        # Verify test abilities are not in the index
+        self.assertNotIn("first_ability", ability_index._abilities.keys())
+        self.assertNotIn("second_ability", ability_index._abilities.keys())
+
+        # Emit the signals containing the effect data
+        ability_index.signal(EventType.ABILITY_EFFECT_ADDED, "first_ability", effect_script, "run")
+        ability_index.signal(EventType.ABILITY_EFFECT_ADDED, "second_ability", effect_script, "run")
+
+        # Verify test abilities were added to the index
+        self.assertIn("first_ability", ability_index._abilities.keys())
+        self.assertIn("second_ability", ability_index._abilities.keys())
+
+        # Create a mock statblock and run the abilities
+        statblock = StatblockMock.return_value
+        
+        expected = 15
+        returned = ability_index.run("first_ability", statblock)
+        self.assertEqual(expected, returned)
+
+        expected = 25
+        returned = ability_index.run("second_ability", statblock)
+        self.assertEqual(expected, returned)
+
+        # Emit the signals to remove the abilities
+        ability_index.signal(EventType.ABILITY_EFFECT_REMOVED, "first_ability")
+        ability_index.signal(EventType.ABILITY_EFFECT_REMOVED, "second_ability")
+
+        # Verify test abilities were removed from the index
+        self.assertNotIn("first_ability", ability_index._abilities.keys())
+        self.assertNotIn("second_ability", ability_index._abilities.keys())
+
+
+    @patch('src.stats.statblock.Statblock')
     def test_statblock_wrapper(self, StatblockMock):
         statblock = StatblockMock.return_value
 
@@ -414,6 +504,3 @@ class TestAbility(unittest.TestCase):
         self.assertFalse(ability_hours._use_time.is_bonus_action)
         self.assertFalse(ability_hours._use_time.is_reaction)
         self.assertEqual(180, ability_hours._use_time.minutes)
-
-
-

@@ -90,6 +90,28 @@ class LuaManager:
 
     def get_defined_variables(self):
         return [item for item in self.get_defined_globals() if item not in self.get_defined_functions()]
-    
+
+    def get_full_value(self, variable):
+        value = self._lua.eval(variable)
+        if lua_type(value) == 'function':
+            raise ValueError("Cannot retrieve function value.")
+        if lua_type(value) != 'table':
+            return value
+        else:
+            return self._recursive_table_convert(value)
+
+    def _recursive_table_convert(self, table):
+        converted = {}
+        for key, value in dict(table).items():
+            if lua_type(value) == 'table':
+                converted[key] = self._recursive_table_convert(value)
+            else:
+                if lua_type(value) == 'function':
+                    converted[key] = None
+                else:
+                    converted[key] = value
+        return converted
+
+
     def analyze_for_call(self, script, param_name, property_name):
         return bool(re.compile(f"(\s*|^){param_name}(\.|:){property_name}(\([^\n]*\))?\s*$", re.MULTILINE).search(script))

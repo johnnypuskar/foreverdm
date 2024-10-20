@@ -165,3 +165,7 @@ class ScriptData:
         return speed_mod
     end
     '''
+
+class EventType:
+    ABILITY_EFFECT_ADDED = "ability_effect_added",
+    ABILITY_EFFECT_REMOVED = "ability_effect_removed"

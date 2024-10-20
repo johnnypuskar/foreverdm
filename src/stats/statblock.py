@@ -46,6 +46,7 @@ class Statblock:
 
     ## Abilities
     def use_ability(self, ability_name, *args):
+        # if effect grants use of ability, use that instead
         return self._abilities.run(ability_name, self, *args)
 
     def use_ability_chain(self, main_ability_params, *args):
@@ -348,7 +349,7 @@ class Statblock:
             return True
     
     ## Speed and Movement
-    def get_speed(self, type):
+    def get_speed(self, type = "walk"):
         # TODO: Factor in effects and speed modifiers
         match type:
             case "walk":

@@ -20,7 +20,7 @@ Here is a list of all of the functions currently in the Statblock class:
 
 # Ability Lua Script Format
 
-An ability is any potential action a character could take, defined by a Lua script. It may use character resources, call functions or change values from a character's statblock, target other creatures or positions on the map, or influence the game state in many other ways. It is defined by a .lua file that implements a `use_cost` global value and `run()` function that returns two values, a boolean determining if the action was a success or not, and a short string detailing the result of the action. Abilities may also define an ability-specific effect.
+An ability is any potential action a character could take, defined by a Lua script. It may use character resources, call functions or change values from a character's statblock, target other creatures or positions on the map, or influence the game state in many other ways. It is defined by a .lua file that implements a `use_time` global value and `run()` function that returns two values, a boolean determining if the action was a success or not, and a short string detailing the result of the action. Abilities may also define an ability-specific effect.
 
 ## Function Definitions and Headers
 
@@ -59,7 +59,7 @@ Abilities may sometimes define global variable values at the top level which wil
 
 Abilities will often have a time cost to use them, primarily being actions, bonus actions, and reactions. To specify this, an ability script file will always define a global `use_time` value at the top level. Some abilities, such as Action Surge or Flexible Casting, do not have a use time - as their use time is either from having limited uses per rest, or from some other resource. In cases like these, where the ability does not cost any actions to use, `use_time` is set to nil. Abilities such as certain spells may also take more than an action to use, taking one or more full minutes. This value is also defined using the UseTime helper function:
 
-While use time is defined in the ability script, it is assumed that the prerequisite time has been met when the ability function is run, so no checks ever need to be made against the `use_cost`.
+While use time is defined in the ability script, it is assumed that the prerequisite time has been met when the ability function is run, so no checks ever need to be made against the `use_time`.
 
 #### `UseTime(unit, value = 1)`
 Defines the action cost required to use the defined ability.
@@ -109,7 +109,7 @@ Duration("hour", 12)
 
 ### Spell Definitions
 
-In the case of spells, there are 6 additional global values that must be defined in every spell ability script. The values are `spell_level`, `spell_school`, `spell_range`, `spell_components`, `spell_duration`, `spell_concentration`. A spell ability must also define `use_cost` like any other ability. Their values can be determined from the spell description, and must follow the syntax as defined below.
+In the case of spells, there are 6 additional global values that must be defined in every spell ability script. The values are `spell_level`, `spell_school`, `spell_range`, `spell_components`, `spell_duration`, `spell_concentration`. A spell ability must also define `use_time` like any other ability. Their values can be determined from the spell description, and must follow the syntax as defined below.
 
 #### `spell_level`
 - `spell_level` is defined with an integer value from 0 to 9 specifying the level of the spell. A level 0 spell represents a cantrip.
@@ -117,8 +117,8 @@ In the case of spells, there are 6 additional global values that must be defined
 #### `spell_school`
 - `spell_school` is defined with a string matching one of the following legal values: `abjuration`, `conjuration`, `divination`, `enchantment`, `evocation`, `illusion`, `necromancy`, `transmutation`
 
-#### `use_cost`
-- `use_cost` is defined with the UseCost() helper function to store the casting time of the spell.
+#### `use_time`
+- `use_time` is defined with the UseTime() helper function to store the casting time of the spell.
 
 #### `spell_range`
 - `spell_range` is defined with an integer value as low as zero specifying the range of the spell in feet. A value of 0 is used in the case of a spell with range 'Self', and a value of 1 is used in the case of a spell with range 'Touch'. Perform unit conversion if required.
@@ -382,32 +382,43 @@ Used whenever the character with the effect moves willingly from one position to
 Some effects are defined as a part of a related ability, such as the lingering effects of a spell or attack. These effects have their functions and parameters defined in a table format within the ability .lua file. The table can then be passed to the statblock to apply its effects.
 
 #### Example Effect-applying Ability
-This example defines an ability which applies a specially-created effect
+This example defines an ability which applies a specially-created effect called `effect_name`
 ```
-function run(...)
-  -- Effect definition
-  effect = {
-    caster = statblock,
+-- Effect definition, made at top level
+effect_name = {
+  caster = statblock,
 
-    ability_check_give = function(type, trigger)
-      -- Effect effect logic goes here, example gives advantage on any ability check
-      return {advantage = true, disadvantage = false, bonus = 0, auto_succeed = false, auto_fail = false}
-    end
-  }
+  ability_check_give = function(type, trigger)
+    -- Effect effect logic goes here, example gives advantage on any ability check
+    return {advantage = true, disadvantage = false, bonus = 0, auto_succeed = false, auto_fail = false}
+  end
+}
+
+function run(...)
   -- Example application of effect
-  statblock:add_effect("effect")
+  statblock:add_effect("effect_name")
 end
 ```
 ## Defining Effect-Dependent Abilities
 
-Some effects may grant the bearer the use of one or more additional abilities, such as concentrating on a spell which allows for a special type of attack. These effects will define a table which contains the run() functions that define each ability, with the ability name as the key for it's function value. This table is called `abilities` and is defined at the top level in the effect script, and it's contents will be factored into the bearer's statblock abilities. If a condtion allows a bearer to perform any action beyond their normal capabilities, it should be defined in this way, even when it is a slightly modified or enhanced version of an existing ability they possess.
+Some effects may grant the bearer the use of one or more additional abilities, such as concentrating on a spell which allows for a special type of attack. These effects will define a set of nested tables which contains the data and run() functions that define each ability, with the ability name as the key for its inner table. This top-level table is called `abilities` and is defined at the top level in the effect script, and it's contents will be factored into the bearer's statblock abilities. If a condition allows a bearer to perform any action beyond their normal capabilities, it should be defined in this way, even when it is a slightly modified or enhanced version of an existing ability they possess.
 
 #### Example Ability-granting Effect
-This example defines a effect which just grants a new ability called `example_attack`
+This example defines a effect which just grants a new ability called `ability_name`
 ```
 abilities = {
-  example_attack = function(target)
-    -- Function definition for `example_attack` ability
-  end
+  ability_name = {
+    use_time = UseTime("action", 1),
+    run = function(target)
+      -- Function definition for the `ability_name` ability
+    end
+  },
+  other_ability = {
+    use_time = UseTime("bonus_action", 1),
+    can_modify = {"attack"},
+    run = function(target)
+      -- Function definition for the `other_ability` ability
+    end
+  }
 }
 ```

@@ -1,3 +1,5 @@
+use_time = UseTime("action", 1)
+
 function run(spell_name, ...)
     local spell = spells[spell_name]
     if not spell then

@@ -1,4 +1,4 @@
-use_cost = UseCost(1, "action")
+use_time = UseTime("action", 1)
 
 function run(target)
     if statblock:attack_roll(target) then

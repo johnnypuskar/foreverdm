@@ -47,7 +47,7 @@ class TestInstance(unittest.TestCase):
     def test_moving_token(self):
         instance = Instance(Map(10, 4))
         instance.map.calculate_navgraph()
-        token = Token(Statblock("Fighter", "Level 1 human fighter"))
+        token = Token(Statblock("Fighter"))
 
         instance.add_token(token, (1, 1))
 
@@ -63,7 +63,7 @@ class TestInstance(unittest.TestCase):
         self.assertEqual(token.position, (8, 1))
 
         # Cannot move onto already occupied space
-        other_token = Token(Statblock("Wizard", "Level 1 human wizard"))
+        other_token = Token(Statblock("Wizard"))
         instance.add_token(other_token, (8, 3))
         self.assertRaises(PositionOccupiedError, instance.move_token, token, (8, 3))
 

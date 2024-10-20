@@ -27,7 +27,7 @@ class Token:
 
     @property
     def speed(self):
-        return self._statblock.speed
+        return self._statblock._speed
 
     @speed.setter
     def speed(self, value):
@@ -37,7 +37,7 @@ class Token:
 
     @property
     def size(self):
-        return self._statblock.size
+        return self._statblock._size
 
 
 class TokenExtension(Token):
