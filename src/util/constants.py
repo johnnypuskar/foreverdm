@@ -167,5 +167,7 @@ class ScriptData:
     '''
 
 class EventType:
-    ABILITY_EFFECT_ADDED = "ability_effect_added",
-    ABILITY_EFFECT_REMOVED = "ability_effect_removed"
+    EFFECT_GRANTED_ABILITY = "effect_granted_ability",
+    EFFECT_REMOVED_ABILITY = "effect_removed_ability"
+    ABILITY_APPLIED_EFFECT = "ability_applied_effect"
+    ABILITY_REMOVED_EFFECT = "ability_removed_effect"

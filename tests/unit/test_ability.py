@@ -323,7 +323,7 @@ class TestAbility(unittest.TestCase):
         self.assertNotIn("test_ability", ability_index._abilities.keys())
 
         # Emit the signal containing the effect data
-        ability_index.signal(EventType.ABILITY_EFFECT_ADDED, "test_ability", effect_script, "run")
+        ability_index.signal(EventType.EFFECT_GRANTED_ABILITY, "test_ability", effect_script, "run")
 
         # Verify test ability was added to the index
         self.assertIn("test_ability", ability_index._abilities.keys())
@@ -337,7 +337,7 @@ class TestAbility(unittest.TestCase):
         self.assertEqual(expected, returned)
 
         # Emit the signal to remove the ability
-        ability_index.signal(EventType.ABILITY_EFFECT_REMOVED, "test_ability")
+        ability_index.signal(EventType.EFFECT_REMOVED_ABILITY, "test_ability")
 
         # Verify test ability was removed from the index
         self.assertNotIn("test_ability", ability_index._abilities.keys())
@@ -367,8 +367,8 @@ class TestAbility(unittest.TestCase):
         self.assertNotIn("second_ability", ability_index._abilities.keys())
 
         # Emit the signals containing the effect data
-        ability_index.signal(EventType.ABILITY_EFFECT_ADDED, "first_ability", effect_script, "run")
-        ability_index.signal(EventType.ABILITY_EFFECT_ADDED, "second_ability", effect_script, "run")
+        ability_index.signal(EventType.EFFECT_GRANTED_ABILITY, "first_ability", effect_script, "run")
+        ability_index.signal(EventType.EFFECT_GRANTED_ABILITY, "second_ability", effect_script, "run")
 
         # Verify test abilities were added to the index
         self.assertIn("first_ability", ability_index._abilities.keys())
@@ -386,8 +386,8 @@ class TestAbility(unittest.TestCase):
         self.assertEqual(expected, returned)
 
         # Emit the signals to remove the abilities
-        ability_index.signal(EventType.ABILITY_EFFECT_REMOVED, "first_ability")
-        ability_index.signal(EventType.ABILITY_EFFECT_REMOVED, "second_ability")
+        ability_index.signal(EventType.EFFECT_REMOVED_ABILITY, "first_ability")
+        ability_index.signal(EventType.EFFECT_REMOVED_ABILITY, "second_ability")
 
         # Verify test abilities were removed from the index
         self.assertNotIn("first_ability", ability_index._abilities.keys())

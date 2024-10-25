@@ -54,14 +54,34 @@ class SubEffect(Effect):
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
         return self._lua.run_nested(f'subeffects.{self._name}.{function_name}', *args)
-        
+
+class AbilityAppliedEffect(Effect):
+    def __init__(self, name, script, globals = {}):
+        self._name = name
+        self._globals = globals
+        self._lua = None
+        self._duration = 0
+
+        self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + script
+
+        lua = LuaManager()
+        lua.execute(name + "[abilities] = {}")
+
+        self._granted_abilities = list(dict(dict(lua.globals[name])["abilities"]).keys())
+
 class EffectIndex(Observer, Emitter):
     def __init__(self):
         super().__init__()
         self._effects = {}
     
-    def signal(self, event: str, data):
-        pass
+    def signal(self, event: str, *data):
+        if event == EventType.ABILITY_APPLIED_EFFECT:
+            # [data] = [effect_name, script]
+            pass
+        elif event == EventType.ABILITY_REMOVED_EFFECT:
+            # [data] = [effect_name]
+            self.remove(data[0])
+
 
     @property
     def effect_names(self):
@@ -75,7 +95,7 @@ class EffectIndex(Observer, Emitter):
             self._effects[effect._name] = effect
             if len(effect._granted_abilities) > 0:
                 for effect_ability in effect._granted_abilities:
-                    self.emit(EventType.ABILITY_EFFECT_ADDED, effect_ability, effect._script, "run")
+                    self.emit(EventType.EFFECT_GRANTED_ABILITY, effect_ability, effect._script, "run")
         elif type(effect) is str:
             self.add(Effect("temp_name", effect), duration)
         
@@ -85,7 +105,7 @@ class EffectIndex(Observer, Emitter):
         removed_effect = self._effects.pop(name)
         if len(removed_effect._granted_abilities) > 0:
             for effect_ability in removed_effect._granted_abilities:
-                self.emit(EventType.ABILITY_EFFECT_REMOVED, effect_ability)
+                self.emit(EventType.EFFECT_REMOVED_ABILITY, effect_ability)
     
     def get_function_results(self, function_name, statblock, *args):
         results = []

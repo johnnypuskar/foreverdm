@@ -377,6 +377,11 @@ Used whenever the character with the effect moves willingly from one position to
   - `true` if the movement is allowed
   - `false` if the movement is not allowed
 
+### `get_abilities()`
+Used to return a list of the additional abilities this effect grants.
+**Returns:**
+- `list[string]`: A list of ability names that correspond to the names of top-level tables in the script that the effect allows the use of. The table must be formatted in the correct format for an effect-dependant ability.
+
 ## Defining Ability-Specific Effects
 
 Some effects are defined as a part of a related ability, such as the lingering effects of a spell or attack. These effects have their functions and parameters defined in a table format within the ability .lua file. The table can then be passed to the statblock to apply its effects.

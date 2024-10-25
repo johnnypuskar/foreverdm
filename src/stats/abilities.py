@@ -199,11 +199,11 @@ class AbilityIndex(Observer, Emitter):
         self._abilities = {}
 
     def signal(self, event: str, *data):
-        if event == EventType.ABILITY_EFFECT_ADDED:
+        if event == EventType.EFFECT_GRANTED_ABILITY:
             # [data] = [ability_name, script, function_name = "run"]
             effect_ability = EffectDefinedAbility(data[0], data[1], data[2])
             self.add(effect_ability)
-        elif event == EventType.ABILITY_EFFECT_REMOVED:
+        elif event == EventType.EFFECT_REMOVED_ABILITY:
             # [data] = [ability_name]
             self.remove(data[0])
 
@@ -331,6 +331,12 @@ class StatblockAbilityWrapper:
         
     def __getattr__(self, name):
         return getattr(self._statblock, name)
+
+    def add_effect(self, effect_name):
+        self._statblock._abilities.emit(EventType.ABILITY_APPLIED_EFFECT, effect_name, self._ability._script)
+    
+    def remove_effect(self, effect_name):
+        self._statblock._abilities.emit(EventType.ABILITY_REMOVED_EFFECT, effect_name)
 
     def spell_attack_roll(self, target, damage_string):
         if "spellcasting_ability" not in self._ability._lua.get_defined_variables():
