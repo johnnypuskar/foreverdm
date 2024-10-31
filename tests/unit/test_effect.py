@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from src.util.constants import EventType
 from src.stats.effects import EffectIndex, Effect, SubEffect
 
 class TestEffect(unittest.TestCase):
@@ -58,12 +59,10 @@ class TestEffect(unittest.TestCase):
         # Create test index and effect
         index = EffectIndex()
         effect = Effect("test_effect", '''
-            subeffects = {
-                test_subeffect = {
-                    receive_attack_roll = function(attacker)
-                        return RollResult({auto_fail = true})
-                    end
-                }
+            test_subeffect = {
+                receive_attack_roll = function(attacker)
+                    return RollResult({auto_fail = true})
+                end
             }
 
             function make_attack_roll(target)
@@ -117,6 +116,91 @@ class TestEffect(unittest.TestCase):
         ]
         self.assertEqual(results, expected)
     
+    def test_granted_subeffect(self):
+        effect_index = EffectIndex()
+        ability_script = '''
+            ability_effect = {
+                make_attack_roll = function(target)
+                    return RollResult({bonus = 5})
+                end
+            }
+        '''
+
+        # Verify test effect is not in the effect index
+        self.assertNotIn("ability_effect", effect_index.effect_names)
+
+        # Verify there is no effect on the function results
+        expected = []
+        results = effect_index.get_function_results("make_attack_roll", None, None)
+        self.assertEqual(results, expected)
+
+        # Emit the signal containing the effect data
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script)
+
+        # Verify test effect was added to the index
+        self.assertIn("ability_effect", effect_index.effect_names)
+
+        # Verify that the effect has the expected function results
+        expected = [
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5}
+        ]
+        results = effect_index.get_function_results("make_attack_roll", None, None)
+        self.assertEqual(results, expected)
+
+        # Emit the signal to remove the effect
+        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "ability_effect")
+
+        # Verify the effect was removed from the index
+        self.assertNotIn("ability_effect", effect_index.effect_names)
+
+    def test_granted_multiple_subeffects(self):
+        effect_index = EffectIndex()
+        ability_script = '''
+            first_effect = {
+                make_attack_roll = function(target)
+                    return RollResult({bonus = 5})
+                end
+            }
+            second_effect = {
+                make_attack_roll = function(target)
+                    return RollResult({bonus = -2})
+                end
+            }
+        '''
+
+        # Verify test effects are not in the effect index
+        self.assertNotIn("first_effect", effect_index.effect_names)
+        self.assertNotIn("second_effect", effect_index.effect_names)
+
+        # Verify there is no effect on the function results
+        expected = []
+        results = effect_index.get_function_results("make_attack_roll", None, None)
+
+        # Emit the signal containing the effect data
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script)
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script)
+
+        # Verify test effects were added to the index
+        self.assertIn("first_effect", effect_index.effect_names)
+        self.assertIn("second_effect", effect_index.effect_names)
+
+        # Verify that the effects have the expected function results
+        expected = [
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5},
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -2}
+        ]
+        results = effect_index.get_function_results("make_attack_roll", None, None)
+        self.assertEqual(results, expected)
+
+        # Emit the signal to remove the first effect
+        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "first_effect")
+
+        # Verify only the first effect was removed from the index
+        self.assertNotIn("first_effect", effect_index.effect_names)
+        self.assertIn("second_effect", effect_index.effect_names)
+
+
+
     @patch('src.stats.statblock.Statblock')
     def test_statblock_wrapper(self, StatblockMock):
         statblock = StatblockMock.return_value

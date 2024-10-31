@@ -12,10 +12,6 @@ class Effect:
         self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.DURATION + script
 
         lua = LuaManager()
-        lua.execute("abilities = {}")
-        lua.execute(self._script)
-
-        self._granted_abilities = list(dict(lua.globals['abilities']).keys())
     
     @property
     def duration(self):
@@ -25,7 +21,7 @@ class Effect:
     def duration(self, value):
         self._duration = value
 
-    def initialize(self, globals):
+    def initialize(self, globals = {}):
         self._lua = LuaManager(self._globals)
         self._lua.merge_globals(globals)
         self._lua.execute(self._script)
@@ -48,27 +44,13 @@ class SubEffect(Effect):
     def has_function(self, function_name):
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
-        return function_name in self._lua.globals['subeffects'][self._name]
+        return function_name in self._lua.globals[self._name]
     
     def run(self, function_name, *args):
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
-        return self._lua.run_nested(f'subeffects.{self._name}.{function_name}', *args)
-
-class AbilityAppliedEffect(Effect):
-    def __init__(self, name, script, globals = {}):
-        self._name = name
-        self._globals = globals
-        self._lua = None
-        self._duration = 0
-
-        self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + script
-
-        lua = LuaManager()
-        lua.execute(name + "[abilities] = {}")
-
-        self._granted_abilities = list(dict(dict(lua.globals[name])["abilities"]).keys())
-
+        return self._lua.run_nested(f'{self._name}.{function_name}', *args)
+    
 class EffectIndex(Observer, Emitter):
     def __init__(self):
         super().__init__()
@@ -77,11 +59,11 @@ class EffectIndex(Observer, Emitter):
     def signal(self, event: str, *data):
         if event == EventType.ABILITY_APPLIED_EFFECT:
             # [data] = [effect_name, script]
-            pass
+            ability_effect = SubEffect(data[0], data[1])
+            self.add(ability_effect, 0)
         elif event == EventType.ABILITY_REMOVED_EFFECT:
             # [data] = [effect_name]
             self.remove(data[0])
-
 
     @property
     def effect_names(self):
@@ -93,8 +75,9 @@ class EffectIndex(Observer, Emitter):
                 raise ValueError(f"Effect {effect._name} already exists in index.")
             effect.duration = duration
             self._effects[effect._name] = effect
-            if len(effect._granted_abilities) > 0:
-                for effect_ability in effect._granted_abilities:
+            effect.initialize()
+            if effect.has_function("get_abilities"):
+                for effect_ability in effect.run("get_abilities"):
                     self.emit(EventType.EFFECT_GRANTED_ABILITY, effect_ability, effect._script, "run")
         elif type(effect) is str:
             self.add(Effect("temp_name", effect), duration)
@@ -103,8 +86,9 @@ class EffectIndex(Observer, Emitter):
         if name not in self._effects:
             raise ValueError(f"Effect {name} not found in index.")
         removed_effect = self._effects.pop(name)
-        if len(removed_effect._granted_abilities) > 0:
-            for effect_ability in removed_effect._granted_abilities:
+        removed_effect.initialize()
+        if removed_effect.has_function("get_abilities"):
+            for effect_ability in removed_effect.run("get_abilities"):
                 self.emit(EventType.EFFECT_REMOVED_ABILITY, effect_ability)
     
     def get_function_results(self, function_name, statblock, *args):

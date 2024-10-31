@@ -153,7 +153,7 @@ class CompositeAbility(Ability):
             raise RuntimeError("LuaManager not initialized.")
         return self._sub_abilities[sub_ability_name].run(*args)
 
-class EffectDefinedAbility(Ability):
+class SubAbility(Ability):
     def __init__(self, name, script, function_name = "run", globals = {}):
         self._name = name
         self._function_name = function_name
@@ -165,7 +165,7 @@ class EffectDefinedAbility(Ability):
         lua = LuaManager()
         lua.execute(self._script)
 
-        ability_dict = dict(dict(lua.globals['abilities'])[name])
+        ability_dict = dict(lua.globals[name])
         self._is_modifier = "can_modify" in ability_dict.keys() and len(list(ability_dict['can_modify'])) > 0
         self._use_time = UseTime.from_table(dict(ability_dict['use_time']))
 
@@ -174,14 +174,14 @@ class EffectDefinedAbility(Ability):
         else:
             self._use_delay = self._use_time.minutes
 
-        for key, value in lua.get_full_value(f"abilities.{name}").items():
+        for key, value in lua.get_full_value(f"{name}").items():
             if key not in self._globals and value is not None:
                 self._globals[key] = value
 
     
     def initialize(self, globals):
         super().initialize(globals)
-        self._lua.merge_globals(dict(self._lua.globals['abilities'][self._name]))
+        self._lua.merge_globals(dict(self._lua.globals[self._name]))
 
     def run(self, *args):
         if self._use_delay > 0:
@@ -190,7 +190,7 @@ class EffectDefinedAbility(Ability):
             return (False, "MESSAGE WITH REMAINING USE DELAY TURNS")
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
-        return self._lua.run_nested(f"abilities.{self._name}.{self._function_name}", *args)
+        return self._lua.run_nested(f"{self._name}.{self._function_name}", *args)
 
 
 class AbilityIndex(Observer, Emitter):
@@ -201,7 +201,7 @@ class AbilityIndex(Observer, Emitter):
     def signal(self, event: str, *data):
         if event == EventType.EFFECT_GRANTED_ABILITY:
             # [data] = [ability_name, script, function_name = "run"]
-            effect_ability = EffectDefinedAbility(data[0], data[1], data[2])
+            effect_ability = SubAbility(data[0], data[1], data[2])
             self.add(effect_ability)
         elif event == EventType.EFFECT_REMOVED_ABILITY:
             # [data] = [ability_name]
@@ -277,7 +277,7 @@ class AbilityIndex(Observer, Emitter):
 
         # Store ability function in a variable for later reference to avoid overwriting the main ability function with a modifider that has the same name
         override_protection_script = f'''
-            sequence_ability_function = {ability._function_name}
+            _sequence_ability_function = {ability._function_name}
         '''
         env.execute(override_protection_script)
 
@@ -314,7 +314,7 @@ class AbilityIndex(Observer, Emitter):
             return_strings.append(result[1])
         
         # Run the main ability with the modified runtime
-        main_return = env.run("sequence_ability_function", *args)
+        main_return = env.run("_sequence_ability_function", *args)
         return_strings.append(main_return[1])
         return (main_return[0], " ".join(return_strings))
 

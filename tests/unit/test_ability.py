@@ -306,16 +306,14 @@ class TestAbility(unittest.TestCase):
         self.assertEqual(expected, result[0])
 
     @patch('src.stats.statblock.Statblock')
-    def test_effect_granted_ability(self, StatblockMock):
+    def test_granted_subability(self, StatblockMock):
         ability_index = AbilityIndex()
         effect_script = '''
-            abilities = {
-                test_ability = {
-                    use_time = UseTime("action"),
-                    run = function(target)
-                        return 15
-                    end
-                }
+            test_ability = {
+                use_time = UseTime("action"),
+                run = function(target)
+                    return 15
+                end
             }
         '''
         
@@ -343,22 +341,20 @@ class TestAbility(unittest.TestCase):
         self.assertNotIn("test_ability", ability_index._abilities.keys())
     
     @patch('src.stats.statblock.Statblock')
-    def test_effect_granted_multiple_abilities(self, StatblockMock):
+    def test_granted_multiple_subabilities(self, StatblockMock):
         ability_index = AbilityIndex()
         effect_script = '''
-            abilities = {
-                first_ability = {
-                    use_time = UseTime("action"),
-                    run = function(target)
-                        return 15
-                    end
-                },
-                second_ability = {
-                    use_time = UseTime("bonus_action"),
-                    run = function(target)
-                        return 25
-                    end
-                }
+            first_ability = {
+                use_time = UseTime("action"),
+                run = function(target)
+                    return 15
+                end
+            }
+            second_ability = {
+                use_time = UseTime("bonus_action"),
+                run = function(target)
+                    return 25
+                end
             }
         '''
 
@@ -385,13 +381,12 @@ class TestAbility(unittest.TestCase):
         returned = ability_index.run("second_ability", statblock)
         self.assertEqual(expected, returned)
 
-        # Emit the signals to remove the abilities
+        # Emit the signals to remove the first ability
         ability_index.signal(EventType.EFFECT_REMOVED_ABILITY, "first_ability")
-        ability_index.signal(EventType.EFFECT_REMOVED_ABILITY, "second_ability")
 
-        # Verify test abilities were removed from the index
+        # Verify the first ability was removed from the index but not the second
         self.assertNotIn("first_ability", ability_index._abilities.keys())
-        self.assertNotIn("second_ability", ability_index._abilities.keys())
+        self.assertIn("second_ability", ability_index._abilities.keys())
 
 
     @patch('src.stats.statblock.Statblock')

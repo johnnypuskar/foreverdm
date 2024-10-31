@@ -382,11 +382,11 @@ Used to return a list of the additional abilities this effect grants.
 **Returns:**
 - `list[string]`: A list of ability names that correspond to the names of top-level tables in the script that the effect allows the use of. The table must be formatted in the correct format for an effect-dependant ability.
 
-## Defining Ability-Specific Effects
+## Defining SubEffects
 
-Some effects are defined as a part of a related ability, such as the lingering effects of a spell or attack. These effects have their functions and parameters defined in a table format within the ability .lua file. The table can then be passed to the statblock to apply its effects.
+Some effects are defined as a part of a related ability or effect, such as a secondary effect applied after meeting certain conditions, or an effect applied by using ability. These subeffects have their functions and parameters defined in a table format within the ability script at the top level. The table name can then be passed to the statblock to apply its effects.
 
-#### Example Effect-applying Ability
+#### Example Ability Applying a SubEffect
 This example defines an ability which applies a specially-created effect called `effect_name`
 ```
 -- Effect definition, made at top level
@@ -404,26 +404,60 @@ function run(...)
   statblock:add_effect("effect_name")
 end
 ```
-## Defining Effect-Dependent Abilities
+## Defining SubAbilities
 
-Some effects may grant the bearer the use of one or more additional abilities, such as concentrating on a spell which allows for a special type of attack. These effects will define a set of nested tables which contains the data and run() functions that define each ability, with the ability name as the key for its inner table. This top-level table is called `abilities` and is defined at the top level in the effect script, and it's contents will be factored into the bearer's statblock abilities. If a condition allows a bearer to perform any action beyond their normal capabilities, it should be defined in this way, even when it is a slightly modified or enhanced version of an existing ability they possess.
+Similar to SubEffects, a SubAbility is an ability defined as a related part of some other ability or effect, such as a special action granted by having an effect. These SubAbilities have their use time and function defined in a table format within the ability script at the top level. The table name is then returned in a list of one or more granted SubAbility names by the top level effect function `get_abilities`.
 
-#### Example Ability-granting Effect
-This example defines a effect which just grants a new ability called `ability_name`
+#### Example Effect Granting a SubAbility
+This example defines a effect which grants two new abilities called `ability_name` and `other_ability`.
 ```
-abilities = {
-  ability_name = {
-    use_time = UseTime("action", 1),
-    run = function(target)
-      -- Function definition for the `ability_name` ability
-    end
-  },
-  other_ability = {
-    use_time = UseTime("bonus_action", 1),
-    can_modify = {"attack"},
-    run = function(target)
-      -- Function definition for the `other_ability` ability
-    end
-  }
+ability_name = {
+  use_time = UseTime("action", 1),
+  run = function(target)
+    -- Function definition for the `ability_name` ability
+  end
 }
+
+other_ability = {
+  use_time = UseTime("bonus_action", 1),
+  can_modify = {"attack"},
+  run = function(target)
+    -- Function definition for the `other_ability` ability
+  end
+}
+
+function get_abilities()
+  return {"ability_name", "other_ability"}
+end
+```
+
+## Nesting SubEffects and SubAbilities
+
+SubEffects and SubAbility functionality can be nested, though they must always place their definition at the top level.
+
+#### Example Nested Ability
+This example defines an ability, which applies an effect to a target, that in-turn, grants them a secondary ability, that applies a second different effect to a target. Note that each SubEffect and SubAbility are defined at the top level, and referenced by the `add_effect` and `get_abilities` functions using their string names.
+```
+use_time = UseTime("action", 1)
+
+applied_effect = {
+  get_abilities = function()
+    return ["secondary_ability"]
+  end
+}
+
+secondary_ability = {
+  use_time = UseTime("bonus_action", 1),
+  run = function(target)
+    target:add_effect("secondary_effect")
+  end
+}
+
+secondary_effect = {
+  -- Secondary example effect kept empty for brevity
+}
+
+function run(target)
+  target:add_effect("applied_effect")
+end
 ```
