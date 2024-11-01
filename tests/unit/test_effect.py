@@ -135,7 +135,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script)
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script, 1)
 
         # Verify test effect was added to the index
         self.assertIn("ability_effect", effect_index.effect_names)
@@ -148,7 +148,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal to remove the effect
-        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "ability_effect")
+        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "ability_effect", 1)
 
         # Verify the effect was removed from the index
         self.assertNotIn("ability_effect", effect_index.effect_names)
@@ -177,8 +177,8 @@ class TestEffect(unittest.TestCase):
         results = effect_index.get_function_results("make_attack_roll", None, None)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script)
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script)
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1)
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1)
 
         # Verify test effects were added to the index
         self.assertIn("first_effect", effect_index.effect_names)
@@ -193,7 +193,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal to remove the first effect
-        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "first_effect")
+        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "first_effect", 1)
 
         # Verify only the first effect was removed from the index
         self.assertNotIn("first_effect", effect_index.effect_names)
@@ -247,5 +247,65 @@ class TestEffect(unittest.TestCase):
         index.get_function_results("receive_attack_roll", statblock, None)
         statblock.add_effect.assert_called_once()
         self.assertEqual(type(statblock.add_effect.call_args[0][0]), SubEffect)
+
+    def test_effect_duration(self):
+        effect = Effect("test_effect", "")
+
+        # Tick the effect and check duration
+        effect.tick_timer()
+        self.assertEqual(effect.duration, -1)
+
+        # Add effect to index and tick
+        index = EffectIndex()
+        index.add(effect, 5)
+        self.assertEqual(effect.duration, 5)
+        index.tick_timers(None)
+        self.assertEqual(effect.duration, 4)
+
+        # Add a second effect and tick the index
+        effect2 = Effect("test_effect_2", "")
+        index.add(effect2, 10)
+        index.tick_timers(None)
+
+        self.assertEqual(effect.duration, 3)
+        self.assertEqual(effect2.duration, 9)
+
+    @patch('src.stats.statblock.Statblock')
+    def test_effect_expiry(self, StatblockMock):
+        index = EffectIndex()
+        effect = Effect("test_effect", "")
+
+        # Add effect to index and verify it was added
+        index.add(effect, 1)
+        self.assertIn("test_effect", index.effect_names)
+        
+        # Tick the index and verify the effect was removed
+        self.assertEqual(effect.duration, 1)
+        index.tick_timers(None)
+        self.assertNotIn("test_effect", index.effect_names)
+
+
+        # Create effect with on_expire function and add to index
+        effect_expires = Effect("test_effect", '''
+            function on_expire()
+                statblock:restore_hp(10)
+            end
+        ''')
+        statblock = StatblockMock.return_value
+        index.add(effect_expires, 2)
+
+        # Tick the index and verify the effect was removed and the on_expire function was called when duration reaches 0
+        self.assertIn("test_effect", index.effect_names)
+        statblock.restore_hp.assert_not_called()
+
+        # Tick once to reduce duration to 1 and verify on_expire was not called
+        index.tick_timers(statblock)
+        statblock.restore_hp.assert_not_called()
+
+        # Tick again to remove the effect and verify on_expire was called
+        index.tick_timers(statblock)
+        self.assertNotIn("test_effect", index.effect_names)
+        statblock.restore_hp.assert_called_once()
+        self.assertEqual(statblock.restore_hp.call_args[0][1], 10)
 
 

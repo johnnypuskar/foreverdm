@@ -259,6 +259,11 @@ Used right after the end of a charater with the effect's turn. Defines logic or 
 **Returns:**
 - `nil`: No return value
 
+## `on_expire()`
+Used when the effect's remaining duration has reached 0 and it is about to be removed from the character. Function is run just before automatic removal, so no effect removal logic needs to be implemented.
+**Returns:**
+- `nil`: No return value
+
 ### `make_attack_roll(target)`
 Used when the character with the effect makes an attack roll against a target
 **Parameters:**

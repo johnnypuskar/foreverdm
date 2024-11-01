@@ -3,11 +3,11 @@ from src.util.constants import EventType, ScriptData
 from src.util.observer import Emitter, Observer
 
 class Effect:
-    def __init__(self, name, script, globals = {}):
+    def __init__(self, name, script, duration = -1, globals = {}):
         self._name = name
         self._globals = globals
         self._lua = None
-        self._duration = 0
+        self._duration = duration
 
         self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.DURATION + script
 
@@ -37,6 +37,10 @@ class Effect:
             raise RuntimeError("LuaManager not initialized.")
         return self._lua.run(function_name, *args)
 
+    def tick_timer(self):
+        if self._duration > 0:
+            self._duration -= 1
+
 class SubEffect(Effect):
     def __init__(self, name, script, globals = {}):
         super().__init__(name, script, globals)
@@ -58,9 +62,9 @@ class EffectIndex(Observer, Emitter):
     
     def signal(self, event: str, *data):
         if event == EventType.ABILITY_APPLIED_EFFECT:
-            # [data] = [effect_name, script]
+            # [data] = [effect_name, script, duration]
             ability_effect = SubEffect(data[0], data[1])
-            self.add(ability_effect, 0)
+            self.add(ability_effect, data[2])
         elif event == EventType.ABILITY_REMOVED_EFFECT:
             # [data] = [effect_name]
             self.remove(data[0])
@@ -94,7 +98,7 @@ class EffectIndex(Observer, Emitter):
     def get_function_results(self, function_name, statblock, *args):
         results = []
         # Creating a copy list so that mid-execution dictionary editing does not throw an error
-        keys = list(self._effects.keys())
+        keys = list(self.effect_names)
         for effect_name in keys:
             effect = self._effects[effect_name]
             effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
@@ -103,6 +107,18 @@ class EffectIndex(Observer, Emitter):
                 if result is not None:
                     results.append(result)
         return results
+
+    def tick_timers(self, statblock):
+        # Creating a copy list so that mid-execution dictionary editing does not throw an error
+        keys = list(self.effect_names)
+        for effect_name in keys:
+            effect = self._effects[effect_name]
+            effect.tick_timer()
+            if effect.duration == 0:
+                effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
+                if effect.has_function("on_expire"):
+                    effect.run("on_expire")
+                self.remove(effect_name)
 
 class StatblockSubEffectWrapper:
     def __init__(self, statblock, effect):
