@@ -6,6 +6,7 @@ from src.stats.resources import ResourceIndex
 from src.util.resettable_value import ResettableValue
 from src.stats.statistics import AbilityScore, Speed
 from src.util.constants import Abilities, Skills
+from src.util.time import UseTime
 
 class Statblock:
     def __init__(self, name, speed = Speed(30), size = 5):
@@ -33,6 +34,7 @@ class Statblock:
         self._abilities = AbilityIndex()
         self._effects = EffectIndex()
         self._resources = ResourceIndex()
+        self._turn_resources = TurnResources()
 
         self._concentration = None
 
@@ -47,6 +49,12 @@ class Statblock:
     ## Abilities
     def use_ability(self, ability_name, *args):
         # if effect grants use of ability, use that instead
+        ability = self._abilities.get_ability(ability_name)
+        if not self._turn_resources.use_from_use_time(ability._use_time):
+            if not ability._use_time.is_special:
+                return (False, f"No action remaining to use {ability_name}.")
+            else:
+                return (False, f"No {str(ability._use_time)} remaining to use {ability_name}.")
         return self._abilities.run(ability_name, self, *args)
 
     def use_ability_chain(self, main_ability_params, *args):
@@ -366,4 +374,63 @@ class Statblock:
     def add_temporary_speed(self, new_speed):
         self._speed += new_speed
 
+class TurnResources:
+    def __init__(self):
+        self._action = True
+        self._bonus_action = True
+        self._reaction = True
+        self._free_object_interaction = True
     
+    def reset(self):
+        self._action = True
+        self._bonus_action = True
+        self._reaction = True
+        self._free_object_interaction = True
+    
+    def can_use(self, use_time):
+        if use_time.is_special:
+            if use_time.is_action:
+                return self._action
+            elif use_time.is_bonus_action:
+                return self._bonus_action
+            elif use_time.is_reaction:
+                return self._reaction
+        else:
+            return self._action
+        return False  # Failsafe
+
+    def use_from_use_time(self, use_time):
+        if use_time.is_special:
+            if use_time.is_action:
+                return self.use_action()
+            elif use_time.is_bonus_action:
+                return self.use_bonus_action()
+            elif use_time.is_reaction:
+                return self.use_reaction()
+        else:
+            return self.use_action()
+        return False  # Failsafe
+
+    def use_action(self):
+        if self._action:
+            self._action = False
+            return True
+        return False
+    
+    def use_bonus_action(self):
+        if self._bonus_action:
+            self._bonus_action = False
+            return True
+        return False
+    
+    def use_reaction(self):
+        if self._reaction:
+            self._reaction = False
+            return True
+        return False    
+    
+    def use_free_object_interaction(self):
+        if self._free_object_interaction:
+            self._free_object_interaction = False
+            return True
+        return False

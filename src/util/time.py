@@ -43,6 +43,15 @@ class UseTime():
     @property
     def is_reaction(self):
         return self._minutes == UseTime.Special.Reaction.value
+    
+    def __repr__(self) -> str:
+        return f"UseTime({self.Special(self._minutes).name.lower()})" if not self.is_special else f"UseTime({self._minutes} minutes)"
+    
+    def __str__(self) -> str:
+        if self.is_special:
+            return self.Special(self._minutes).name.lower()
+        else:
+            return f"{self._minutes} minute" + ("s" if self._minutes > 1 else "")
 
 class Timer():
     def __init__(self, time = 0):

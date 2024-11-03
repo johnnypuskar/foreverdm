@@ -134,7 +134,8 @@ class TestStatblock(unittest.TestCase):
         statblock.add_ability(ability)
         self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
 
-        # Verify running with parameters returns correct values and passes parameters
+        # Reset actions, verify running with parameters returns correct values and passes parameters
+        statblock._turn_resources.reset()
         self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability", 1, 2))
         self.assertEqual((1, 2), ability.run.call_args[0])
     
@@ -165,6 +166,77 @@ class TestStatblock(unittest.TestCase):
         self.assertEqual((1, 2), ability_main.initialize.return_value.run.call_args[0][1:])
         self.assertEqual((3, 4), ability_sub.run.call_args[0])
 
+    @patch('src.stats.abilities.Ability')
+    @patch('src.util.time.UseTime')
+    def test_ability_action_use(self, AbilityMock, UseTimeMock):
+        # Create statblock and ability
+        statblock = Statblock("Tester")
+        ability = AbilityMock.return_value
+        ability._name = "test_ability"
+        ability.is_modifier = False
+        ability.run.return_value = (True, "Ran test")
+        ability._use_time = UseTimeMock.return_value
+        ability._use_time.__str__.return_value = "use_time"
+
+        # Set use time to be action and add ability
+        ability._use_time.is_action = True
+        statblock.add_ability(ability)
+
+
+        # Verify running returns correct values and expends action
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+        self.assertFalse(statblock._turn_resources._action)
+        self.assertTrue(statblock._turn_resources._bonus_action)
+        self.assertTrue(statblock._turn_resources._reaction)
+        self.assertTrue(statblock._turn_resources._free_object_interaction)
+
+        # Verify running again fails due to no action remaining
+        self.assertEqual((False, "No use_time remaining to use test_ability."), statblock.use_ability("test_ability"))
+
+        # Reset statblock and verify ability can be used again
+        statblock._turn_resources.reset()
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+
+
+        # Reset statblock and change use time to bonus action
+        statblock._turn_resources.reset()
+        ability._use_time.is_action = False
+        ability._use_time.is_bonus_action = True
+
+        # Verify running returns correct values and expends bonus action
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+        self.assertTrue(statblock._turn_resources._action)
+        self.assertFalse(statblock._turn_resources._bonus_action)
+        self.assertTrue(statblock._turn_resources._reaction)
+        self.assertTrue(statblock._turn_resources._free_object_interaction)
+
+        # Verify running again fails due to no bonus action remaining
+        self.assertEqual((False, "No use_time remaining to use test_ability."), statblock.use_ability("test_ability"))
+
+        # Reset statblock and verify ability can be used again
+        statblock._turn_resources.reset()
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+
+
+        # Reset statblock and change use time to reaction
+        statblock._turn_resources.reset()
+        ability._use_time.is_bonus_action = False
+        ability._use_time.is_reaction = True
+
+        # Verify running returns correct values and expends reaction
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+        self.assertTrue(statblock._turn_resources._action)
+        self.assertTrue(statblock._turn_resources._bonus_action)
+        self.assertFalse(statblock._turn_resources._reaction)
+        self.assertTrue(statblock._turn_resources._free_object_interaction)
+
+        # Verify running again fails due to no reaction remaining
+        self.assertEqual((False, "No use_time remaining to use test_ability."), statblock.use_ability("test_ability"))
+
+        # Reset statblock and verify ability can be used again
+        statblock._turn_resources.reset()
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+    
     # Health
     def test_get_hit_points(self):
         statblock = Statblock("Tester")
