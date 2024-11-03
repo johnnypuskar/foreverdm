@@ -1,7 +1,7 @@
 from src.combat.turns.agents.turn_agent import TurnAgent
 from src.combat.turns.turn_actions import *
 
-class TurnManger:
+class TurnManager:
     def __init__(self, agents = []):
         self._agents = agents
     
