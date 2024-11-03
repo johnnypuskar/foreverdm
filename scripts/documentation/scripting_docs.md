@@ -389,15 +389,13 @@ Used to return a list of the additional abilities this effect grants.
 
 ## Defining SubEffects
 
-Some effects are defined as a part of a related ability or effect, such as a secondary effect applied after meeting certain conditions, or an effect applied by using ability. These subeffects have their functions and parameters defined in a table format within the ability script at the top level. The table name can then be passed to the statblock to apply its effects.
+Some effects are defined as a part of a related ability or effect, such as a secondary effect applied after meeting certain conditions, or an effect applied by using ability. These SubEffects have their functions and parameters defined in a table format within the ability script at the top level. The table name can then be passed to the statblock to apply its effects. Specific global constant values for things such as statblock reference values may also be passed to the SubEffect through a table parameter in the `add_effect` function, which is optional and defaults to an empty table when not used, but SubEffects also have access to other top level variables defined in the script.
 
 #### Example Ability Applying a SubEffect
 This example defines an ability which applies a specially-created effect called `effect_name`
 ```
 -- Effect definition, made at top level
 effect_name = {
-  caster = statblock,
-
   ability_check_give = function(type, trigger)
     -- Effect effect logic goes here, example gives advantage on any ability check
     return {advantage = true, disadvantage = false, bonus = 0, auto_succeed = false, auto_fail = false}
@@ -406,7 +404,7 @@ effect_name = {
 
 function run(...)
   -- Example application of effect
-  statblock:add_effect("effect_name")
+  statblock:add_effect("effect_name", Duration("round", 1), {"caster": statblock:get_name()})
 end
 ```
 ## Defining SubAbilities
@@ -454,7 +452,7 @@ applied_effect = {
 secondary_ability = {
   use_time = UseTime("bonus_action", 1),
   run = function(target)
-    target:add_effect("secondary_effect")
+    target:add_effect("secondary_effect", Duration("round", 4))
   end
 }
 
@@ -463,6 +461,6 @@ secondary_effect = {
 }
 
 function run(target)
-  target:add_effect("applied_effect")
+  target:add_effect("applied_effect", Duration("minute", 1))
 end
 ```

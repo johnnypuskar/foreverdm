@@ -332,8 +332,8 @@ class StatblockAbilityWrapper:
     def __getattr__(self, name):
         return getattr(self._statblock, name)
 
-    def add_effect(self, effect_name, duration):
-        self._statblock._abilities.emit(EventType.ABILITY_APPLIED_EFFECT, effect_name, self._ability._script, duration)
+    def add_effect(self, effect_name, duration, globals = {}):
+        self._statblock._abilities.emit(EventType.ABILITY_APPLIED_EFFECT, effect_name, self._ability._script, duration, globals)
     
     def remove_effect(self, effect_name):
         self._statblock._abilities.emit(EventType.ABILITY_REMOVED_EFFECT, effect_name)

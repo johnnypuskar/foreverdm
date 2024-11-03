@@ -62,8 +62,8 @@ class EffectIndex(Observer, Emitter):
     
     def signal(self, event: str, *data):
         if event == EventType.ABILITY_APPLIED_EFFECT:
-            # [data] = [effect_name, script, duration]
-            ability_effect = SubEffect(data[0], data[1])
+            # [data] = [effect_name, script, duration, globals]
+            ability_effect = SubEffect(data[0], data[1], data[3])
             self.add(ability_effect, data[2])
         elif event == EventType.ABILITY_REMOVED_EFFECT:
             # [data] = [effect_name]
@@ -131,7 +131,7 @@ class StatblockSubEffectWrapper:
     def __getattr__(self, name):
         return getattr(self._statblock, name)
     
-    def add_effect(self, subeffect_name, duration):
-        subeffect = SubEffect(subeffect_name, self._effect._script, self._effect._globals)
+    def add_effect(self, subeffect_name, duration, globals = {}):
+        subeffect = SubEffect(subeffect_name, self._effect._script, globals)
         return self._statblock.add_effect(subeffect, duration)
     

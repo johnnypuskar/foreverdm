@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from src.util.constants import EventType
 from src.util.time import UseTime
 from src.stats.abilities import AbilityIndex, Ability, CompositeAbility

@@ -135,7 +135,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script, 1)
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script, 1, {})
 
         # Verify test effect was added to the index
         self.assertIn("ability_effect", effect_index.effect_names)
@@ -148,7 +148,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal to remove the effect
-        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "ability_effect", 1)
+        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "ability_effect", 1, {})
 
         # Verify the effect was removed from the index
         self.assertNotIn("ability_effect", effect_index.effect_names)
@@ -177,8 +177,8 @@ class TestEffect(unittest.TestCase):
         results = effect_index.get_function_results("make_attack_roll", None, None)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1)
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1)
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1, {})
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1, {})
 
         # Verify test effects were added to the index
         self.assertIn("first_effect", effect_index.effect_names)
@@ -193,13 +193,11 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal to remove the first effect
-        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "first_effect", 1)
+        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "first_effect")
 
         # Verify only the first effect was removed from the index
         self.assertNotIn("first_effect", effect_index.effect_names)
         self.assertIn("second_effect", effect_index.effect_names)
-
-
 
     @patch('src.stats.statblock.Statblock')
     def test_statblock_wrapper(self, StatblockMock):
