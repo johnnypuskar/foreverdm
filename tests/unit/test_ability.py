@@ -19,6 +19,10 @@ class TestAbility(unittest.TestCase):
         self.assertEqual(1, len(index._abilities))
         self.assertEqual(ability, index.get_ability("test_ability"))
 
+        # Test name character restriction
+        with self.assertRaises(ValueError):
+            Ability("^continue", "")
+
     def test_remove_ability(self):
         # Create test index and ability
         index = AbilityIndex()
@@ -59,13 +63,293 @@ class TestAbility(unittest.TestCase):
         ]
         self.assertEqual(expected, index.get_headers())
     
+    def test_get_active_use_headers(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability_a = Ability("ability_a", '''
+            use_time = UseTime("minute", 1)
+            
+            function run()
+                return 15
+            end
+        ''')
+        ability_b = Ability("ability_b", '''
+            use_time = UseTime("minute", 2)
+            
+            function run(target)
+                return 15
+            end
+        ''')
+        ability_c = Ability("ability_c", '''
+            use_time = UseTime("action", 1)
+                            
+            function run(position)
+                return 15
+            end
+        ''')
+        
+        # Add abilities to index
+        index.add(ability_a)
+        index.add(ability_b)
+        index.add(ability_c)
+
+        # Verify headers are correct
+        expected = [
+            ("ability_a", ()),
+            ("ability_b", ("target",)),
+            ("ability_c", ("position",))
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Start using ability and verify use timer began and active use headers are split correctly
+        run_result = index.run("ability_a", None)
+        expected = (False, "Preparing to use ability_a, 9 turns remaining.")
+        self.assertEqual(expected, run_result)
+
+        expected = [
+            ("^continue.ability_a", ()),
+            ("^new_use.ability_a", ()),
+            ("ability_b", ("target",)),
+            ("ability_c", ("position",))
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Run different ability and verify active use headers are changed and split correctly
+        run_result = index.run("ability_b", None)
+        expected = (False, "Preparing to use ability_b, 19 turns remaining.")
+        self.assertEqual(expected, run_result)
+
+        expected = [
+            ("ability_a", ()),
+            ("^continue.ability_b", ("target",)),
+            ("^new_use.ability_b", ("target",)),
+            ("ability_c", ("position",))
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Run ability with single action use time and verify active use ability is not set and headers are reset
+        run_result = index.run("ability_c", None)
+        expected = 15
+        self.assertEqual(expected, run_result)
+
+        expected = [
+            ("ability_a", ()),
+            ("ability_b", ("target",)),
+            ("ability_c", ("position",))
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+    def test_active_use_headers_sequence(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        modifier = Ability("modifier", '''
+            can_modify = {"test_ability", "control_ability"}
+            
+            function modify(amount)
+                modified_amount = amount
+                return true, "Set modified amount"
+            end
+        ''', "modify", {"modified_amount": 0})
+        ability_a = Ability("test_ability", '''
+            use_time = UseTime("minute", 1)
+            
+            function run()
+                return modified_amount + 5, "Returning modified amount plus 5"
+            end
+        ''', "run", {"modified_amount": 0})
+        ability_b = Ability("control_ability", '''
+            use_time = UseTime("minute", 2)
+            
+            function run()
+                return modified_amount + 20
+            end
+        ''', "run", {"modified_amount": 0})
+
+        # Add abilities to index
+        index.add(modifier)
+        index.add(ability_a)
+        index.add(ability_b)
+
+        # Verify initial headers
+        expected = [
+            ("modifier", ("amount",)),
+            ("test_ability", ()),
+            ("control_ability", ())
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Run sequence and verify use timer began and active use headers are split correctly
+        run_result = index.run_sequence("test_ability", None, [("modifier", 35)])
+        expected = (False, "Preparing to use test_ability, 9 turns remaining.")
+        self.assertEqual(expected, run_result)
+
+        expected = [
+            ("modifier", ("amount",)),
+            ("^continue.test_ability", ()),
+            ("^new_use.test_ability", ()),
+            ("control_ability", ())
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Run different ability sequence and verify active use headers are changed
+        run_result = index.run_sequence("control_ability", None, [("modifier", 35)])
+        expected = (False, "Preparing to use control_ability, 19 turns remaining.")
+        self.assertEqual(expected, run_result)
+
+        expected = [
+            ("modifier", ("amount",)),
+            ("test_ability", ()),
+            ("^continue.control_ability", ()),
+            ("^new_use.control_ability", ())
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Verify that running the modifier ability on it's own raises an error and does not change headers
+        with self.assertRaises(ValueError):
+            index.run("modifier", None, 35)
+        self.assertEqual(expected, index.get_headers())    
+
+    def test_active_use_headers_composite(self):
+        # Create test index and composite abilities
+        index = AbilityIndex()
+        composite = CompositeAbility("composite", "")
+        ability_a = Ability("ability_a", '''
+            use_time = UseTime("minute", 1)
+            
+            function run()
+                return 15
+            end
+        ''')
+        ability_b = Ability("ability_b", '''
+            use_time = UseTime("minute", 2)
+            
+            function run(target)
+                return 20
+            end
+        ''')
+        ability_c = Ability("ability_c", '''
+            use_time = UseTime("action", 1)
+            
+            function run(position)
+                return 25
+            end
+        ''')
+
+        # Add abilities to composite ability
+        composite.add(ability_a)
+        composite.add(ability_b)
+
+        # Add composite ability and standalone ability to index
+        index.add(composite)
+        index.add(ability_c)
+
+        # Verify initial headers are correct
+        expected = [
+            ("composite.ability_a", ()),
+            ("composite.ability_b", ("target",)),
+            ("ability_c", ("position",))
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Start using composite ability and verify use timer began and active use headers are split correctly
+        run_result = index.run("composite.ability_a", None)
+        expected = (False, "Preparing to use composite.ability_a, 9 turns remaining.")
+        self.assertEqual(expected, run_result)
+
+        expected = [
+            ("^continue.composite.ability_a", ()),
+            ("^new_use.composite.ability_a", ()),
+            ("composite.ability_b", ("target",)),
+            ("ability_c", ("position",))
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Run different composite ability and verify active use headers are changed
+        run_result = index.run("composite.ability_b", None)
+        expected = (False, "Preparing to use composite.ability_b, 19 turns remaining.")
+        self.assertEqual(expected, run_result)
+
+        expected = [
+            ("composite.ability_a", ()),
+            ("^continue.composite.ability_b", ("target",)),
+            ("^new_use.composite.ability_b", ("target",)),
+            ("ability_c", ("position",))
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Run ability with single action use time and verify active use ability is not set and headers are reset
+        run_result = index.run("ability_c", None)
+        expected = 25
+        self.assertEqual(expected, run_result)
+
+        expected = [
+            ("composite.ability_a", ()),
+            ("composite.ability_b", ("target",)),
+            ("ability_c", ("position",))
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+    def test_active_use_ability_counter(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability_a = Ability("ability_a", '''
+            use_time = UseTime("minute", 1)
+
+            function run()
+                return 15
+            end
+        ''')
+        ability_b = Ability("ability_b", '''
+            use_time = UseTime("minute", 2)
+            
+            function run(target)
+                return 20
+            end
+        ''')
+
+        # Add abilities to index
+        index.add(ability_a)
+        index.add(ability_b)
+
+        # Use ability and verify use timer began
+        expected = (False, "Preparing to use ability_a, 9 turns remaining.")
+        result = index.run("ability_a", None)
+        self.assertEqual(expected, result)
+
+        # Verify attempting to use the default name throws a value error
+        with self.assertRaises(ValueError):
+            index.run("ability_a", None)
+        
+        # Continue ability use and verify use timer is decremented
+        expected = (False, "Preparing to use ability_a, 8 turns remaining.")
+        result = index.run("^continue.ability_a", None)
+        self.assertEqual(expected, result)
+
+        # Start new ability use and verify use timer is reset
+        expected = (False, "Preparing to use ability_a, 9 turns remaining.")
+        result = index.run("^new_use.ability_a", None)
+        self.assertEqual(expected, result)
+
+        # Run ability time down to completion by calling 10 times and verify it gets run
+        self.assertFalse(index.run("^continue.ability_a", None)[0])
+        self.assertFalse(index.run("^continue.ability_a", None)[0])
+        self.assertFalse(index.run("^continue.ability_a", None)[0])
+        self.assertFalse(index.run("^continue.ability_a", None)[0])
+        self.assertFalse(index.run("^continue.ability_a", None)[0])
+        self.assertFalse(index.run("^continue.ability_a", None)[0])
+        self.assertFalse(index.run("^continue.ability_a", None)[0])
+        self.assertFalse(index.run("^continue.ability_a", None)[0])
+        
+        expected = 15
+        result = index.run("^continue.ability_a", None)
+        self.assertEqual(expected, result)
+
     def test_get_composite_headers(self):
         # Create test index and composite abilities
         index = AbilityIndex()
         composite = CompositeAbility("composite", "")
         ability_a = Ability("ability_a", "function run() end")
         ability_b = Ability("ability_b", "function run(target) end")
-
         ability_c = Ability("ability_c", "function run(position) end")
 
         # Add abilities to composite ability
@@ -146,7 +430,6 @@ class TestAbility(unittest.TestCase):
         # Verify that attempting to run the composite ability itself raises an error
         with self.assertRaises(ValueError):
             index.run("composite", None)
-    
     
     def test_run_nested_composite_ability(self):
         # Create test index and composite abilities

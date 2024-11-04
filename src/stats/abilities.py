@@ -1,11 +1,13 @@
 from enum import Enum
 from src.util.time import UseTime
 from src.util.lua_manager import LuaManager
-from src.util.constants import EventType, ScriptData
+from src.util.constants import EventType, ScriptData, AbilityHeaderControlFlag
 from src.util.observer import Observer, Emitter
 
 class Ability:
     def __init__(self, name, script, function_name = "run", globals = {}):
+        if not all(c.isalnum() or c in ["_"] for c in name):
+            raise ValueError("Ability name can only include alphanumerics and underscores.")
         self._name = name
         self._function_name = function_name
         self._globals = globals
@@ -21,10 +23,7 @@ class Ability:
         self._is_modifier = len(list(lua.globals['can_modify'])) > 0
         self._use_time = UseTime.from_table(dict(lua.globals['use_time']))
 
-        if self._use_time.is_special:
-            self._use_delay = 0
-        else:
-            self._use_delay = self._use_time.minutes
+        self.reset_use_delay()
 
     @property
     def header(self):
@@ -55,7 +54,17 @@ class Ability:
         return lua.analyze_for_call(self._script, "target", "take_damage")
 
     def reset_use_delay(self):
-        self._use_delay = self._use_time.minutes
+        if self._use_time.is_special:
+            self._use_delay = 0
+        else:
+            self._use_delay = self._use_time.minutes * 10
+
+    def ready_check(self):
+        if self._use_delay > 1:
+            self._use_delay -= 1
+            return False
+        self._use_delay = 0
+        return True
 
     def set_lua(self, lua):
         self._lua = lua
@@ -169,10 +178,7 @@ class SubAbility(Ability):
         self._is_modifier = "can_modify" in ability_dict.keys() and len(list(ability_dict['can_modify'])) > 0
         self._use_time = UseTime.from_table(dict(ability_dict['use_time']))
 
-        if self._use_time.is_special:
-            self._use_delay = 0
-        else:
-            self._use_delay = self._use_time.minutes
+        self.reset_use_delay()
 
         for key, value in lua.get_full_value(f"{name}").items():
             if key not in self._globals and value is not None:
@@ -197,6 +203,7 @@ class AbilityIndex(Observer, Emitter):
     def __init__(self):
         super().__init__()
         self._abilities = {}
+        self._active_use_ability = None
 
     def signal(self, event: str, *data):
         if event == EventType.EFFECT_GRANTED_ABILITY:
@@ -217,13 +224,36 @@ class AbilityIndex(Observer, Emitter):
             raise ValueError("Ability does not exist in index.")
         del self._abilities[name]
     
+    def _separate_header_control_flags(self, name):
+        control_flags = []
+        ability_name = []
+        name_split = name.split(".")
+        for name_segment in name_split:
+            if name_segment[0] == "^":
+                if name_segment == "^continue":
+                    control_flags.append(AbilityHeaderControlFlag.CONTINUE)
+                elif name_segment == "^new_use":
+                    control_flags.append(AbilityHeaderControlFlag.NEW_USE)
+            else:
+                ability_name.append(name_segment)
+        return (".".join(ability_name), control_flags)
+
     def get_headers(self):
         headers = []
         for ability in self._abilities.values():
             if type(ability) is CompositeAbility:
-                headers.extend(ability.header)
+                for new_header in ability.header:
+                    if new_header[0] == self._active_use_ability:
+                        headers.append((f"^continue.{new_header[0]}", new_header[1]))
+                        headers.append((f"^new_use.{new_header[0]}", new_header[1]))
+                    else:
+                        headers.append(new_header)
             else:
-                headers.append(ability.header)
+                if ability.header[0] == self._active_use_ability:
+                    headers.append((f"^continue.{ability.header[0]}", ability.header[1]))
+                    headers.append((f"^new_use.{ability.header[0]}", ability.header[1]))
+                else:
+                    headers.append(ability.header)
         return headers
 
     def get_all_keys(self):
@@ -236,6 +266,7 @@ class AbilityIndex(Observer, Emitter):
         return keys
     
     def get_ability(self, name):
+        name, _ = self._separate_header_control_flags(name)
         name_split = name.split(".")
         if len(name_split) == 1:
             if name not in self._abilities:
@@ -253,26 +284,59 @@ class AbilityIndex(Observer, Emitter):
         return name in self.get_all_keys()
 
     def run(self, name, statblock, *args):
-        if not self.has_ability(name):
-            raise ValueError(f"Ability {name} does not exist in index.")
-        if self.get_ability(name).is_modifier:
-            raise ValueError(f"Ability {name} is a modifier ability and cannot be run as a main ability")
-        ability = self.get_ability(name)
+        ability_name, control_flags = self._separate_header_control_flags(name)
+
+        if not self.has_ability(ability_name):
+            raise ValueError(f"Ability {ability_name} does not exist in index.")
+        if self._active_use_ability is ability_name and len(control_flags) == 0:
+            raise ValueError(f"Ability {name} is active use ability, must use control flag to determine continue use or new_use.")
+
+        # TODO: Verify that you want to override the active use ability
+        
+        ability = self.get_ability(ability_name)
+
+        if ability.is_modifier:
+            raise ValueError(f"Ability {ability_name} is a modifier ability and cannot be run as a main ability")
+
+        if self._active_use_ability != ability_name or (self._active_use_ability == ability_name and AbilityHeaderControlFlag.NEW_USE in control_flags):
+            self._active_use_ability = ability_name
+            self.get_ability(self._active_use_ability).reset_use_delay()
+        
+        if not ability.ready_check():
+            return (False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")
+        self._active_use_ability = None
+
         ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
         return ability.run(*args)
 
     def run_sequence(self, name, statblock, modifiers, *args):
-        # Check if main run ability exists in index and is a run ability
-        if name not in self.get_all_keys():
-            raise ValueError(f"Ability {name} does not exist in index.")
-        
+        # Check if main run ability exists in index
+        ability_name, control_flags = self._separate_header_control_flags(name)
+
+        if not self.has_ability(ability_name):
+            raise ValueError(f"Ability {ability_name} does not exist in index.")
+        if self._active_use_ability is ability_name and len(control_flags) == 0:
+            raise ValueError(f"Ability {ability_name} is active use ability, must use control flag to determine continue use or new_use.")
+
+        # TODO: Verify that you want to override the active use ability
+
         # Initialize the main run ability
-        ability = self.get_ability(name)
+        ability = self.get_ability(ability_name)
 
         # Check if main ability is a modifier ability, and throw an error if so
         if ability.is_modifier:
-            raise ValueError(f"Ability {name} is a modifier ability and cannot be run as a main ability.")
+            raise ValueError(f"Ability {ability_name} is a modifier ability and cannot be run as a main ability.")
 
+        # TODO: Verify that you want to override the active use ability
+        if self._active_use_ability != ability_name or (self._active_use_ability == ability_name and AbilityHeaderControlFlag.NEW_USE in control_flags):
+            self._active_use_ability = ability_name
+            self.get_ability(self._active_use_ability).reset_use_delay()
+        
+
+        if not ability.ready_check():
+            return (False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")
+        self._active_use_ability = None
+        
         env = ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
 
         # Store ability function in a variable for later reference to avoid overwriting the main ability function with a modifider that has the same name

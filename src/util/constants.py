@@ -167,7 +167,11 @@ class ScriptData:
     '''
 
 class EventType:
-    EFFECT_GRANTED_ABILITY = "effect_granted_ability",
+    EFFECT_GRANTED_ABILITY = "effect_granted_ability"
     EFFECT_REMOVED_ABILITY = "effect_removed_ability"
     ABILITY_APPLIED_EFFECT = "ability_applied_effect"
     ABILITY_REMOVED_EFFECT = "ability_removed_effect"
+
+class AbilityHeaderControlFlag:
+    NEW_USE = "new_use_flag",
+    CONTINUE = "continue_flag",
