@@ -325,6 +325,11 @@ class TestAbility(unittest.TestCase):
         result = index.run("^continue.ability_a", None)
         self.assertEqual(expected, result)
 
+        # Verify using a different ability starts it's own counter properly
+        expected = (False, "Preparing to use ability_b, 19 turns remaining.")
+        result = index.run("ability_b", None)
+        self.assertEqual(expected, result)
+
         # Start new ability use and verify use timer is reset
         expected = (False, "Preparing to use ability_a, 9 turns remaining.")
         result = index.run("^new_use.ability_a", None)
