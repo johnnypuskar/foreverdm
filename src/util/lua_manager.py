@@ -24,7 +24,7 @@ class LuaManager:
         return info['namewhat']
 
     def execute(self, script):
-        self._lua.execute(script)
+        return self._lua.execute(script)
 
     def run(self, function_name, *args):
         function = self._get_function(function_name)

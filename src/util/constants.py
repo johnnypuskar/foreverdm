@@ -136,6 +136,12 @@ class ScriptData:
     end
     '''
 
+    ABILITY_VALIDATE = '''
+    function validate(parameter)
+        return true, nil
+    end
+    '''
+
     DURATION = '''
     function Duration(unit, value)
         value = value or 1
@@ -143,7 +149,6 @@ class ScriptData:
             error("Invalid unit for Duration")
         end
         if value <= 0 then
-            error("Duration value must be greater than 0")
         end
         return {unit = unit, value = value}
     end

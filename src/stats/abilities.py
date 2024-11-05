@@ -13,7 +13,7 @@ class Ability:
         self._globals = globals
         self._lua = None
 
-        self._script = ScriptData.USE_TIME + ScriptData.DURATION + ScriptData.SPEED + script
+        self._script = ScriptData.USE_TIME + ScriptData.DURATION + ScriptData.SPEED + ScriptData.ABILITY_VALIDATE + script
 
         lua = LuaManager()
         lua.execute("use_time = {unit = 'undefined', value = -1}")
@@ -79,13 +79,20 @@ class Ability:
         self._lua.execute(self._script)
         return self._lua
 
-    def run(self, *args):
-        if self._use_delay > 0:
-            self._use_delay -= 1
-            # TODO: Put a real message in here
-            return (False, "MESSAGE WITH REMAINING USE DELAY TURNS")
+    def validate(self, *args):
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
+        validated, validation_message = self._lua.run("validate", *args)
+        if not validated:
+            return (False, validation_message)
+        return (True, None)
+
+    def run(self, *args):
+        if self._lua is None:
+            raise RuntimeError("LuaManager not initialized.")
+        validated, validation_message = self.validate(*args)
+        if not validated:
+            return (False, validation_message)
         return self._lua.run(self._function_name, *args)
 
     def __repr__(self):
@@ -170,6 +177,11 @@ class SubAbility(Ability):
         self._lua = None
 
         self._script = ScriptData.USE_TIME + ScriptData.SPEED + script
+        self._script += f'''
+        if {self._name}.validate == nil then
+            {self._name}.validate = function(p) return true, nil end
+        end
+        '''
 
         lua = LuaManager()
         lua.execute(self._script)
@@ -184,18 +196,24 @@ class SubAbility(Ability):
             if key not in self._globals and value is not None:
                 self._globals[key] = value
 
-    
     def initialize(self, globals):
         super().initialize(globals)
         self._lua.merge_globals(dict(self._lua.globals[self._name]))
 
-    def run(self, *args):
-        if self._use_delay > 0:
-            self._use_delay -= 1
-            # TODO: Put a real message in here
-            return (False, "MESSAGE WITH REMAINING USE DELAY TURNS")
+    def validate(self, *args):
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
+        validated, validation_message = self._lua.run_nested(f"{self._name}.validate", *args)
+        if not validated:
+            return (False, validation_message)
+        return (True, None)
+
+    def run(self, *args):
+        if self._lua is None:
+            raise RuntimeError("LuaManager not initialized.")
+        validated, validation_message = self.validate(*args)
+        if not validated:
+            return (False, validation_message)
         return self._lua.run_nested(f"{self._name}.{self._function_name}", *args)
 
 
@@ -302,11 +320,18 @@ class AbilityIndex(Observer, Emitter):
             self._active_use_ability = ability_name
             self.get_ability(self._active_use_ability).reset_use_delay()
         
+        ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
+        
+        validated, validation_message = ability.validate(*args)
+        if not validated:
+            self._active_use_ability = None
+            ability.reset_use_delay()
+            return (False, validation_message)
+
         if not ability.ready_check():
             return (False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")
         self._active_use_ability = None
 
-        ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
         return ability.run(*args)
 
     def run_sequence(self, name, statblock, modifiers, *args):
@@ -332,13 +357,18 @@ class AbilityIndex(Observer, Emitter):
             self._active_use_ability = ability_name
             self.get_ability(self._active_use_ability).reset_use_delay()
         
+        env = ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
+        
+        validated, validation_message = ability.validate(*args)
+        if not validated:
+            self._active_use_ability = None
+            ability.reset_use_delay()
+            return (False, validation_message)
 
         if not ability.ready_check():
             return (False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")
         self._active_use_ability = None
         
-        env = ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
-
         # Store ability function in a variable for later reference to avoid overwriting the main ability function with a modifider that has the same name
         override_protection_script = f'''
             _sequence_ability_function = {ability._function_name}

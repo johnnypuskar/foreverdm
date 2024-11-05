@@ -128,6 +128,7 @@ class TestStatblock(unittest.TestCase):
         ability = AbilityMock.return_value
         ability._name = "test_ability"
         ability.is_modifier = False
+        ability.validate.return_value = (True, None)
         ability.run.return_value = (True, "Ran test")
 
         # Add ability and verify running returns correct values
@@ -146,11 +147,13 @@ class TestStatblock(unittest.TestCase):
         ability_main = MagicMock()
         ability_main._name = "test_ability_main"
         ability_main.is_modifier = False
+        ability_main.validate.return_value = (True, None)
         ability_main.initialize.return_value.run.return_value = (True, "Ran test main.")
 
         ability_sub = MagicMock()
         ability_sub._name = "test_ability_sub"
         ability_sub.is_modifier = True
+        ability_sub.validate.return_value = (True, None)
         ability_sub.can_modify.return_value = True
         ability_sub.run.return_value = (True, "Ran test sub.")
 
@@ -174,6 +177,7 @@ class TestStatblock(unittest.TestCase):
         ability = AbilityMock.return_value
         ability._name = "test_ability"
         ability.is_modifier = False
+        ability.validate.return_value = (True, None)
         ability.run.return_value = (True, "Ran test")
         ability._use_time = UseTimeMock.return_value
         ability._use_time.__str__.return_value = "use_time"

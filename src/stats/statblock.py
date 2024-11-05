@@ -341,11 +341,9 @@ class Statblock:
                 damage_table = DiceParser.parse_string(damage_dice)
                 overall_damage_table[damage_type] = damage_table
 
-            die_multiplier = 1
-            if roll_result == 20:
-                die_multiplier = 2
+            die_multiplier = 2 if roll_result == 20 else 1
             
-            # TODO: Roll all damage concurrently to allow for reaction abilities to modifier the whole damage roll - queue and execute system?
+            # TODO: Roll all damage concurrently to allow for roll reaction abilities to modifier the whole damage roll - queue and execute system?
             for damage_type, damage_dice_table in overall_damage_table.items():
                 damage_sum = 0
                 for die_type, amount in damage_dice_table.items():
@@ -355,21 +353,11 @@ class Statblock:
                         damage_sum += DiceRoller.roll_custom(die_type, amount * die_multiplier)
                 target.take_damage(damage_sum, damage_type)
             return True
-    
+
     ## Speed and Movement
     def get_speed(self, type = "walk"):
-        # TODO: Factor in effects and speed modifiers
-        match type:
-            case "walk":
-                return self._speed.walk
-            case "swim":
-                return self._speed.swim
-            case "climb":
-                return self._speed.climb
-            case "fly":
-                return self._speed.fly
-            case "burrow":
-                return self._speed.burrow
+        pass
+
     
     def add_temporary_speed(self, new_speed):
         self._speed += new_speed

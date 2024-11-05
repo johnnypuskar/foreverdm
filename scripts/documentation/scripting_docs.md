@@ -24,7 +24,7 @@ An ability is any potential action a character could take, defined by a Lua scri
 
 ## Function Definitions and Headers
 
-An ability file will always define one of two functions: `run()` or `modify()`, but the parameters of the function may be one of several possibilities depending on the type of ability. An ability file may never define both functions. Within the both the `run()` and `modify()` functions, a global `statblock` object will be defined that is a reference to the statblock of the character that has used the ability.
+An ability file will always define one of two functions: `run()` or `modify()`, but the parameters of the function may be one of several possibilities depending on the type of ability. An ability file may never define both functions. Within the both the `run()` and `modify()` functions, as well as the possible `validate()` function, a global `statblock` object will be defined that is a reference to the statblock of the character that has used the ability.
 
 ### run()
 
@@ -44,12 +44,21 @@ The `run()` function is the most common, and is used for abilities which have an
 
 ### modify()
 
-The `modify()` function is used in special cases when an ability does not affect the user or some target, but changes how a different ability would act. In practice, this is done by running the code contained in `modify()` before the code in the subsequent abilitiu's `run()` function, to apply changes or temporary effects before it is used.
+The `modify()` function is used in special cases when an ability does not affect the user or some target, but changes how a different ability would act. In practice, this is done by running the code contained in `modify()` before the code in the subsequent abilitiy's `run()` function, to apply changes or temporary effects before it is used.
 
 #### modify(...)
 - The modify function can be defined with any number of arguments, or none at all if they are not required. Functions names should be self-explanatory, and use lowercase snake case for name formatting (ex. `spell_level` or `charges_used`).
 **Returns:** Boolean
 - The modify function returns true in the case that the ability was subsequently modified (i.e. any checks on if the ability was allowed to run passed, and the modification code was run to change the ability for this usage). Otherwise, it returns false to indicate failure, and the subsequent ability in the chain is not run.
+
+### validate()
+
+The `validate()` function is used to run any necessary checks to determine if the ability is able to be used at all, such as checking if the target is within a certain range or if the character using the ability has the required resources - like spell slots or ability charges. The header of the function will always have the same parameters as it's accompanying run or modify function, matching it perfectly as the same parameters are passed to both. If an ability is always able to be used, as in - there is no situation in which a character is unable to use it - there is no need to define a validate function, as validation defaults to always being true.
+
+#### validate(...)
+- The validate function should take in the exact same parameters as the abilities run or modify function. Character or object statistics, such as those of the character using the ability's statblock or a possible target, should never be changed or altered in a validate function, only referenced.
+**Returns:** boolean, string
+- The validate function returns two values: Firstly, a boolean success value which is true in the case that the ability is able to be used. If there is a case in which the ability used with the provided parameters is not possible to be used before even trying, such as targeting a creature out of range or out of sight for abilities that require it, it should return false. The second value is a string descriptor in the case of a false validation, describing why it failed the validation. If the first return value is true, the second return value is nil instead.
 
 ## Global Variables
 
@@ -358,9 +367,14 @@ Used when a triggering creature makes an skill check against the creature with t
 ### `modify_stat(stat)`
 Used to change the numerical value of a given stat on the character with the effect's statsheet
 **Parameters:**
-- `stat`: The stat to be modified, valid stats are `str`, `dex`, `con`, `int`, `wis`, `cha`, `max_hp`, `speed_walk`, `speed_fly`, `speed_swim`, `speed_burrow`, `speed_climb`, `armor_class`
+- `stat`: The stat to be modified, valid stats are `str`, `dex`, `con`, `int`, `wis`, `cha`, `max_hp`
 **Returns:**
 - **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiple, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
+
+### `modify_speed()`
+Used to change the numerical value of the character with the effect's base speed, i.e. what it resets to at the start of their turn
+**Returns:**
+- **SpeedModifier**: SpeedModifier table created using the `SpeedModifier()` helper function to define which speed type is modified, and in what way.
 
 ### `modify_armor_class()`
 Used to change the numerical value of the character with the effect's armor class

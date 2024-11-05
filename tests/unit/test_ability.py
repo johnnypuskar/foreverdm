@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 from src.util.constants import EventType
 from src.util.time import UseTime
-from src.stats.abilities import AbilityIndex, Ability, CompositeAbility
+from src.stats.abilities import AbilityIndex, Ability, CompositeAbility, SubAbility
 
 class TestAbility(unittest.TestCase):
     def test_add_ability(self):
@@ -592,6 +592,168 @@ class TestAbility(unittest.TestCase):
         expected = 5
         result = index.run("composite.ability_a", None)
         self.assertEqual(expected, result[0])
+
+    def test_validate_ability(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability = Ability("test_ability", '''
+            function validate(target)
+                if target > 10 then
+                    return false, "Target must be less than 10"
+                end
+                return true, nil
+            end
+                          
+            function run(target)
+                return 10
+            end
+        ''')
+
+        # Add ability to index
+        index.add(ability)
+
+        # Verify that running the ability with a valid target returns the correct value
+        expected = 10
+        result = index.run("test_ability", None, 5)
+        self.assertEqual(expected, result)
+
+        # Verify that running the ability with an invalid target return false and the failed validation message
+        expected = (False, "Target must be less than 10")
+        result = index.run("test_ability", None, 15)
+        self.assertEqual(expected, result)
+        
+    def test_validate_composite_ability(self):
+        # Create test index and composite abilities
+        index = AbilityIndex()
+        composite = CompositeAbility("composite", "")
+        ability_a = Ability("ability_a", '''
+            function validate(target)
+                if target > 10 then
+                    return false, "Target must be less than 10"
+                end
+                return true, nil
+            end
+                          
+            function run(target)
+                return 10
+            end
+        ''')
+        ability_b = Ability("ability_b", '''
+            function validate(target)
+                if target <= 10 then
+                    return false, "Target must be greater or equal to than 10"
+                end
+                return true, nil
+            end
+
+            function run(target)
+                return 20
+            end
+        ''')
+
+        # Add abilities to composite ability
+        composite.add(ability_a)
+        composite.add(ability_b)
+
+        # Add composite ability to index
+        index.add(composite)
+
+        # Verify that running the abilities with a valid target returns the correct value
+        expected = 10
+        result = index.run("composite.ability_a", None, 5)
+        self.assertEqual(expected, result)
+
+        expected = 20
+        result = index.run("composite.ability_b", None, 15)
+        self.assertEqual(expected, result)
+
+        # Verify that running the abilities with an invalid target return false and the failed validation message
+        expected = (False, "Target must be less than 10")
+        result = index.run("composite.ability_a", None, 15)
+        self.assertEqual(expected, result)
+
+        expected = (False, "Target must be greater or equal to than 10")
+        result = index.run("composite.ability_b", None, 5)
+        self.assertEqual(expected, result)
+
+    def test_validate_modifier_ability(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        modifier = Ability("modifier", '''
+            can_modify = {"test_ability"}
+            
+            function validate(amount)
+                if amount > 10 then
+                    return false, "Amount must be less than 10"
+                end
+                return true, nil
+            end
+                          
+            function modify(amount)
+                modified_amount = amount
+                return true, "Set modified amount"
+            end
+        ''', "modify", {"modified_amount": 0})
+        ability = Ability("test_ability", '''
+            function run(amount)
+                return modified_amount + amount, "Returning modified amount plus parameter"
+            end
+        ''', "run", {"modified_amount": 0})
+
+        # Add abilities to index
+        index.add(modifier)
+        index.add(ability)
+
+        # Verify that running the ability alone works
+        expected = 5
+        result = index.run("test_ability", None, 5)
+        self.assertEqual(expected, result[0])
+
+        # Verify that running the ability with a valid amount modifier works
+        expected = 10
+        result = index.run_sequence("test_ability", None, [("modifier", 5)], 5)
+        self.assertEqual(expected, result[0])
+
+        # Verify that running the ability with an invalid amount modifier returns false and the failed validation message
+        expected = (False, "Amount must be less than 10")
+        result = index.run_sequence("test_ability", None, [("modifier", 15)], 5)
+        self.assertEqual(expected, result)
+    
+    def test_validate_subability(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        subability = SubAbility("subability", '''
+            subability = {
+                validate = function(target)
+                    if target > 10 then
+                        return false, "Target must be less than 10"
+                    end
+                    return true, nil
+                end,
+                use_time = UseTime("action"),
+                run = function(target)
+                    return -20
+                end
+            }
+                                
+            function validate(target)
+                return true, nil
+            end
+        ''')
+        
+        # Add subability to index
+        index.add(subability)
+
+        # Verify that running the subability with a valid target returns the correct value
+        expected = -20
+        result = index.run("subability", None, 5)
+        self.assertEqual(expected, result)
+
+        # Verify that running the subability with an invalid target return false and the failed validation message
+        expected = (False, "Target must be less than 10")
+        result = index.run("subability", None, 15)
+        self.assertEqual(expected, result)
+        
 
     @patch('src.stats.statblock.Statblock')
     def test_granted_subability(self, StatblockMock):
