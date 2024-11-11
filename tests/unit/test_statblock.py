@@ -590,21 +590,93 @@ class TestStatblock(unittest.TestCase):
 
         # Create effect
         
-
     def test_speed(self):
         speed = MagicMock()
-        speed.walk = MagicMock(return_value = 30)
-        speed.swim = MagicMock(return_value = 25)
-        speed.fly = MagicMock(return_value = 20)
-        speed.climb = MagicMock(return_value = 15)
-        speed.burrow = MagicMock(return_value = 10)
+        speed.walk = 30
+        speed.swim = 25
+        speed.fly = 20
+        speed.climb = 15
+        speed.burrow = 10
+        speed.hover = False
         statblock = Statblock("Tester", speed = speed)
 
-        self.assertEqual(30, statblock.get_speed("walk").return_value)
-        self.assertEqual(25, statblock.get_speed("swim").return_value)
-        self.assertEqual(20, statblock.get_speed("fly").return_value)
-        self.assertEqual(15, statblock.get_speed("climb").return_value)
-        self.assertEqual(10, statblock.get_speed("burrow").return_value)
+        # Check speed is returned properly with correct values
+        statblock_speed = statblock.get_speed()
+        self.assertEqual(30, statblock_speed.walk)
+        self.assertEqual(25, statblock_speed.swim)
+        self.assertEqual(20, statblock_speed.fly)
+        self.assertEqual(15, statblock_speed.climb)
+        self.assertEqual(10, statblock_speed.burrow)
+        self.assertFalse(statblock_speed.hover)
+
+        # Check speed is returned properly with speed effect
+        statblock._effects.get_function_results = MagicMock(return_value=[
+            {
+                "walk": {"operation": "add", "value": 10},
+                "swim": {"operation": "multiply", "value": 2},
+                "fly": {"operation": "set", "value": 60},
+                "climb": {"operation": "add", "value": 5},
+                "burrow": {"operation": "add", "value": 0},
+                "hover": True
+            }
+        ])
+
+        statblock_speed = statblock.get_speed()
+        self.assertEqual(40, statblock_speed.walk)
+        self.assertEqual(50, statblock_speed.swim)
+        self.assertEqual(60, statblock_speed.fly)
+        self.assertEqual(20, statblock_speed.climb)
+        self.assertEqual(10, statblock_speed.burrow)
+        self.assertTrue(statblock_speed.hover)
+
+        # Check speed is returned properly with different speed effect
+        statblock._effects.get_function_results = MagicMock(return_value=[
+            {
+                "walk": {"operation": "add", "value": 5},
+                "swim": {"operation": "add", "value": 15},
+                "fly": {"operation": "multiply", "value": 0.5},
+                "climb": {"operation": "add", "value": -10},
+                "burrow": {"operation": "add", "value": 5},
+                "hover": None
+            }
+        ])
+
+        statblock_speed = statblock.get_speed()
+        self.assertEqual(35, statblock_speed.walk)
+        self.assertEqual(40, statblock_speed.swim)
+        self.assertEqual(10, statblock_speed.fly)
+        self.assertEqual(5, statblock_speed.climb)
+        self.assertEqual(15, statblock_speed.burrow)
+        self.assertFalse(statblock_speed.hover)
+
+        # Check speed is returned properly with multiple speed effects, using proper order of operations (set to largest -> add -> multiply)
+        statblock._effects.get_function_results = MagicMock(return_value=[
+            {
+                "walk": {"operation": "add", "value": 10},
+                "swim": {"operation": "multiply", "value": 2},
+                "fly": {"operation": "set", "value": 60},
+                "climb": {"operation": "add", "value": 5},
+                "burrow": {"operation": "multiply", "value": 0.5},
+                "hover": True
+            },
+            {
+                "walk": {"operation": "add", "value": 5},
+                "swim": {"operation": "add", "value": 15},
+                "fly": {"operation": "set", "value": 30},
+                "climb": {"operation": "add", "value": -10},
+                "burrow": {"operation": "multiply", "value": 2},
+                "hover": False
+            }
+        ])
+
+        statblock_speed = statblock.get_speed()
+        self.assertEqual(45, statblock_speed.walk)
+        self.assertEqual(80, statblock_speed.swim)
+        self.assertEqual(60, statblock_speed.fly)
+        self.assertEqual(10, statblock_speed.climb)
+        self.assertEqual(10, statblock_speed.burrow)
+        self.assertFalse(statblock_speed.hover)
+
 
     def test_temporary_speed(self):
         speed = MagicMock()

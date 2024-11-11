@@ -238,7 +238,7 @@ Creates and returns a SpeedModifier table to define how an effect should affect 
   - `burrow`: AddValue, MultiplyValue, or SetValue
     - Math operator function to add to, multiply, or set the burrow speed
   - `hover`: Boolean
-    - `true` if their movement should be granted hovering status, defaults to false
+    - `true` if their movement should be granted hovering status, `false` if hovering should be prevented, defaults to `nil`
   
 #### SpeedModifier Examples
 
@@ -251,6 +251,9 @@ return SpeedModifier({walk = AddValue(-15), fly = SetValue(30)})
 
 -- Return a SpeedModifier table which gives 60 fly (hover) speed
 return SpeedModifier({fly = SetValue(60), hover = true})
+
+-- Return a SpeedModifier table which prevents hovering
+return SpeedModifier({hover = false})
 
 -- Return a SpeedModifier table to double all movement speed
 return SpeedModifier({walk = MultiplyValue(2.0), fly = MultiplyValue(2.0), swim = MultiplyValue(2.0), climb = MultiplyValue(2.0), burrow = MultiplyValue(2.0)})

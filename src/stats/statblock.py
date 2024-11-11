@@ -1,3 +1,4 @@
+from src.events.event_manager import EventManager
 from src.util.dice import DiceParser, DiceRoller
 from src.stats.abilities import AbilityIndex
 from src.stats.effects import EffectIndex
@@ -5,8 +6,10 @@ from src.stats.proficiencies import Proficiencies, ProficiencyIndex
 from src.stats.resources import ResourceIndex
 from src.util.resettable_value import ResettableValue
 from src.stats.statistics import AbilityScore, Speed
-from src.util.constants import Abilities, Skills
+from src.util.constants import Abilities, Skills, EventType
 from src.util.time import UseTime
+from src.events.event_context import *
+import asyncio
 
 class Statblock:
     def __init__(self, name, speed = Speed(30), size = 5):
@@ -35,6 +38,8 @@ class Statblock:
         self._effects = EffectIndex()
         self._resources = ResourceIndex()
         self._turn_resources = TurnResources()
+        self._event_manager = None
+        self._controller = None
 
         self._concentration = None
 
@@ -42,7 +47,6 @@ class Statblock:
         self._equipped_item = None
         self._offhand_item = None
     
-
     def get_name(self):
         return self._name
 
@@ -77,6 +81,21 @@ class Statblock:
 
     def add_effect(self, effect, duration):
         self._effects.add(effect, duration)
+
+    def assign_event_manager(self, event_manager: EventManager):
+        if self._event_manager is not None:
+            self._event_manager.unsubscribe(self)
+        self._event_manager = event_manager
+        self._event_manager.subscribe(self)
+
+    async def handle_event(self, event: str, context):
+        valid_abilities = self._abilities.get_headers_reactions_to_event(event)
+        if len(valid_abilities) > 0:
+            # TODO: Statblock should select which ability to use, run it, and then take its result to modify the context, or decide not to use any and just return.
+            valid_abilities.insert(0, ("^pass", ()))
+            selection = self._controller.select(valid_abilities)
+            if selection[0] != "^pass":
+                self.use_ability(selection[0], *selection[1])
 
     ## Leveling
     def add_level(self, class_level, levels = 1):
@@ -124,7 +143,6 @@ class Statblock:
                 pass
             self._hp.value = 0
 
-
     ## Abilities
     def get_ability_score(self, ability):
         effect_bonus_stats = self._effects.get_function_results("modify_stat", self, ability)
@@ -140,7 +158,6 @@ class Statblock:
 
     def get_ability_modifier(self, ability):
         return self.get_ability_score(ability) // 2 - 5
-
 
     ## Proficiencies and Skills
     def get_proficiency_bonus(self):
@@ -172,12 +189,15 @@ class Statblock:
             "bonus": sum(d["bonus"] for d in self_effect_bonus_stats + target_effect_bonus_stats),
         }
 
-        if modifier_table["auto_fail"]:
+        roll_context = RollEventContext(self, modifier_table["advantage"], modifier_table["disadvantage"], modifier_table["auto_succeed"], modifier_table["auto_fail"], modifier_table["bonus"])
+        asyncio.run(self._event_manager.fire_event(EventType.TRIGGER_ABILITY_CHECK_ROLL, roll_context))
+
+        if roll_context.auto_fail:
             return False
-        elif modifier_table["auto_succeed"]:
+        elif roll_context.auto_succeed:
             return True
 
-        roll_result = DiceRoller.roll_d20(modifier_table["advantage"], modifier_table["disadvantage"]) + self.get_ability_modifier(ability_name) + modifier_table["bonus"]
+        roll_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage) + self.get_ability_modifier(ability_name) + roll_context.bonus
 
         return roll_result >= dc
 
@@ -355,8 +375,44 @@ class Statblock:
             return True
 
     ## Speed and Movement
-    def get_speed(self, type = "walk"):
-        pass
+    def get_speed(self):
+        speed_values = {
+            "walk": self._speed.walk,
+            "fly": self._speed.fly,
+            "swim": self._speed.swim,
+            "climb": self._speed.climb,
+            "burrow": self._speed.burrow,
+            "hover": self._speed.hover
+        }
+        hover_defined = None
+
+        effect_bonus_stats = self._effects.get_function_results("modify_speed", self)
+
+        for speed_type in speed_values.keys():
+            max_set_value = None
+            add_value = 0
+            multiplier_value = 1
+            for effect_bonus_stat in effect_bonus_stats:
+                modifier = effect_bonus_stat[speed_type]
+                if speed_type == "hover":
+                    if modifier is not None:
+                        hover_defined = modifier and hover_defined if hover_defined is not None else modifier
+                    continue
+                if modifier["operation"] == "set":
+                    max_set_value = max(max_set_value, modifier["value"]) if max_set_value is not None else modifier["value"]
+                elif modifier["operation"] == "add":
+                    add_value += modifier["value"]
+                elif modifier["operation"] == "multiply":
+                    multiplier_value *= modifier["value"]
+            if speed_type != "hover":
+                if max_set_value is not None:
+                    speed_values[speed_type] = max_set_value
+                speed_values[speed_type] += add_value
+                speed_values[speed_type] *= multiplier_value
+        
+        return Speed(speed_values["walk"], speed_values["fly"], speed_values["swim"], speed_values["climb"], speed_values["burrow"], hover_defined if hover_defined is not None else self._speed.hover)
+
+
 
     
     def add_temporary_speed(self, new_speed):

@@ -78,11 +78,11 @@ class CappedValue:
 
     @property
     def value(self):
-        return self._value
+        return self._max - self._value
 
     @value.setter
     def value(self, new_value):
-        self._value = min(max(0, new_value), self._max)
+        self._value = self._max - new_value
 
     @property
     def max(self):
@@ -91,9 +91,6 @@ class CappedValue:
     @property
     def initial(self):
         return self._initial
-
-    def add(self, value):
-        self.value = self._value + value
 
     def reset(self):
         self._value = self._initial
@@ -106,31 +103,31 @@ class CappedValue:
 
     def __lt__(self, other):
         if isinstance(other, CappedValue):
-            return (self.max - self.value) < (other.max - other.value)
+            return (self.max - self._value) < (other.max - other._value)
         elif isinstance(other, int):
-            return (self.max - self.value) < other
+            return (self.max - self._value) < other
 
     def __gt__(self, other):
         if isinstance(other, CappedValue):
-            return (self.max - self.value) > (other.max - other.value)
+            return (self.max - self._value) > (other.max - other._value)
         elif isinstance(other, int):
-            return (self.max - self.value) > other
+            return (self.max - self._value) > other
 
     def __le__(self, other):
         if isinstance(other, CappedValue):
-            return (self.max - self.value) <= (other.max - other.value)
+            return (self.max - self._value) <= (other.max - other._value)
         elif isinstance(other, int):
-            return (self.max - self.value) <= other
+            return (self.max - self._value) <= other
 
     def __ge__(self, other):
         if isinstance(other, CappedValue):
-            return (self.max - self.value) >= (other.max - other.value)
+            return (self.max - self._value) >= (other.max - other._value)
         elif isinstance(other, int):
-            return (self.max - self.value) >= other
+            return (self.max - self._value) >= other
 
     def __add__(self, other):
         if isinstance(other, CappedValue):
-            return CappedValue(self._max, self._value + other.value, self._initial)
+            return CappedValue(self._max, self._value + other._value, self._initial)
         elif isinstance(other, int):
             return CappedValue(self._max, self._value + other, self._initial)
 
@@ -139,13 +136,13 @@ class CappedValue:
 
     def __sub__(self, other):
         if isinstance(other, CappedValue):
-            return CappedValue(self._max, self._value - other.value, self._initial)
+            return CappedValue(self._max, self._value - other._value, self._initial)
         elif isinstance(other, int):
             return CappedValue(self.max, self._value - other, self._initial)
 
     def __rsub__(self, other):
         if isinstance(other, CappedValue):
-            return CappedValue(other.max, other.value - self._value, other.initial)
+            return CappedValue(other.max, other._value - self._value, other.initial)
         elif isinstance(other, int):
             return CappedValue(self.max, other - self._value, self._initial)
 

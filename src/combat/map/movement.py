@@ -4,7 +4,7 @@ class MovementCost():
 
     def __init__(self, walking = None, flying = None, swimming = None, climbing = None, burrowing = None):
         self._walking = walking
-        self._flying = walking if flying is None else flying
+        self._flying = flying
         self._swimming = swimming
         self._climbing = climbing
         self._burrowing = burrowing
@@ -63,6 +63,18 @@ class MovementCost():
                 sum(filter(lambda v: v is not None, (self.burrowing, other.burrowing))) if not any(v is None for v in (self.burrowing, other.burrowing)) else None
             )
     
+    def __mul__(self, other):
+        if isinstance(other, int):
+            return MovementCost(
+                None if self._walking is None else self._walking * other,
+                None if self._flying is None else self._flying * other,
+                None if self._swimming is None else self._swimming * other,
+                None if self._climbing is None else self._climbing * other,
+                None if self._burrowing is None else self._burrowing * other
+            )
+        else:
+            raise TypeError(f"Unsupported operand type {type(other)}: can only multiply a MovementCost object by an integer")
+
     def __radd__(self, other):
         if isinstance(other, MovementCost):
             return self.__add__(other)
@@ -75,7 +87,7 @@ class MovementCost():
                 None if self.burrowing is None else self.burrowing + other
             )
         else:
-            raise TypeError("Unsupported operand type: can only add int or MovementCost to MovementCost object")
+            raise TypeError(f"Unsupported operand type {type(other)}: can only add int or MovementCost to MovementCost object")
     
     def __lt__(self, other):
         if isinstance(other, MovementCost):

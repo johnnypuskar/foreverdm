@@ -306,4 +306,84 @@ class TestEffect(unittest.TestCase):
         statblock.restore_hp.assert_called_once()
         self.assertEqual(statblock.restore_hp.call_args[0][1], 10)
 
+    def test_script_helpers(self):
+        index = EffectIndex()
+        effect = Effect("test_effect", '''
+            function add_value()
+                return AddValue(10)
+            end
+                        
+            function set_value()
+                return SetValue(20)
+            end
+                        
+            function multiply_value()
+                return MultiplyValue(30)
+            end
 
+            function speed_modifier()
+                return SpeedModifier({walk = AddValue(10)})
+            end
+                        
+            function roll_result()
+                return RollResult({advantage = true, bonus = 5})
+            end
+                        
+            function duration()
+                return Duration("round", 3)
+            end    
+        ''')
+
+        index.add(effect, 1)
+
+        # Verify that AddValue works
+        expected = {"operation": "add", "value": 10}
+        results = index.get_function_results("add_value", None, None)[0]
+        self.assertDictEqual(results, expected)
+
+        # Verify that SetValue works
+        expected = {"operation": "set", "value": 20}
+        results = index.get_function_results("set_value", None, None)[0]
+        self.assertDictEqual(results, expected)
+
+        # Verify that MultiplyValue works
+        expected = {"operation": "multiply", "value": 30}
+        results = index.get_function_results("multiply_value", None, None)[0]
+        self.assertDictEqual(results, expected)
+
+        # Verify that SpeedModifier works
+        expected = {
+            "walk": {"operation": "add", "value": 10},
+            "fly": {"operation": "add", "value": 0},
+            "swim": {"operation": "add", "value": 0},
+            "climb": {"operation": "add", "value": 0},
+            "burrow": {"operation": "add", "value": 0}
+        }
+        results = index.get_function_results("speed_modifier", None, None)[0]
+        
+        # Compare dictionary contents instead of direct equality
+        # Compare dictionary contents instead of direct equality
+        self.assertEqual(set(results.keys()), set(expected.keys()))
+        for key in expected:
+            self.assertDictEqual(results[key], expected[key])
+
+        # Verify that RollResult works
+        expected = {
+            "disadvantage": False,
+            "advantage": True,
+            "auto_succeed": False,
+            "auto_fail": False,
+            "bonus": 5
+        }
+        results = index.get_function_results("roll_result", None, None)[0]
+        self.assertDictEqual(results, expected)
+
+        # Verify that Duration works
+        expected = {"unit": "round", "value": 3}
+        results = index.get_function_results("duration", None, None)[0]
+        self.assertDictEqual(results, expected)
+
+
+
+
+        

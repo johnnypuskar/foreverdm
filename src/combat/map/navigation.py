@@ -77,7 +77,7 @@ class NavAgent:
 
                         remaining_speed = self.speed.duplicate()
                         remaining_speed -= expended
-                        reachable_nodes[neighbor_pos] = remaining_speed
+                        reachable_nodes[neighbor_pos] = expended
             
             if end_of_movement and current_node.position not in ignore_positions:
                 ending_nodes.add(current_node.position)

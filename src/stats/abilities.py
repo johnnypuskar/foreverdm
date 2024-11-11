@@ -2,7 +2,7 @@ from enum import Enum
 from src.util.time import UseTime
 from src.util.lua_manager import LuaManager
 from src.util.constants import EventType, ScriptData, AbilityHeaderControlFlag
-from src.util.observer import Observer, Emitter
+from src.events.observer import Observer, Emitter
 
 class Ability:
     def __init__(self, name, script, function_name = "run", globals = {}):
@@ -20,8 +20,14 @@ class Ability:
         lua.execute("can_modify = {}")
         lua.execute(self._script)
 
+        use_time = dict(lua.globals['use_time'])
+        if not isinstance(self, ReactionAbility) and use_time['unit'] == 'reaction':
+            self.__class__ = ReactionAbility
+            self.__init__(name, script, function_name, globals)
+            return
+
         self._is_modifier = len(list(lua.globals['can_modify'])) > 0
-        self._use_time = UseTime.from_table(dict(lua.globals['use_time']))
+        self._use_time = UseTime.from_table(use_time)
 
         self.reset_use_delay()
 
@@ -97,6 +103,16 @@ class Ability:
 
     def __repr__(self):
         return str(self.header)
+
+class ReactionAbility(Ability):
+    def __init__(self, name, script, function_name = "run", globals = {}):
+        super().__init__(name, script, function_name, globals)
+        
+        lua = LuaManager()
+        lua.execute(self._script)
+        if "reaction_event" not in lua.get_defined_variables():
+            raise ValueError("Reaction ability must define a reaction_event variable.")
+        self._reaction_event = lua.globals["reaction_event"]
 
 class CompositeAbility(Ability):
     def __init__(self, name, script, function_name = "run", globals = {}):
@@ -256,22 +272,42 @@ class AbilityIndex(Observer, Emitter):
                 ability_name.append(name_segment)
         return (".".join(ability_name), control_flags)
 
-    def get_headers(self):
+    def get_headers(self, valid_use_times = ["action", "bonus_action", "reaction"]):
         headers = []
+        _SPECIAL_ACTION_KEY = {-1: "action", -2: "bonus_action", -3: "reaction"}
         for ability in self._abilities.values():
             if type(ability) is CompositeAbility:
                 for new_header in ability.header:
+                    sub_ability = ability.get_sub_ability(".".join(new_header[0].split(".")[1:]))
+                    if not ((not sub_ability._use_time.is_special and "action" in valid_use_times) or (sub_ability._use_time.is_special and _SPECIAL_ACTION_KEY[sub_ability._use_time.minutes] in valid_use_times)):
+                        continue
                     if new_header[0] == self._active_use_ability:
                         headers.append((f"^continue.{new_header[0]}", new_header[1]))
                         headers.append((f"^new_use.{new_header[0]}", new_header[1]))
                     else:
                         headers.append(new_header)
             else:
+                if not ((not ability._use_time.is_special and "action" in valid_use_times) or (ability._use_time.is_special and _SPECIAL_ACTION_KEY[ability._use_time.minutes] in valid_use_times)):
+                    continue
                 if ability.header[0] == self._active_use_ability:
                     headers.append((f"^continue.{ability.header[0]}", ability.header[1]))
                     headers.append((f"^new_use.{ability.header[0]}", ability.header[1]))
                 else:
                     headers.append(ability.header)
+        return headers
+
+    def get_headers_turn_actions(self):
+        return self.get_headers(["action", "bonus_action"])
+    
+    def get_headers_reactions(self):
+        return self.get_headers(["reaction"])
+
+    def get_headers_reactions_to_event(self, event):
+        headers = []
+        for header in self.get_headers_reactions():
+            ability = self.get_ability(header[0])
+            if ability._reaction_event == event:
+                headers.append(header)
         return headers
 
     def get_all_keys(self):

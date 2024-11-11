@@ -1,6 +1,6 @@
 from src.util.lua_manager import LuaManager
 from src.util.constants import EventType, ScriptData
-from src.util.observer import Emitter, Observer
+from src.events.observer import Emitter, Observer
 
 class Effect:
     def __init__(self, name, script, duration = -1, globals = {}):
@@ -9,7 +9,7 @@ class Effect:
         self._lua = None
         self._duration = duration
 
-        self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.DURATION + script
+        self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.MULTIPLY_VALUE + ScriptData.DURATION + ScriptData.SPEED + script
 
         lua = LuaManager()
     

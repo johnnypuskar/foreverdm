@@ -32,7 +32,7 @@ class LuaManager:
             raise ValueError("Function not found.")
         result = function(*args)
         if lua_type(result) == 'table':
-            return dict(result)
+            return self._recursive_table_convert(result)
         return result
 
     def run_nested(self, function_pos, *args):
@@ -41,7 +41,7 @@ class LuaManager:
             raise ValueError("Function not found.")
         result = function(*args)
         if lua_type(result) == 'table':
-            return dict(result)
+            return self._recursive_table_convert(result)
         return result
 
     def get_function_header(self, function_name):

@@ -15,6 +15,6 @@ class Emitter:
     def disconnect(self, observer: Observer):
         self._observers.remove(observer)
     
-    def emit(self, event: str, data):
+    def emit(self, event: str, *data):
         for observer in self._observers:
-            observer.signal(event, data)
+            observer.signal(event, *data)

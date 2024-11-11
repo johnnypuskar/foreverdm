@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 from src.util.constants import EventType
 from src.util.time import UseTime
-from src.stats.abilities import AbilityIndex, Ability, CompositeAbility, SubAbility
+from src.stats.abilities import AbilityIndex, Ability, ReactionAbility, CompositeAbility, SubAbility
 
 class TestAbility(unittest.TestCase):
     def test_add_ability(self):
@@ -372,6 +372,173 @@ class TestAbility(unittest.TestCase):
             ("ability_c", ("position",))
         ]
         self.assertEqual(expected, index.get_headers())
+
+    def test_get_specific_headers(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability_a = Ability("ability_action", '''
+            use_time = UseTime("action", 1)
+            function run() end
+        ''')
+        ability_b = Ability("ability_bonus_action", '''
+            use_time = UseTime("bonus_action", 1)
+            function run() end
+        ''')
+        ability_c = Ability("ability_reaction", '''
+            use_time = UseTime("reaction", 1)
+            reaction_event = "test_event"
+            function run() end
+        ''')
+        ability_d = Ability("ability_minute", '''
+            use_time = UseTime("minute", 1)
+            function run() end
+        ''')
+
+        # Add abilities to index
+        index.add(ability_a)
+        index.add(ability_b)
+        index.add(ability_c)
+        index.add(ability_d)
+
+        # Verify all headers are correct
+        expected = [
+            ("ability_action", ()),
+            ("ability_bonus_action", ()),
+            ("ability_reaction", ()),
+            ("ability_minute", ())
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Verify turn action headers are correct
+        expected = [
+            ("ability_action", ()),
+            ("ability_bonus_action", ()),
+            ("ability_minute", ())
+        ]
+        self.assertEqual(expected, index.get_headers_turn_actions())
+
+        # Verify reaction headers are correct
+        expected = [
+            ("ability_reaction", ())
+        ]
+        self.assertEqual(expected, index.get_headers_reactions())
+
+    def test_get_specific_headers_composite(self):
+        # Create test index and composite abilities
+        index = AbilityIndex()
+        composite = CompositeAbility("composite", "")
+        ability_a = Ability("ability_action", '''
+            use_time = UseTime("action", 1)
+            function run() end
+        ''')
+        ability_b = Ability("ability_bonus_action", '''
+            use_time = UseTime("bonus_action", 1)
+            function run() end
+        ''')
+        ability_c = Ability("ability_reaction", '''
+            use_time = UseTime("reaction", 1)
+            reaction_event = "test_event"
+            function run() end
+        ''')
+        ability_d = Ability("ability_minute", '''
+            use_time = UseTime("minute", 1)
+            function run() end
+        ''')
+
+        # Add abilities to composite ability
+        composite.add(ability_a)
+        composite.add(ability_b)
+        composite.add(ability_c)
+        composite.add(ability_d)
+
+        # Add composite ability to index
+        index.add(composite)
+
+        # Verify all headers are correct
+        expected = [
+            ("composite.ability_action", ()),
+            ("composite.ability_bonus_action", ()),
+            ("composite.ability_reaction", ()),
+            ("composite.ability_minute", ())
+        ]
+        self.assertEqual(expected, index.get_headers())
+
+        # Verify turn action headers are correct
+        expected = [
+            ("composite.ability_action", ()),
+            ("composite.ability_bonus_action", ()),
+            ("composite.ability_minute", ())
+        ]
+        self.assertEqual(expected, index.get_headers_turn_actions())
+
+        # Verify reaction headers are correct
+        expected = [
+            ("composite.ability_reaction", ())
+        ]
+        self.assertEqual(expected, index.get_headers_reactions())
+    
+    def test_reaction_ability_class_definition(self):
+        # Create abilities
+        ability_a = Ability("ability_a", '''
+            use_time = UseTime("reaction", 1)
+            reaction_event = "test_event"
+            function run() end
+        ''')
+        ability_b = Ability("ability_b", '''
+            use_time = UseTime("action", 1)
+            function run() end
+        ''')
+
+        # Verify ability_a is a reaction ability and ability_b is not
+        self.assertTrue(isinstance(ability_a, ReactionAbility))
+        self.assertFalse(isinstance(ability_b, ReactionAbility))
+
+    def test_get_reaction_event_headers(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability_a = Ability("ability_a", '''
+            use_time = UseTime("reaction", 1)
+            reaction_event = "test_event"
+            function run() end
+        ''')
+        ability_b = Ability("ability_b", '''
+            use_time = UseTime("reaction", 1)
+            reaction_event = "test_event"
+            function run() end
+        ''')
+        ability_c = Ability("ability_c", '''
+            use_time = UseTime("reaction", 1)
+            reaction_event = "other_event"
+            function run() end
+        ''')
+
+        # Add abilities to index
+        index.add(ability_a)
+        index.add(ability_b)
+        index.add(ability_c)
+
+        # Verify all headers are correct
+        expected = [
+            ("ability_a", ()),
+            ("ability_b", ()),
+            ("ability_c", ())
+        ]
+        self.assertEqual(expected, index.get_headers_reactions())
+
+        # Verify specific event headers are correct
+        expected = [
+            ("ability_a", ()),
+            ("ability_b", ())
+        ]
+        self.assertEqual(expected, index.get_headers_reactions_to_event("test_event"))
+
+        # Verify other event headers filter correctly
+        expected = [
+            ("ability_c", ())
+        ]
+        self.assertEqual(expected, index.get_headers_reactions_to_event("other_event"))
+
+
 
     def test_run_ability(self):
         # Create test index and ability
@@ -894,6 +1061,7 @@ class TestAbility(unittest.TestCase):
         ''')
         ability_reaction = Ability("test_ability", '''
             use_time = UseTime("reaction")
+            reaction_event = "test_event"
         ''')
         ability_minute = Ability("test_ability", '''
             use_time = UseTime("minute")

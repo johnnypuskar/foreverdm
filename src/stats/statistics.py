@@ -27,7 +27,7 @@ class AbilityScore:
         return f"{self._value} {self._name.upper()}"
 
 class Speed:
-    def __init__(self, value, fly = 0, swim = 0, climb = 0, burrow = 0, hover = False):
+    def __init__(self, value: int, fly = 0, swim = 0, climb = 0, burrow = 0, hover = False):
         # if (swim is not None and value < swim) or (climb is not None and value < climb) or (burrow is not None and value < burrow):
         #     raise ValueError("Base walking speed cannot be less than swimming, climbing, or burrowing speeds.")
         self._value = ResettableValue(value)
@@ -50,6 +50,14 @@ class Speed:
     @property
     def highest_speed(self):
         return max(self._value.value, self._fly.value, self._swim.value, self._climb.value, self._burrow.value)
+
+    @property
+    def distance_moved(self):
+        return max(self._value.initial - self._value.value, self._fly.initial - self._fly.value, self._swim.initial - self._swim.value, self._climb.initial - self._climb.value, self._burrow.initial - self._burrow.value)
+
+    @property
+    def walk(self):
+        return self._value.value
 
     @property
     def value(self):
@@ -138,39 +146,24 @@ class Speed:
 
     def __str__(self):
         return str(self._value) + " ft." + ("" if self._fly.initial <= 0 else " (fly " + str(self._fly) + " ft.)") + ("" if self._swim.initial <= 0 else " (swim " + str(self._swim) + " ft.)") + ("" if self._climb.initial <= 0 else " (climb " + str(self._climb) + " ft.)") + ("" if self._burrow.initial <= 0 else " (burrow " + str(self._burrow) + " ft.)") + ("" if not self._hover else " (hover)")
+    
     def __repr__(self):
         return str(self)
 
     def __add__(self, other):
-        if isinstance(other, Speed):
-            return Speed(self._value.value + other.value,
-                         self.fly + other.fly,
-                         self.swim + other.swim,
-                         self.climb + other.climb,
-                         self.burrow + other.burrow,
-                         self._hover or other._hover
-            )
+        if isinstance(self, MovementCost):
+            summed_speed = Speed(self._value._initial + other._walking, self._fly._initial + other._flying, self._swim._initial + other._swimming, self._climb._initial + other._climbing, self._burrow._initial + other._burrowing, self._hover)
+            summed_speed._value._value -= (self._value._initial - self._value._value)
+            summed_speed._fly._value -= (self._fly._initial - self._fly._value)
+            summed_speed._swim._value -= (self._swim._initial - self._swim._value)
+            summed_speed._climb._value -= (self._climb._initial - self._climb._value)
+            summed_speed._burrow._value -= (self._burrow._initial - self._burrow._value)
+            return summed_speed
         else:
-            raise TypeError("Unsupported operand type: can only add two Speed objects")
+            raise TypeError(f"Unsupported operand type {type(other)}: can only add a MovementCost object to a Speed object")
 
     def __sub__(self, other):
-        if isinstance(other, Speed):
-            return Speed(
-                max(0, self.value - other.value),
-                max(0, self.fly - other.fly),
-                max(0, self.swim - other.swim),
-                max(0, self.climb - other.climb),
-                max(0, self.burrow - other.burrow)
-            )
-        elif isinstance(other, MovementCost):
-            return Speed(
-                max(0, self.value - (other.walking if other.walking is not None else other.flying)),
-                max(0, self.fly - (other.flying if other.flying is not None else other.walking)),
-                max(0, self.swim - (other.swimming if other.swimming is not None else other.walking)),
-                max(0, self.climb - (other.climbing if other.climbing is not None else other.walking)),
-                max(0, self.burrow - (other.burrowing if other.burrowing is not None else other.walking))
-            )
-        elif isinstance(other, int):
+        if isinstance(other, int):
             return Speed(
                 max(0, self.value - other),
                 max(0, self.fly - other),
@@ -178,20 +171,21 @@ class Speed:
                 max(0, self.climb - other),
                 max(0, self.burrow - other)
             )
+        else:
+            raise TypeError(f"Unsupported operand type {type(other)}: can only subtract an integer from a Speed object")
+        
+    def __mul__(self, other):
+        if isinstance(other, MovementCost):
+            mult_speed = Speed(self._value._initial * other._walking, self._fly._initial * other._flying, self._swim._initial * other._swimming, self._climb._initial * other._climbing, self._burrow._initial * other._burrowing, self._hover)
+            mult_speed._value._value -= (self._value._initial - self._value._value)
+            mult_speed._fly._value -= (self._fly._initial - self._fly._value)
+            mult_speed._swim._value -= (self._swim._initial - self._swim._value)
+            mult_speed._climb._value -= (self._climb._initial - self._climb._value)
+            mult_speed._burrow._value -= (self._burrow._initial - self._burrow._value)
+            return mult_speed
+        else:
+            raise TypeError(f"Unsupported operand type {type(other)}: can only multiply a Speed object by an integer")
     
     def __lt__(self, other):
         if isinstance(other, Speed):
             return self.highest_speed < other.highest_speed
-    
-    def __mul__(self, other):
-        if isinstance(other, int):
-            return Speed(
-                self.value * other,
-                self.fly * other,
-                self.swim * other,
-                self.climb * other,
-                self.burrow * other,
-                self._hover
-            )
-        else:
-            raise TypeError("Unsupported operand type: can only multiply a Speed object by an integer")

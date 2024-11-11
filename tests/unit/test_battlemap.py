@@ -180,12 +180,11 @@ class TestNavigation(unittest.TestCase):
 
         # Testing that pits are impassable
         reachable, paths, _ = agent.get_reachable_nodes(grid, (4, 8))
-        print("\n",grid.get_map_as_string(reachable))
         self.assertListEqual([(4, 8), (5, 8)], list(reachable.keys()))
     
     def test_water(self):
         grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)
-        
+
         # Testing that water slows down non-swimmers
         agent = NavAgent(Speed(20), Size.MEDIUM)
         next_pos, turns, full_path = agent.get_movement_to(grid, (8, 14), (14, 14))
@@ -198,7 +197,7 @@ class TestNavigation(unittest.TestCase):
         next_pos, turns, full_path = swimmer_agent.get_movement_to(grid, (8, 14), (14, 14))
 
         self.assertEqual(turns, 2)
-        self.assertEqual(11, next_pos[0])
+        self.assertEqual(10, next_pos[0])
 
         # Testing that creatures cannot move onto land if they have only a swim speed
         fish_agent = NavAgent(Speed(0, 0, 50), Size.TINY)
@@ -206,8 +205,6 @@ class TestNavigation(unittest.TestCase):
 
         TEST_POOL_TILES = [(11, 11), (10, 11), (11, 10), (11, 12), (12, 11), (10, 10), (10, 12), (12, 10), (11, 9), (11, 13), (12, 12), (13, 11), (10, 9), (9, 12), (10, 13), (12, 9), (11, 8), (11, 14), (13, 10), (14, 11), (9, 13), (10, 14), (12, 8), (13, 9), (14, 10), (9, 14), (13, 8), (14, 9), (14, 8)]
         self.assertListEqual(TEST_POOL_TILES, list(reachable.keys()))
-
-        print(reachable.keys())
     
     def test_maze(self):
         grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)

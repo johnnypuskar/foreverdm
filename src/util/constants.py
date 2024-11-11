@@ -119,6 +119,12 @@ class ScriptData:
         return {operation = "set", value = value}
     end
     '''
+
+    MULTIPLY_VALUE = '''
+    function MultiplyValue(value)
+        return {operation = "multiply", value = value}
+    end
+    '''
     
     USE_TIME = '''
     function UseTime(unit, value)
@@ -161,8 +167,8 @@ class ScriptData:
             fly = {operation = "add", value = 0},
             swim = {operation = "add", value = 0},
             climb = {operation = "add", value = 0},
-            burrrow = {operation = "add", value = 0},
-            hover = false
+            burrow = {operation = "add", value = 0},
+            hover = nil
         }
         for key, value in pairs(modifiers) do
             speed_mod[key] = value
@@ -176,6 +182,10 @@ class EventType:
     EFFECT_REMOVED_ABILITY = "effect_removed_ability"
     ABILITY_APPLIED_EFFECT = "ability_applied_effect"
     ABILITY_REMOVED_EFFECT = "ability_removed_effect"
+
+    TRIGGER_ABILITY_CHECK_ROLL = "trigger_roll_ability_check"
+    TRIGGER_ABILITY_CHECK_SUCCEED = "trigger_ability_check_succeed"
+    TRIGGER_ABILITY_CHECK_FAIL = "trigger_ability_check_fail"
 
 class AbilityHeaderControlFlag:
     NEW_USE = "new_use_flag",
