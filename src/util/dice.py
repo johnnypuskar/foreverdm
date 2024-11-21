@@ -59,9 +59,12 @@ class DiceParser:
     
     @staticmethod
     def parse_string(dice_string):
+        just_numbers = r"(\d+)"
         check_pattern = r"^(\d*d\d+)([\+\-](\d*d\d+))*([\+\-]\d+)*$"
         groups_pattern = r"([\+\-]?(\d+d\d+|\d+))"
         if not re.match(check_pattern, dice_string):
+            if re.match(just_numbers, dice_string):
+                return {"MOD": int(dice_string)}
             raise ValueError(f"Invalid dice string: {dice_string}")
         
         return_table = {"MOD": 0}

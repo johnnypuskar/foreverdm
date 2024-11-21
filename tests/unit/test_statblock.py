@@ -9,7 +9,7 @@ class TestStatblock(unittest.TestCase):
     def test_get_name(self):
         statblock = Statblock("Tester")
 
-        self.assertEqual("Tester", statblock.get_name())
+        self.assertEqual("Tester", statblock.name)
     
     def test_get_size(self):
         statblock = Statblock("Tester", size = 5)
@@ -293,36 +293,50 @@ class TestStatblock(unittest.TestCase):
         self.assertEqual(10, statblock.get_hit_points())
         self.assertEqual(10, statblock._temp_hp)
     
-    def test_take_damage(self):
+    @patch('src.control.controller.Controller')
+    def test_take_damage(self, ControllerMock):
         statblock = Statblock("Tester")
         statblock._hp._initial = 15
-        statblock._hp.value = 10
+        statblock._hp.value = 12
+
+        statblock._controller = ControllerMock.return_value
+
+        self.assertEqual(12, statblock.get_hit_points())
+
+        statblock.take_damage("2 piercing")
 
         self.assertEqual(10, statblock.get_hit_points())
 
-        statblock.take_damage(5, "piercing")
+        statblock.take_damage("3 slashing")
 
-        self.assertEqual(5, statblock.get_hit_points())
+        self.assertEqual(7, statblock.get_hit_points())
 
-        statblock.take_damage(10, "slashing")
+        statblock.take_damage("3 slashing, 2 piercing")
+
+        self.assertEqual(2, statblock.get_hit_points())
+
+        statblock.take_damage("10 slashing")
 
         self.assertEqual(0, statblock.get_hit_points())
     
-    def test_take_damage_temporary_hp(self):
+    @patch('src.control.controller.Controller')
+    def test_take_damage_temporary_hp(self, ControllerMock):
         statblock = Statblock("Tester")
         statblock._hp._initial = 15
         statblock._hp.value = 10
         statblock._temp_hp = 5
 
+        statblock._controller = ControllerMock.return_value
+
         self.assertEqual(10, statblock.get_hit_points())
         self.assertEqual(5, statblock._temp_hp)
 
-        statblock.take_damage(2, "piercing")
+        statblock.take_damage("2 piercing")
 
         self.assertEqual(10, statblock.get_hit_points())
         self.assertEqual(3, statblock._temp_hp)
 
-        statblock.take_damage(10, "slashing")
+        statblock.take_damage("10 slashing")
 
         self.assertEqual(3, statblock.get_hit_points())
         self.assertEqual(0, statblock._temp_hp)
@@ -335,11 +349,15 @@ class TestStatblock(unittest.TestCase):
 
         self.assertEqual(15, statblock.get_armor_class())
 
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
-    def test_melee_attack_roll(self, roll_d20):
+    def test_melee_attack_roll(self, roll_d20, ControllerMock):
         # Create statblocks
         statblock = Statblock("Tester")
         target = Statblock("Target")
+
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
         
         # Verify attack roll succeeds with no bonuses
         target._armor_class = 10
@@ -356,11 +374,15 @@ class TestStatblock(unittest.TestCase):
         # Verify ranged attack roll still fails
         self.assertFalse(statblock.ranged_attack_roll(target, "1d4 slashing"))
 
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
-    def test_ranged_attack_roll(self, roll_d20):
+    def test_ranged_attack_roll(self, roll_d20, ControllerMock):
         # Create statblocks
         statblock = Statblock("Tester")
         target = Statblock("Target")
+
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
         
         # Verify attack roll succeeds with no bonuses
         target._armor_class = 10
@@ -377,11 +399,15 @@ class TestStatblock(unittest.TestCase):
         # Verify melee attack roll still fails
         self.assertFalse(statblock.melee_attack_roll(target, "1d4 slashing"))
     
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
-    def test_attack_modifier_effects(self, roll_d20):
+    def test_attack_modifier_effects(self, roll_d20, ControllerMock):
         # Create statblocks
         statblock = Statblock("Tester")
         target = Statblock("Target")
+
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
 
         # Create effect
         effect = MagicMock(spec=Effect)
@@ -404,11 +430,15 @@ class TestStatblock(unittest.TestCase):
         # Verify attack roll succeeds with effect
         self.assertTrue(statblock.melee_attack_roll(target, "1d4 slashing"))
     
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
-    def test_attack_advantage_effects(self, roll_d20):
+    def test_attack_advantage_effects(self, roll_d20, ControllerMock):
         # Create statblocks
         statblock = Statblock("Tester")
         target = Statblock("Target")
+
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
 
         # Create effect
         effect = MagicMock(spec=Effect)
@@ -442,11 +472,15 @@ class TestStatblock(unittest.TestCase):
         self.assertFalse(roll_d20.call_args[0][0])
         self.assertTrue(roll_d20.call_args[0][1])
     
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
-    def test_attack_auto_result(self, roll_d20):
+    def test_attack_auto_result(self, roll_d20, ControllerMock):
         # Create statblocks
         statblock = Statblock("Tester")
         target = Statblock("Target")
+
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
 
         # Create effect
         effect = MagicMock(spec=Effect)
@@ -474,67 +508,86 @@ class TestStatblock(unittest.TestCase):
         # Verify attack roll fails with auto fail regardless of die result and armor class with effect
         self.assertFalse(statblock.melee_attack_roll(target, "1d4 slashing"))
     
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 20)
     @patch('src.util.dice.DiceRoller.roll_custom', return_value = 0)
-    def test_attack_critical_hit(self, roll_custom, roll_d20):
+    def test_attack_critical_hit(self, roll_custom, roll_d20, ControllerMock):
         # Create statblocks
         statblock = Statblock("Tester")
         target = Statblock("Target")
+
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
 
         # Verify critical hit always hits
         target._armor_class = 1000
         self.assertTrue(statblock.melee_attack_roll(target, "1d4 slashing"))
 
         # Verify die count is doubled on critical hit
-        self.assertEqual(2, roll_custom.call_args[0][1])
+        self.assertEqual(2, roll_custom.call_args[0][0])
 
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 1)
-    def test_attack_critical_miss(self, roll_d20):
+    def test_attack_critical_miss(self, roll_d20, ControllerMock):
         # Create statblocks
         statblock = Statblock("Tester")
         target = Statblock("Target")
+
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
 
         # Verify critical miss always misses
         target._armor_class = 0
         self.assertFalse(statblock.melee_attack_roll(target, "1d4 slashing"))
 
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
     @patch('src.util.dice.DiceRoller.roll_custom', return_value = 3)
-    def test_attack_damage_string_parse(self, roll_custom, roll_d20):
+    def test_attack_damage_string_parse(self, roll_custom, roll_d20, ControllerMock):
         # Create statblocks
         statblock = Statblock("Tester")
-        target = MagicMock()
-        target.get_armor_class.return_value = 10
+        target = Statblock("Target")
+
+        target._hp._initial = 50
+        target._hp.value = 50
+        target._armor_class = 10
+        target._damage = MagicMock()
+        
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
 
         # Run attack with multiple damage types
         statblock.melee_attack_roll(target, "1d4 slashing, 2d6+1d4+2 fire, 3d8+4 cold")
 
         # Verify correct number of dice are rolled for each damage type
-        self.assertEqual(1, roll_custom.call_args_list[0][0][1])
-        self.assertEqual(2, roll_custom.call_args_list[1][0][1])
-        self.assertEqual(1, roll_custom.call_args_list[2][0][1])
-        self.assertEqual(3, roll_custom.call_args_list[3][0][1])
+        self.assertEqual(1, roll_custom.call_args_list[0][0][0])
+        self.assertEqual(2, roll_custom.call_args_list[1][0][0])
+        self.assertEqual(1, roll_custom.call_args_list[2][0][0])
+        self.assertEqual(3, roll_custom.call_args_list[3][0][0])
 
         # Verify correct die type is rolled for each damage type
-        self.assertEqual(4, roll_custom.call_args_list[0][0][0])
-        self.assertEqual(6, roll_custom.call_args_list[1][0][0])
-        self.assertEqual(4, roll_custom.call_args_list[2][0][0])
-        self.assertEqual(8, roll_custom.call_args_list[3][0][0])
+        self.assertEqual(4, roll_custom.call_args_list[0][0][1])
+        self.assertEqual(6, roll_custom.call_args_list[1][0][1])
+        self.assertEqual(4, roll_custom.call_args_list[2][0][1])
+        self.assertEqual(8, roll_custom.call_args_list[3][0][1])
 
         # Verify the correct amount of damage is being applied
-        self.assertEqual(3, target.take_damage.call_args_list[0][0][0])
-        self.assertEqual(8, target.take_damage.call_args_list[1][0][0])
-        self.assertEqual(7, target.take_damage.call_args_list[2][0][0])
+        self.assertEqual(3, target._damage.call_args_list[0][0][0])
+        self.assertEqual(8, target._damage.call_args_list[1][0][0])
+        self.assertEqual(7, target._damage.call_args_list[2][0][0])
 
         # Verify the correct damage types are being applied
-        self.assertEqual("slashing", target.take_damage.call_args_list[0][0][1])
-        self.assertEqual("fire", target.take_damage.call_args_list[1][0][1])
-        self.assertEqual("cold", target.take_damage.call_args_list[2][0][1])
+        self.assertEqual("slashing", target._damage.call_args_list[0][0][1])
+        self.assertEqual("fire", target._damage.call_args_list[1][0][1])
+        self.assertEqual("cold", target._damage.call_args_list[2][0][1])
 
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
-    def test_roll_initiative(self, roll_d20):
+    def test_roll_initiative(self, roll_d20, ControllerMock):
         # Create statblock
         statblock = Statblock("Tester")
+
+        statblock._controller = ControllerMock.return_value
 
         # Verify initiative roll is returned
         self.assertEqual(15, statblock.roll_initiative())
@@ -543,10 +596,13 @@ class TestStatblock(unittest.TestCase):
         statblock._ability_scores["dex"].value = 16 #(+3 to DEX)
         self.assertEqual(18, statblock.roll_initiative())
 
+    @patch('src.control.controller.Controller')
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
-    def test_roll_initiative_effects(self, roll_d20):
+    def test_roll_initiative_effects(self, roll_d20, ControllerMock):
         # Create statblock
         statblock = Statblock("Tester")
+
+        statblock._controller = ControllerMock.return_value
 
         # Create effect
         effect = MagicMock(spec=Effect)
@@ -588,8 +644,9 @@ class TestStatblock(unittest.TestCase):
         # Create statblock
         statblock = Statblock("Tester")
 
+        # TODO: This test apparently
         # Create effect
-        
+    
     def test_speed(self):
         speed = MagicMock()
         speed.walk = 30

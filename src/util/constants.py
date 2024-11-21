@@ -29,6 +29,7 @@ class DamageType:
     RADIANT = "radiant"
     SLASHING = "slashing"
     THUNDER = "thunder"
+    TRUE = "true"
 
 class Languages:
     COMMON = "common"
@@ -186,6 +187,27 @@ class EventType:
     TRIGGER_ABILITY_CHECK_ROLL = "trigger_roll_ability_check"
     TRIGGER_ABILITY_CHECK_SUCCEED = "trigger_ability_check_succeed"
     TRIGGER_ABILITY_CHECK_FAIL = "trigger_ability_check_fail"
+
+    TRIGGER_SKILL_CHECK_ROLL = "trigger_roll_skill_check"
+    TRIGGER_SKILL_CHECK_SUCCEED = "trigger_skill_check_succeed"
+    TRIGGER_SKILL_CHECK_FAIL = "trigger_skill_check_fail"
+
+    TRIGGER_SAVING_THROW_ROLL = "trigger_roll_saving_throw"
+    TRIGGER_SAVING_THROW_SUCCEED = "trigger_saving_throw_succeed"
+    TRIGGER_SAVING_THROW_FAIL = "trigger_saving_throw_fail"
+
+    TRIGGER_ROLL_DAMAGE = "trigger_roll_damage"
+    TRIGGER_TAKE_DAMAGE = "trigger_take_damage"
+    TRIGGER_HIT_BY_ATTACK = "trigger_hit_by_attack"
+    TRIGGER_ZERO_HP = "trigger_zero_hp"
+    TRIGGER_DEATH = "trigger_death"
+
+    TRIGGER_ATTACK_ROLL = "trigger_roll_attack"
+    TRIGGER_ATTACK_ROLL_MELEE = "trigger_roll_attack_melee"
+    TRIGGER_ATTACK_ROLL_RANGED = "trigger_roll_attack_ranged"
+    TRIGGER_ATTACK_ROLL_SUCCEED = "trigger_attack_roll_succeed"
+    TRIGGER_ATTACK_ROLL_CRITICAL = "trigger_attack_roll_critical"
+    TRIGGER_ATTACK_ROLL_FAIL = "trigger_attack_roll_fail"
 
 class AbilityHeaderControlFlag:
     NEW_USE = "new_use_flag",

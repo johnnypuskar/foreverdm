@@ -4,12 +4,13 @@ from src.stats.abilities import AbilityIndex
 from src.stats.effects import EffectIndex
 from src.stats.proficiencies import Proficiencies, ProficiencyIndex
 from src.stats.resources import ResourceIndex
+from src.control.controller import Controller
 from src.util.resettable_value import ResettableValue
 from src.stats.statistics import AbilityScore, Speed
 from src.util.constants import Abilities, Skills, EventType
 from src.util.time import UseTime
 from src.events.event_context import *
-import asyncio
+from src.events.event import ReactionEvent, CompositeEvent
 
 class Statblock:
     def __init__(self, name, speed = Speed(30), size = 5):
@@ -38,8 +39,7 @@ class Statblock:
         self._effects = EffectIndex()
         self._resources = ResourceIndex()
         self._turn_resources = TurnResources()
-        self._event_manager = None
-        self._controller = None
+        self._controller: Controller = None
 
         self._concentration = None
 
@@ -47,7 +47,8 @@ class Statblock:
         self._equipped_item = None
         self._offhand_item = None
     
-    def get_name(self):
+    @property
+    def name(self):
         return self._name
 
     ## Abilities
@@ -82,20 +83,26 @@ class Statblock:
     def add_effect(self, effect, duration):
         self._effects.add(effect, duration)
 
-    def assign_event_manager(self, event_manager: EventManager):
-        if self._event_manager is not None:
-            self._event_manager.unsubscribe(self)
-        self._event_manager = event_manager
-        self._event_manager.subscribe(self)
+    async def handle_reaction(self, composite_event):
+        if not self._turn_resources._reaction:
+            return None
+        keyed_valid_abilities = {}
+        for event in composite_event.event_entries:
+            print(f"{self._name} handling event {event.event_type}: {vars(event.context)}")
+            for ability_name in self._abilities.get_headers_reactions_to_event(event.event_type):
+                keyed_valid_abilities[ability_name] = event
+        if len(keyed_valid_abilities) > 0:
+            keyed_valid_abilities["^skip"] = None
+            # TODO: More specific ability selection function
+            selection = self._controller.select(keyed_valid_abilities.keys())
+            if selection == "^skip":
+                return None
+            return self.use_ability(selection, *keyed_valid_abilities[selection].decompose_context())
+        else:
+            return None
 
-    async def handle_event(self, event: str, context):
-        valid_abilities = self._abilities.get_headers_reactions_to_event(event)
-        if len(valid_abilities) > 0:
-            # TODO: Statblock should select which ability to use, run it, and then take its result to modify the context, or decide not to use any and just return.
-            valid_abilities.insert(0, ("^pass", ()))
-            selection = self._controller.select(valid_abilities)
-            if selection[0] != "^pass":
-                self.use_ability(selection[0], *selection[1])
+    def trigger_custom_event(self, custom_event_type):
+        self._controller.trigger_reaction(custom_event_type, EventContext(self))
 
     ## Leveling
     def add_level(self, class_level, levels = 1):
@@ -125,7 +132,40 @@ class Statblock:
         if amount > self._temp_hp:
             self._temp_hp = amount
     
-    def take_damage(self, amount, type):
+    def take_damage(self, damage_string: str, die_multiplier = 1):
+        damage_instances = [d for d in damage_string.split(",") if d.strip()]
+        overall_damage_table = {}
+        for damage_instance in damage_instances:
+            if " " not in damage_instance:
+                damage_instance += " true"
+            damage_dice, damage_type = damage_instance.strip().split(" ")
+            damage_table = DiceParser.parse_string(damage_dice)
+            overall_damage_table[damage_type] = damage_table
+        
+        damage_output_table = {}
+
+        # TODO: evaluate if this is still necessary
+        roll_context = NumericRollEventContext(self, damage_string)
+        self._controller.trigger_reaction(EventType.TRIGGER_ROLL_DAMAGE, roll_context)
+
+        for damage_type, damage_dice_table in overall_damage_table.items():
+            damage_sum = 0
+            for die_type, amount in damage_dice_table.items():
+                if die_type == "MOD":
+                    damage_sum += amount
+                else:
+                    damage_sum += DiceRoller.roll_custom(amount * die_multiplier, die_type)
+            damage_output_table[damage_type] = damage_sum
+        
+        reaction_events = [(EventType.TRIGGER_TAKE_DAMAGE, DamageEventContext(self, event_damage_amount, event_damage_type)) for event_damage_type, event_damage_amount in damage_output_table.items()]
+        self._controller.trigger_reactions(reaction_events)
+
+        for damage_event in reaction_events:
+            damage_context = damage_event[1]
+            if damage_context.proceed and damage_context.amount > 0:
+                self._damage(damage_context.amount, damage_context.type)
+
+    def _damage(self, amount, type):
         # TODO: Implement damage resistance and vulnerability based on type
         # TODO: Check to make sure the damage type is valid
 
@@ -141,7 +181,20 @@ class Statblock:
             if abs(self._hp.value) >= self._hp.initial:
                 # TODO: Instant death
                 pass
+
+            context = EventContext(self)
+            self._controller.trigger_reaction(EventType.TRIGGER_ZERO_HP, context)
+
             self._hp.value = 0
+
+    def kill(self):
+        context = EventContext(self)
+        self._controller.trigger_reaction(EventType.TRIGGER_DEATH, context)
+        
+        if not context.proceed:
+            return
+
+        # TODO: Replace character in world with corpse
 
     ## Abilities
     def get_ability_score(self, ability):
@@ -189,17 +242,14 @@ class Statblock:
             "bonus": sum(d["bonus"] for d in self_effect_bonus_stats + target_effect_bonus_stats),
         }
 
-        roll_context = RollEventContext(self, modifier_table["advantage"], modifier_table["disadvantage"], modifier_table["auto_succeed"], modifier_table["auto_fail"], modifier_table["bonus"])
-        asyncio.run(self._event_manager.fire_event(EventType.TRIGGER_ABILITY_CHECK_ROLL, roll_context))
-
-        if roll_context.auto_fail:
-            return False
-        elif roll_context.auto_succeed:
-            return True
-
-        roll_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage) + self.get_ability_modifier(ability_name) + roll_context.bonus
-
-        return roll_result >= dc
+        return self._determine_d20_roll(
+            modifier_table,
+            dc,
+            self.get_ability_modifier(ability_name),
+            EventType.TRIGGER_ABILITY_CHECK_ROLL,
+            EventType.TRIGGER_ABILITY_CHECK_SUCCEED,
+            EventType.TRIGGER_ABILITY_CHECK_FAIL
+        )
 
     def saving_throw(self, dc, ability_name, trigger = None):
         saving_throw_proficiencies = {
@@ -226,14 +276,14 @@ class Statblock:
             "bonus": sum(d["bonus"] for d in self_effect_bonus_stats + target_effect_bonus_stats),
         }
 
-        if modifier_table["auto_fail"]:
-            return False
-        elif modifier_table["auto_succeed"]:
-            return True
-        
-        roll_result = DiceRoller.roll_d20(modifier_table["advantage"], modifier_table["disadvantage"]) + self.get_ability_modifier(ability_name) + modifier_table["bonus"] + (self.get_proficiency_bonus() if self.has_proficiency(saving_throw_proficiencies[ability_name]) else 0)
-
-        return roll_result >= dc
+        return self._determine_d20_roll(
+            modifier_table,
+            dc,
+            self.get_ability_modifier(ability_name) + (self.get_proficiency_bonus() if self.has_proficiency(saving_throw_proficiencies[ability_name]) else 0),
+            EventType.TRIGGER_SAVING_THROW_ROLL,
+            EventType.TRIGGER_SAVING_THROW_SUCCEED,
+            EventType.TRIGGER_SAVING_THROW_FAIL
+        )
 
     def skill_check(self, dc, skill_name, trigger = None):
         skill_proficiencies = {
@@ -293,14 +343,35 @@ class Statblock:
             "bonus": sum(d["bonus"] for d in self_effect_bonus_stats + target_effect_bonus_stats),
         }
 
-        if modifier_table["auto_fail"]:
-            return False
-        elif modifier_table["auto_succeed"]:
-            return True
-        
-        roll_result = DiceRoller.roll_d20(modifier_table["advantage"], modifier_table["disadvantage"]) + self.get_ability_modifier(skill_ability_map[skill_name]) + modifier_table["bonus"] + (self.get_proficiency_bonus() if self.has_proficiency(skill_proficiencies[skill_name]) else 0)
+        return self._determine_d20_roll(
+            modifier_table,
+            dc,
+            self.get_ability_modifier(skill_ability_map[skill_name]) + (self.get_proficiency_bonus() if self.has_proficiency(skill_proficiencies[skill_name]) else 0),
+            EventType.TRIGGER_SKILL_CHECK_ROLL,
+            EventType.TRIGGER_SKILL_CHECK_SUCCEED,
+            EventType.TRIGGER_SKILL_CHECK_FAIL
+        )
 
-        return roll_result >= dc
+    def _determine_d20_roll(self, modifier_table, dc, roll_skill_bonus, roll_event, success_event, fail_event):
+        roll_context = RollEventContext(self, modifier_table["advantage"], modifier_table["disadvantage"], modifier_table["auto_succeed"], modifier_table["auto_fail"], modifier_table["bonus"])
+        self._controller.trigger_reaction(roll_event, roll_context)
+        
+        if roll_context.auto_fail or not roll_context.proceed:
+            return False
+
+        roll_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage) + roll_context.bonus + roll_skill_bonus
+        result_context = RollResultEventContext(self, roll_result, roll_result >= dc)
+        
+        if not (roll_context.auto_succeed or result_context.success):
+            self._controller.trigger_reaction(success_event, result_context)
+        if roll_context.auto_succeed or result_context.success:
+            self._controller.trigger_reaction(fail_event, result_context)
+
+            if not result_context.proceed:
+                return False
+
+            return True
+        return False
 
     ## Combat Statistics
     def get_armor_class(self):
@@ -324,16 +395,17 @@ class Statblock:
 
     def melee_attack_roll(self, target, damage_string):
         effect_bonus_stats = ['str'] + list(self._effects.get_function_results("get_melee_attack_stat", self))
-        return self._attack_roll(target, max(effect_bonus_stats, key = lambda x: self.get_ability_modifier(x)), damage_string)
+        return self._attack_roll(target, max(effect_bonus_stats, key = lambda x: self.get_ability_modifier(x)), damage_string, EventType.TRIGGER_ATTACK_ROLL_MELEE)
     
     def ranged_attack_roll(self, target, damage_string):
         effect_bonus_stats = ['dex'] + self._effects.get_function_results("get_ranged_attack_stat", self)
-        return self._attack_roll(target, max(effect_bonus_stats, key = lambda x: self.get_ability_modifier(x)), damage_string)
+        return self._attack_roll(target, max(effect_bonus_stats, key = lambda x: self.get_ability_modifier(x)), damage_string, EventType.TRIGGER_ATTACK_ROLL_RANGED)
 
     def ability_attack_roll(self, target, ability_name, damage_string):
-        return self._attack_roll(target, ability_name, damage_string)
+        # TODO: Properly pass melee or ranged attack type to internal attack roll function
+        return self._attack_roll(target, ability_name, damage_string, EventType.TRIGGER_ATTACK_ROLL_RANGED)
 
-    def _attack_roll(self, target, attack_stat, damage_string):
+    def _attack_roll(self, target, attack_stat, damage_string, attack_type_event):
         effect_roll_modifiers = self._effects.get_function_results("make_attack_roll", self, target)
         modifier_table = {
             "advantage": any(d["advantage"] for d in effect_roll_modifiers),
@@ -343,36 +415,35 @@ class Statblock:
             "bonus": sum(d["bonus"] for d in effect_roll_modifiers)
         }
         
-        if modifier_table["auto_fail"]:
+        roll_context = AttackRollEventContext(self, target, modifier_table["advantage"], modifier_table["disadvantage"], modifier_table["auto_succeed"], modifier_table["auto_fail"], modifier_table["bonus"])
+        self._controller.trigger_reaction(EventType.TRIGGER_ATTACK_ROLL, roll_context)
+
+        if roll_context.auto_fail or not roll_context.proceed:
             return False
-        elif modifier_table["auto_succeed"]:
-            return True
         
         # TODO: Factor in proficiency bonus for equipped weapons
-        roll_result = DiceRoller.roll_d20(modifier_table["advantage"], modifier_table["disadvantage"])
-        if roll_result == 1:
-            return False
+        roll_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage)
+        result_context = TargetedRollResultEventContext(self, target, roll_result, roll_result == 20 or roll_context.auto_succeed or (roll_result != 1 and roll_result + self.get_ability_modifier(attack_stat) + roll_context.bonus >= target.get_armor_class()))
         
-        if roll_result == 20 or modifier_table["auto_succeed"] or roll_result + self.get_ability_modifier(attack_stat) + modifier_table["bonus"] >= target.get_armor_class():
-            damage_instances = damage_string.split(",")
-            overall_damage_table = {}
-            for damage_instance in damage_instances:
-                damage_dice, damage_type = damage_instance.strip().split(" ")
-                damage_table = DiceParser.parse_string(damage_dice)
-                overall_damage_table[damage_type] = damage_table
+        if roll_result == 1 or not (roll_context.auto_succeed or result_context.success):
+            self._controller.trigger_reaction(EventType.TRIGGER_ATTACK_ROLL_FAIL, result_context)
+        if roll_result == 20 or roll_context.auto_succeed or result_context.success:
 
-            die_multiplier = 2 if roll_result == 20 else 1
-            
-            # TODO: Roll all damage concurrently to allow for roll reaction abilities to modifier the whole damage roll - queue and execute system?
-            for damage_type, damage_dice_table in overall_damage_table.items():
-                damage_sum = 0
-                for die_type, amount in damage_dice_table.items():
-                    if die_type == "MOD":
-                        damage_sum += amount
-                    else:
-                        damage_sum += DiceRoller.roll_custom(die_type, amount * die_multiplier)
-                target.take_damage(damage_sum, damage_type)
+            events = [(EventType.TRIGGER_ATTACK_ROLL_SUCCEED, result_context)]
+            if roll_result == 20:
+                events.append((EventType.TRIGGER_ATTACK_ROLL_CRITICAL, result_context))
+            self._controller.trigger_reactions(events)
+
+            if not result_context.proceed:
+                return False
+
+            hit_context = TargetedEventContext(target, self)
+            target._controller.trigger_reaction(EventType.TRIGGER_HIT_BY_ATTACK, hit_context)
+
+            target.take_damage(damage_string, 2 if roll_result == 20 else 1)
+
             return True
+        return False
 
     ## Speed and Movement
     def get_speed(self):
@@ -412,9 +483,6 @@ class Statblock:
         
         return Speed(speed_values["walk"], speed_values["fly"], speed_values["swim"], speed_values["climb"], speed_values["burrow"], hover_defined if hover_defined is not None else self._speed.hover)
 
-
-
-    
     def add_temporary_speed(self, new_speed):
         self._speed += new_speed
 
