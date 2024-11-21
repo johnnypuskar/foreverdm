@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from src.util.constants import EventType
 from src.util.time import UseTime
 from src.stats.abilities import AbilityIndex, Ability, ReactionAbility, CompositeAbility, SubAbility
@@ -938,7 +938,7 @@ class TestAbility(unittest.TestCase):
         self.assertNotIn("test_ability", ability_index._abilities.keys())
 
         # Emit the signal containing the effect data
-        ability_index.signal(EventType.EFFECT_GRANTED_ABILITY, "test_ability", effect_script, "run")
+        ability_index.signal(EventType.EFFECT_GRANTED_ABILITY, "test_ability", effect_script, "run", "")
 
         # Verify test ability was added to the index
         self.assertIn("test_ability", ability_index._abilities.keys())
@@ -1005,7 +1005,128 @@ class TestAbility(unittest.TestCase):
         self.assertNotIn("first_ability", ability_index._abilities.keys())
         self.assertIn("second_ability", ability_index._abilities.keys())
 
+    def test_concentration(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability = Ability("test_ability", '''
+            use_time = UseTime("action", 1)
+            spell_duration = Duration("minute", 1)
+            spell_concentration = true
 
+            function run(target)
+                return 10
+            end
+        ''')
+        alternate_ability = Ability("alternate_ability", '''
+            use_time = UseTime("action", 1)
+            spell_duration = Duration("minute", 2)
+            spell_concentration = true
+                                    
+            function run(target)
+                return 20
+            end
+        ''')
+
+        # Add abilities to index
+        index.add(ability)
+        index.add(alternate_ability)
+
+        # Verify that the index is not concentrating on any abilities
+        self.assertFalse(index._concentration_tracker.concentrating)
+
+        # Use ability and verify concentration tracker is updated
+        index.run("test_ability", None)
+        self.assertTrue(index._concentration_tracker.concentrating)
+        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+
+        # Verify concentration changes to new ability when run
+        index.run("alternate_ability", None)
+        self.assertTrue(index._concentration_tracker.concentrating)
+        self.assertEqual(index._concentration_tracker._ability_use_uuid, alternate_ability._uuid)
+
+        # Verify concentration is broken properly
+        index.break_concentration()
+        self.assertFalse(index._concentration_tracker.concentrating)
+
+    def test_concentration_duration(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability = Ability("test_ability", '''
+            use_time = UseTime("action", 1)
+            spell_duration = Duration("round", 3)
+            spell_concentration = true
+                          
+            function run(target)
+                return 10
+            end
+        ''')
+
+        # Add ability to index and run to start concentration
+        index.add(ability)
+        index.run("test_ability", None)
+
+        # Verify that the index is concentrating on the ability
+        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+
+        # Verify that the index continues concentrating on the ability for only 3 rounds
+        self.assertTrue(index._concentration_tracker.concentrating)
+        index.tick_timers()
+        
+        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+        self.assertTrue(index._concentration_tracker.concentrating)
+        index.tick_timers()
+
+        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+        self.assertTrue(index._concentration_tracker.concentrating)
+        index.tick_timers()
+
+        self.assertFalse(index._concentration_tracker.concentrating)
+    
+    def test_concentration_break_event(self):
+        # Create test index and abilities
+        index = AbilityIndex()
+        ability = Ability("test_ability", '''
+            use_time = UseTime("action", 1)
+            spell_duration = Duration("round", 3)
+            spell_concentration = true
+                          
+            function run(target)
+                return 10
+            end
+        ''')
+
+        # Set ConcentrationTracker emit function to MagicMock
+        index._concentration_tracker.emit = MagicMock()
+
+        # Add ability to index and run to start concentration
+        index.add(ability)
+        index.run("test_ability", None)
+
+        # Verify that the index is concentrating on the ability
+        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+
+        # Break concentration and verify the concentration tracker emits the correct event
+        index.break_concentration()
+        expected = (
+            EventType.ABILITY_CONCENTRATION_ENDED,
+            ability._uuid
+        )
+        self.assertEqual(index._concentration_tracker.emit.call_args[0], expected)
+
+        # Run ability again and run out duration
+        index.run("test_ability", None)
+        index.tick_timers()
+        index.tick_timers()
+        index.tick_timers()
+
+        # Verify that the event was emitted again with the new ability uuid
+        expected = (
+            EventType.ABILITY_CONCENTRATION_ENDED,
+            ability._uuid
+        )
+        self.assertEqual(index._concentration_tracker.emit.call_args[0], expected)
+
+    
     @patch('src.stats.statblock.Statblock')
     def test_statblock_wrapper(self, StatblockMock):
         statblock = StatblockMock.return_value

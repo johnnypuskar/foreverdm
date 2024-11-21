@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
+from src.util.constants import EventType
 from src.stats.effects import Effect
 from src.stats.statblock import Statblock
 
@@ -340,6 +341,49 @@ class TestStatblock(unittest.TestCase):
 
         self.assertEqual(3, statblock.get_hit_points())
         self.assertEqual(0, statblock._temp_hp)
+
+    @patch('src.control.controller.Controller')
+    @patch('src.util.dice.DiceRoller.roll_d20', return_value = 10)
+    def test_take_damage_breaks_concentration(self, roll_d20, ControllerMock):
+        # Create statblock
+        statblock = Statblock("Tester")
+        statblock._hp._initial = 30
+        statblock._hp.value = 30
+
+        statblock._controller = ControllerMock.return_value
+
+        # Verify currently not concentrating
+        self.assertFalse(statblock._abilities._concentration_tracker.concentrating)
+
+        # Set concentration and verify concentrating
+        statblock._abilities._concentration_tracker.set_concentration("test_uuid", 10)
+        self.assertTrue(statblock._abilities._concentration_tracker.concentrating)
+
+        # Take damage and roll 10 on concentration saving throw
+        statblock.take_damage("10 piercing")
+
+        # Verify that concentration was not broken by a successful saving throw
+        self.assertTrue(statblock._abilities._concentration_tracker.concentrating)
+
+        self.assertEqual(statblock._controller.trigger_reactions.call_args_list[1][0][0][0][0], EventType.TRIGGER_SAVING_THROW_ROLL)
+        self.assertEqual(statblock._controller.trigger_reactions.call_args_list[1][0][0][1][0], EventType.TRIGGER_CONCENTRATION_SAVING_THROW_ROLL)
+        
+        self.assertEqual(statblock._controller.trigger_reactions.call_args_list[2][0][0][0][0], EventType.TRIGGER_SAVING_THROW_SUCCEED)
+        self.assertEqual(statblock._controller.trigger_reactions.call_args_list[2][0][0][1][0], EventType.TRIGGER_CONCENTRATION_SAVING_THROW_SUCCEED)
+
+        # Take damage and roll 9 on concentration saving throw
+        roll_d20.return_value = 9
+        statblock.take_damage("10 piercing")
+
+        # Verify that concentration was broken by a failed saving throw
+        self.assertEqual(statblock._controller.trigger_reactions.call_args_list[4][0][0][0][0], EventType.TRIGGER_SAVING_THROW_ROLL)
+        self.assertEqual(statblock._controller.trigger_reactions.call_args_list[4][0][0][1][0], EventType.TRIGGER_CONCENTRATION_SAVING_THROW_ROLL)
+        
+        self.assertEqual(statblock._controller.trigger_reactions.call_args_list[5][0][0][0][0], EventType.TRIGGER_SAVING_THROW_FAIL)
+        self.assertEqual(statblock._controller.trigger_reactions.call_args_list[5][0][0][1][0], EventType.TRIGGER_CONCENTRATION_SAVING_THROW_FAIL)
+
+        self.assertFalse(statblock._abilities._concentration_tracker.concentrating)
+
 
     # Combat Statistics
 

@@ -135,7 +135,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script, 1, {})
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script, 1, {}, "")
 
         # Verify test effect was added to the index
         self.assertIn("ability_effect", effect_index.effect_names)
@@ -177,8 +177,8 @@ class TestEffect(unittest.TestCase):
         results = effect_index.get_function_results("make_attack_roll", None, None)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1, {})
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1, {})
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1, {}, "")
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1, {}, "")
 
         # Verify test effects were added to the index
         self.assertIn("first_effect", effect_index.effect_names)
@@ -198,6 +198,71 @@ class TestEffect(unittest.TestCase):
         # Verify only the first effect was removed from the index
         self.assertNotIn("first_effect", effect_index.effect_names)
         self.assertIn("second_effect", effect_index.effect_names)
+
+    def test_concentration_breaking_effects(self):
+        # Create test index and ability_script
+        index = EffectIndex()
+        ability_script = '''
+            use_time = UseTime("action", 1)
+            spell_duration = Duration("round", 3)
+            spell_concentration = true
+            
+            test_effect = {
+                make_attack_roll = function(target) return RollResult({bonus = 5}) end
+            }
+            alt_effect ={
+                make_ability_check = function(target) return RollResult({bonus = 1}) end
+            }
+        '''
+        effect = Effect("static_effect", '''
+            function make_attack_roll(target) return RollResult({bonus = -3}) end
+        ''')
+
+        # Add the static effect to the index
+        index.add(effect, 10)
+
+        # Verify test effect is not in the effect index
+        self.assertNotIn("test_effect", index.effect_names)
+
+        # Emit the signal containing the effect data
+        TEST_UUID = "test_uuid"
+        index.signal(EventType.ABILITY_APPLIED_EFFECT, "test_effect", ability_script, 3, {}, TEST_UUID)
+        index.signal(EventType.ABILITY_APPLIED_EFFECT, "alt_effect", ability_script, 3, {}, TEST_UUID)
+
+        # Verify test effect was added to the index
+        self.assertIn("test_effect", index.effect_names)
+        self.assertIn("alt_effect", index.effect_names)
+
+        # Verify that the effect has the expected function results
+        expected = [
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -3},
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5}
+        ]
+        results = index.get_function_results("make_attack_roll", None, None)
+        self.assertEqual(results, expected)
+
+        expected = [
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 1}
+        ]
+        results = index.get_function_results("make_ability_check", None, None)
+        self.assertEqual(results, expected)
+
+        # Emit the broken concentration signal and verify the concentration effect was removed
+        index.signal(EventType.ABILITY_CONCENTRATION_ENDED, TEST_UUID)
+
+        self.assertNotIn("test_effect", index.effect_names)
+        self.assertNotIn("alt_effect", index.effect_names)
+
+        expected = [
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -3}
+        ]
+        results = index.get_function_results("make_attack_roll", None, None)
+        self.assertEqual(results, expected)
+
+        expected = []
+        results = index.get_function_results("make_ability_check", None, None)
+        self.assertEqual(results, expected)
+            
 
     @patch('src.stats.statblock.Statblock')
     def test_statblock_wrapper(self, StatblockMock):

@@ -183,6 +183,8 @@ class EventType:
     EFFECT_REMOVED_ABILITY = "effect_removed_ability"
     ABILITY_APPLIED_EFFECT = "ability_applied_effect"
     ABILITY_REMOVED_EFFECT = "ability_removed_effect"
+    ABILITY_CONCENTRATION_ENDED = "ability_concentration_ended"
+
 
     TRIGGER_ABILITY_CHECK_ROLL = "trigger_roll_ability_check"
     TRIGGER_ABILITY_CHECK_SUCCEED = "trigger_ability_check_succeed"
@@ -195,6 +197,9 @@ class EventType:
     TRIGGER_SAVING_THROW_ROLL = "trigger_roll_saving_throw"
     TRIGGER_SAVING_THROW_SUCCEED = "trigger_saving_throw_succeed"
     TRIGGER_SAVING_THROW_FAIL = "trigger_saving_throw_fail"
+    TRIGGER_CONCENTRATION_SAVING_THROW_ROLL = "trigger_roll_concentration_saving_throw"
+    TRIGGER_CONCENTRATION_SAVING_THROW_SUCCEED = "trigger_concentration_saving_throw_succeed"
+    TRIGGER_CONCENTRATION_SAVING_THROW_FAIL = "trigger_concentration_saving_throw_fail"
 
     TRIGGER_ROLL_DAMAGE = "trigger_roll_damage"
     TRIGGER_TAKE_DAMAGE = "trigger_take_damage"

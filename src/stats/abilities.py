@@ -1,5 +1,6 @@
 from enum import Enum
-from src.util.time import UseTime
+import uuid
+from src.util.time import UseTime, Timer
 from src.util.lua_manager import LuaManager
 from src.util.constants import EventType, ScriptData, AbilityHeaderControlFlag
 from src.events.observer import Observer, Emitter
@@ -12,12 +13,16 @@ class Ability:
         self._function_name = function_name
         self._globals = globals
         self._lua = None
+        self._uuid = None
+        self.regenerate_uuid()
 
         self._script = ScriptData.USE_TIME + ScriptData.DURATION + ScriptData.SPEED + ScriptData.ABILITY_VALIDATE + script
 
         lua = LuaManager()
         lua.execute("use_time = {unit = 'undefined', value = -1}")
         lua.execute("can_modify = {}")
+        lua.execute("spell_concentration = false")
+        lua.execute("spell_duration = {unit = 'round', value = 1}")
         lua.execute(self._script)
 
         use_time = dict(lua.globals['use_time'])
@@ -28,6 +33,9 @@ class Ability:
 
         self._is_modifier = len(list(lua.globals['can_modify'])) > 0
         self._use_time = UseTime.from_table(use_time)
+
+        self._concentration = lua.globals['spell_concentration']
+        self._duration = Timer.from_table(dict(lua.globals['spell_duration']))
 
         self.reset_use_delay()
 
@@ -40,6 +48,9 @@ class Ability:
     @property
     def is_modifier(self):
         return self._is_modifier
+
+    def regenerate_uuid(self):
+        self._uuid = str(uuid.uuid4().hex)
 
     def can_modify(self, ability_name):
         if not self._is_modifier:
@@ -191,6 +202,8 @@ class SubAbility(Ability):
         self._function_name = function_name
         self._globals = globals
         self._lua = None
+        self._uuid = None
+        self.regenerate_uuid()
 
         self._script = ScriptData.USE_TIME + ScriptData.SPEED + script
         self._script += f'''
@@ -201,8 +214,10 @@ class SubAbility(Ability):
 
         lua = LuaManager()
         lua.execute(self._script)
-
+        
         ability_dict = dict(lua.globals[name])
+        self._concentration = "spell_concentration" in ability_dict.keys() and ability_dict['spell_concentration']
+        self._duration = "spell_duration" in ability_dict.keys() and Timer.from_table(dict(ability_dict['spell_duration']))
         self._is_modifier = "can_modify" in ability_dict.keys() and len(list(ability_dict['can_modify'])) > 0
         self._use_time = UseTime.from_table(dict(ability_dict['use_time']))
 
@@ -232,11 +247,12 @@ class SubAbility(Ability):
             return (False, validation_message)
         return self._lua.run_nested(f"{self._name}.{self._function_name}", *args)
 
-
 class AbilityIndex(Observer, Emitter):
     def __init__(self):
         super().__init__()
         self._abilities = {}
+        self._concentration_tracker = ConcentrationTracker()
+        self._concentration_tracker.connect(self)
         self._active_use_ability = None
 
     def signal(self, event: str, *data):
@@ -247,6 +263,9 @@ class AbilityIndex(Observer, Emitter):
         elif event == EventType.EFFECT_REMOVED_ABILITY:
             # [data] = [ability_name]
             self.remove(data[0])
+        elif event == EventType.ABILITY_CONCENTRATION_ENDED:
+            # [data] = [ability_use_hash]
+            self.emit(EventType.ABILITY_CONCENTRATION_ENDED, *data)
 
     def add(self, ability: Ability):
         if ability._name in self._abilities:
@@ -337,6 +356,12 @@ class AbilityIndex(Observer, Emitter):
     def has_ability(self, name):
         return name in self.get_all_keys()
 
+    def tick_timers(self):
+        self._concentration_tracker.tick_timer()
+
+    def break_concentration(self):
+        self._concentration_tracker.end_concentration()
+
     def run(self, name, statblock, *args):
         ability_name, control_flags = self._separate_header_control_flags(name)
 
@@ -346,6 +371,8 @@ class AbilityIndex(Observer, Emitter):
             raise ValueError(f"Ability {name} is active use ability, must use control flag to determine continue use or new_use.")
 
         # TODO: Verify that you want to override the active use ability
+
+        # TODO: Verify that you want to break existing concentration
         
         ability = self.get_ability(ability_name)
 
@@ -368,6 +395,10 @@ class AbilityIndex(Observer, Emitter):
             return (False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")
         self._active_use_ability = None
 
+        ability.regenerate_uuid()
+        if ability._concentration:
+            self._concentration_tracker.set_concentration(ability._uuid, ability._duration.timestamp)
+
         return ability.run(*args)
 
     def run_sequence(self, name, statblock, modifiers, *args):
@@ -389,6 +420,9 @@ class AbilityIndex(Observer, Emitter):
             raise ValueError(f"Ability {ability_name} is a modifier ability and cannot be run as a main ability.")
 
         # TODO: Verify that you want to override the active use ability
+        
+        # TODO: Verify that you want to break existing concentration
+
         if self._active_use_ability != ability_name or (self._active_use_ability == ability_name and AbilityHeaderControlFlag.NEW_USE in control_flags):
             self._active_use_ability = ability_name
             self.get_ability(self._active_use_ability).reset_use_delay()
@@ -400,6 +434,10 @@ class AbilityIndex(Observer, Emitter):
             self._active_use_ability = None
             ability.reset_use_delay()
             return (False, validation_message)
+
+        ability.regenerate_uuid()
+        if ability._concentration:
+            self._concentration_tracker.set_concentration(ability._uuid, ability._duration.timestamp)
 
         if not ability.ready_check():
             return (False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")
@@ -451,6 +489,35 @@ class AbilityIndex(Observer, Emitter):
     def __repr__(self):
         return str(list(self._abilities.values()))
 
+class ConcentrationTracker(Emitter):
+    def __init__(self):
+        super().__init__()
+        self._ability_use_uuid = None
+        self._remaining_ticks = 0
+    
+    @property
+    def concentrating(self):
+        return self._ability_use_uuid is not None
+
+    def set_concentration(self, uuid, duration):
+        if self._ability_use_uuid is not None:
+            self.end_concentration()
+        self._ability_use_uuid = uuid
+        self._remaining_ticks = duration
+    
+    def end_concentration(self):
+        if self._ability_use_uuid is not None:
+            self.emit(EventType.ABILITY_CONCENTRATION_ENDED, self._ability_use_uuid)
+            self._ability_use_uuid = None
+            self._remaining_ticks = 0
+
+    def tick_timer(self):
+        if self._remaining_ticks > 0:
+            self._remaining_ticks -= 1
+            if self._remaining_ticks <= 0:
+                self.end_concentration()
+
+
 class StatblockAbilityWrapper:
     def __init__(self, statblock, ability):
         self._statblock = statblock
@@ -463,7 +530,7 @@ class StatblockAbilityWrapper:
         return getattr(self._statblock, name)
 
     def add_effect(self, effect_name, duration, globals = {}):
-        self._statblock._abilities.emit(EventType.ABILITY_APPLIED_EFFECT, effect_name, self._ability._script, duration, globals)
+        self._statblock._abilities.emit(EventType.ABILITY_APPLIED_EFFECT, effect_name, self._ability._script, duration, globals, self._ability._uuid)
     
     def remove_effect(self, effect_name):
         self._statblock._abilities.emit(EventType.ABILITY_REMOVED_EFFECT, effect_name)

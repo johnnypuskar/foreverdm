@@ -83,7 +83,7 @@ class Timer():
     
     def add_day(self, days = 1):
         self.add_hour(days * 24)
-    
+
     @staticmethod
     def in_minutes(minutes):
         return minutes * 10

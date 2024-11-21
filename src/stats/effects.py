@@ -42,8 +42,10 @@ class Effect:
             self._duration -= 1
 
 class SubEffect(Effect):
-    def __init__(self, name, script, globals = {}):
+    def __init__(self, name, script, globals = {}, ability_uuid = None):
+        script = ScriptData.USE_TIME + script
         super().__init__(name, script, globals)
+        self._ability_uuid = ability_uuid
         
     def has_function(self, function_name):
         if self._lua is None:
@@ -62,12 +64,20 @@ class EffectIndex(Observer, Emitter):
     
     def signal(self, event: str, *data):
         if event == EventType.ABILITY_APPLIED_EFFECT:
-            # [data] = [effect_name, script, duration, globals]
-            ability_effect = SubEffect(data[0], data[1], data[3])
+            # [data] = [effect_name, script, duration, globals, ability_uuid]
+            ability_effect = SubEffect(data[0], data[1], data[3], data[4])
             self.add(ability_effect, data[2])
         elif event == EventType.ABILITY_REMOVED_EFFECT:
             # [data] = [effect_name]
             self.remove(data[0])
+        elif event == EventType.ABILITY_CONCENTRATION_ENDED:
+            # [data] = [ability_uuid]
+            keys = list(self.effect_names)
+            for effect_name in keys:
+                effect = self._effects[effect_name]
+                if isinstance(effect, SubEffect) and effect._ability_uuid == data[0]:
+                    self.remove(effect_name)
+
 
     @property
     def effect_names(self):

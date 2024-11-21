@@ -136,7 +136,7 @@ In the case of spells, there are 6 additional global values that must be defined
 - `spell_components` is defined with a table that has 1 to 3 entries. The value entry keys for the table are 'V', 'S', and 'M' representing verbal, somatic, and material components. The values of these entries, in the case of 'V' and 'S', will be `true` boolean values in cases where a spell requires these component types. For entries with the 'M' key, the value will be a list of strings, defining each material object as it is said in the spell description. In cases of spells without verbal, somatic, and/or components, `spell_components` should not define the non-required entries in the table at all.
 
 #### `spell_duration`
-- `spell_duration` is defined with the GameTime() helper function. A value of nil is used in the case of a spell with duration 'Instantaneous'.
+- `spell_duration` is defined with the Duration() helper function. A value of nil is used in the case of a spell with duration 'Instantaneous'.
 
 #### `spell_concentration`
 - `spell_concentration` is defined with a boolean value indicating whether the spell requires concentration or not.

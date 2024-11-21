@@ -41,8 +41,6 @@ class Statblock:
         self._turn_resources = TurnResources()
         self._controller: Controller = None
 
-        self._concentration = None
-
         # Equipment
         self._equipped_item = None
         self._offhand_item = None
@@ -160,10 +158,25 @@ class Statblock:
         reaction_events = [(EventType.TRIGGER_TAKE_DAMAGE, DamageEventContext(self, event_damage_amount, event_damage_type)) for event_damage_type, event_damage_amount in damage_output_table.items()]
         self._controller.trigger_reactions(reaction_events)
 
+        total_damage = 0
+
         for damage_event in reaction_events:
             damage_context = damage_event[1]
             if damage_context.proceed and damage_context.amount > 0:
+                total_damage += damage_context.amount
                 self._damage(damage_context.amount, damage_context.type)
+
+        if self._abilities._concentration_tracker.concentrating:
+            concentration_check_dc = max(10, total_damage // 2)
+            save_success = self._saving_throw(
+                concentration_check_dc, Abilities.CONSTITUTION, None,
+                [EventType.TRIGGER_SAVING_THROW_ROLL, EventType.TRIGGER_CONCENTRATION_SAVING_THROW_ROLL],
+                [EventType.TRIGGER_SAVING_THROW_SUCCEED, EventType.TRIGGER_CONCENTRATION_SAVING_THROW_SUCCEED],
+                [EventType.TRIGGER_SAVING_THROW_FAIL, EventType.TRIGGER_CONCENTRATION_SAVING_THROW_FAIL]
+            )
+            if not save_success:
+                self._abilities._concentration_tracker.end_concentration()
+
 
     def _damage(self, amount, type):
         # TODO: Implement damage resistance and vulnerability based on type
@@ -246,12 +259,15 @@ class Statblock:
             modifier_table,
             dc,
             self.get_ability_modifier(ability_name),
-            EventType.TRIGGER_ABILITY_CHECK_ROLL,
-            EventType.TRIGGER_ABILITY_CHECK_SUCCEED,
-            EventType.TRIGGER_ABILITY_CHECK_FAIL
+            [EventType.TRIGGER_ABILITY_CHECK_ROLL],
+            [EventType.TRIGGER_ABILITY_CHECK_SUCCEED],
+            [EventType.TRIGGER_ABILITY_CHECK_FAIL]
         )
 
     def saving_throw(self, dc, ability_name, trigger = None):
+        return self._saving_throw(dc, ability_name, trigger)
+
+    def _saving_throw(self, dc, ability_name, trigger = None, roll_events = [EventType.TRIGGER_SAVING_THROW_ROLL], success_events= [EventType.TRIGGER_SAVING_THROW_SUCCEED], fail_events = [EventType.TRIGGER_SAVING_THROW_SUCCEED]):
         saving_throw_proficiencies = {
             Abilities.STRENGTH: Proficiencies.SAVING_THROW_STRENGTH,
             Abilities.DEXTERITY: Proficiencies.SAVING_THROW_DEXTERITY,
@@ -280,9 +296,9 @@ class Statblock:
             modifier_table,
             dc,
             self.get_ability_modifier(ability_name) + (self.get_proficiency_bonus() if self.has_proficiency(saving_throw_proficiencies[ability_name]) else 0),
-            EventType.TRIGGER_SAVING_THROW_ROLL,
-            EventType.TRIGGER_SAVING_THROW_SUCCEED,
-            EventType.TRIGGER_SAVING_THROW_FAIL
+            roll_events,
+            success_events,
+            fail_events
         )
 
     def skill_check(self, dc, skill_name, trigger = None):
@@ -347,14 +363,14 @@ class Statblock:
             modifier_table,
             dc,
             self.get_ability_modifier(skill_ability_map[skill_name]) + (self.get_proficiency_bonus() if self.has_proficiency(skill_proficiencies[skill_name]) else 0),
-            EventType.TRIGGER_SKILL_CHECK_ROLL,
-            EventType.TRIGGER_SKILL_CHECK_SUCCEED,
-            EventType.TRIGGER_SKILL_CHECK_FAIL
+            [EventType.TRIGGER_SKILL_CHECK_ROLL],
+            [EventType.TRIGGER_SKILL_CHECK_SUCCEED],
+            [EventType.TRIGGER_SKILL_CHECK_FAIL]
         )
 
-    def _determine_d20_roll(self, modifier_table, dc, roll_skill_bonus, roll_event, success_event, fail_event):
+    def _determine_d20_roll(self, modifier_table, dc, roll_skill_bonus, roll_events, success_events, fail_events):
         roll_context = RollEventContext(self, modifier_table["advantage"], modifier_table["disadvantage"], modifier_table["auto_succeed"], modifier_table["auto_fail"], modifier_table["bonus"])
-        self._controller.trigger_reaction(roll_event, roll_context)
+        self._controller.trigger_reactions([(event, roll_context) for event in roll_events])
         
         if roll_context.auto_fail or not roll_context.proceed:
             return False
@@ -364,9 +380,9 @@ class Statblock:
         result_context = RollResultEventContext(self, roll_result, roll_result >= dc, die_result == 20)
         
         if not (roll_context.auto_succeed or result_context.success):
-            self._controller.trigger_reaction(fail_event, result_context)
+            self._controller.trigger_reactions([(fail_event, result_context) for fail_event in fail_events])
         if roll_context.auto_succeed or result_context.success:
-            self._controller.trigger_reaction(success_event, result_context)
+            self._controller.trigger_reactions([(success_event, result_context) for success_event in success_events])
 
             if not result_context.proceed:
                 return False
