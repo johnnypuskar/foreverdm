@@ -1,14 +1,17 @@
 import unittest
+from unittest.mock import patch
 from src.control.controller import Controller
 from src.stats.statblock import Statblock
 from src.events.event_manager import EventManager
 
 class IntegrationTestStatblock(unittest.TestCase):
-    def test_reaction_events(self):
+    @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
+    def test_reaction_events(self, roll_d20):
         event_manager = EventManager()
 
         primary_controller = Controller()
         primary = Statblock("Primary")
+        primary._ability_scores["str"].value = 20
         primary_controller.statblock = primary
 
         secondary_controller = Controller()
