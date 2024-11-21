@@ -359,13 +359,14 @@ class Statblock:
         if roll_context.auto_fail or not roll_context.proceed:
             return False
 
-        roll_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage) + roll_context.bonus + roll_skill_bonus
-        result_context = RollResultEventContext(self, roll_result, roll_result >= dc)
+        die_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage)
+        roll_result = die_result + roll_context.bonus + roll_skill_bonus
+        result_context = RollResultEventContext(self, roll_result, roll_result >= dc, die_result == 20)
         
         if not (roll_context.auto_succeed or result_context.success):
-            self._controller.trigger_reaction(success_event, result_context)
-        if roll_context.auto_succeed or result_context.success:
             self._controller.trigger_reaction(fail_event, result_context)
+        if roll_context.auto_succeed or result_context.success:
+            self._controller.trigger_reaction(success_event, result_context)
 
             if not result_context.proceed:
                 return False
@@ -423,7 +424,7 @@ class Statblock:
         
         # TODO: Factor in proficiency bonus for equipped weapons
         roll_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage)
-        result_context = TargetedRollResultEventContext(self, target, roll_result, roll_result == 20 or roll_context.auto_succeed or (roll_result != 1 and roll_result + self.get_ability_modifier(attack_stat) + roll_context.bonus >= target.get_armor_class()))
+        result_context = TargetedRollResultEventContext(self, target, roll_result, roll_result == 20 or roll_context.auto_succeed or (roll_result != 1 and roll_result + self.get_ability_modifier(attack_stat) + roll_context.bonus >= target.get_armor_class()), roll_result == 20)
         
         if roll_result == 1 or not (roll_context.auto_succeed or result_context.success):
             self._controller.trigger_reaction(EventType.TRIGGER_ATTACK_ROLL_FAIL, result_context)

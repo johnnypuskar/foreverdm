@@ -40,22 +40,22 @@ class TargetedEventContext(EventContext):
         return [self._source, self.target]
 
 class RollResultEventContext(EventContext):
-    def __init__(self, source, result: int, success: bool):
+    def __init__(self, source, result: int, success: bool, critical_success: bool):
         EventContext.__init__(self, source)
         self.result = result
-        self.critical_success = result == 20
         self.success = success
+        self.critical_success = critical_success
     
     def decompose(self):
-        return [self._source, self.result, self.success]
+        return [self._source, self.result, self.success, self.critical_success]
 
 class TargetedRollResultEventContext(TargetedEventContext, RollResultEventContext):
-    def __init__(self, source, target, result: int, success: bool):
-        RollResultEventContext.__init__(self, source, result, success)
+    def __init__(self, source, target, result: int, success: bool, critical_success: bool):
+        RollResultEventContext.__init__(self, source, result, success, critical_success)
         TargetedEventContext.__init__(self, source, target)
     
     def decompose(self):
-        return [self._source, self.target, self.result, self.success]
+        return [self._source, self.target, self.result, self.success, self.critical_success]
 
 class AttackRollEventContext(TargetedEventContext, RollEventContext):
     def __init__(self, source, target, advantage: bool, disadvantage: bool, auto_succeed: bool, auto_fail: bool, bonus: int):

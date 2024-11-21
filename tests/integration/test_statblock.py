@@ -22,3 +22,9 @@ class IntegrationTestStatblock(unittest.TestCase):
         print(primary.melee_attack_roll(secondary, "1d4 slashing, 1d4 lightning"))
         print(f" : {secondary.name} HP: {secondary._hp}")
 
+        primary.ability_check(15, "str")
+
+        primary.skill_check(15, "athletics")
+
+        primary.saving_throw(10, "con")
+
