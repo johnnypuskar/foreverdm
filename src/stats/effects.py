@@ -78,21 +78,22 @@ class EffectIndex(Observer, Emitter):
                 if isinstance(effect, SubEffect) and effect._ability_uuid == data[0]:
                     self.remove(effect_name)
 
-
     @property
     def effect_names(self):
         return self._effects.keys()
 
-    def add(self, effect, duration):
+    def add(self, effect, duration, statblock = None):
         if isinstance(effect, Effect):
             if effect._name in self._effects:
                 raise ValueError(f"Effect {effect._name} already exists in index.")
             effect.duration = duration
             self._effects[effect._name] = effect
-            effect.initialize()
+            effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
             if effect.has_function("get_abilities"):
                 for effect_ability in effect.run("get_abilities"):
                     self.emit(EventType.EFFECT_GRANTED_ABILITY, effect_ability, effect._script, "run")
+            if effect.has_function("on_apply"):
+                effect.run("on_apply")
         elif type(effect) is str:
             self.add(Effect("temp_name", effect), duration)
         

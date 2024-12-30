@@ -334,6 +334,23 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(effect2.duration, 9)
 
     @patch('src.stats.statblock.Statblock')
+    def test_effect_on_apply(self, StatblockMock):
+        index = EffectIndex()
+        effect = Effect("test_effect", '''
+            function on_apply()
+                statblock:restore_hp(10)
+            end
+        ''')
+
+        # Add effect to index and verify it was added
+        statblock = StatblockMock.return_value
+        index.add(effect, 1, statblock)
+        self.assertIn("test_effect", index.effect_names)
+
+        # Verify on_apply function was called
+        statblock.restore_hp.assert_called_once()
+    
+    @patch('src.stats.statblock.Statblock')
     def test_effect_expiry(self, StatblockMock):
         index = EffectIndex()
         effect = Effect("test_effect", "")

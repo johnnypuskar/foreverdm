@@ -79,7 +79,7 @@ class Statblock:
         self._effects.get_function_results("on_trigger_" + trigger_name, self)
 
     def add_effect(self, effect, duration):
-        self._effects.add(effect, duration)
+        self._effects.add(effect, duration, self)
 
     async def handle_reaction(self, composite_event):
         if not self._turn_resources._reaction:
