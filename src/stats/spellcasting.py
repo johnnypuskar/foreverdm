@@ -98,7 +98,7 @@ class Spell(Ability):
             "statblock": statblock,
             "spell_level": self._level,
             "spell_school": self._school,
-            "spell_casting_time": self._casting_time,
+            "use_time": self._casting_time,
             "spell_range": self._range,
             "spell_components": self._components,
             "spell_duration": self._duration
