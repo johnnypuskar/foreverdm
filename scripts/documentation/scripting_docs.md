@@ -172,10 +172,10 @@ Creates and returns the table to designate the proper modifiers of a die roll fr
 
 ```
 -- Return a Roll table which gives the roll advantage and adds 2 to the result
-return RollModifier({"advantage": true, "bonus": 2})
+return RollModifier({advantage = true, bonus = 2})
 
 -- Return a Roll table which automatically fails
-return RollModifier({"auto_succeed": true})
+return RollModifier({auto_succeed = true})
 
 -- Return a default Roll table which doesn't affect the roll
 return RollModifier({})
@@ -271,6 +271,11 @@ Used right after the end of a charater with the effect's turn. Defines logic or 
 **Returns:**
 - `nil`: No return value
 
+## `on_apply()`
+Used once when the effect has just been applied successfully to the character.
+**Returns:**
+- `nil`: No return value
+
 ## `on_expire()`
 Used when the effect's remaining duration has reached 0 and it is about to be removed from the character. Function is run just before automatic removal, so no effect removal logic needs to be implemented.
 **Returns:**
@@ -281,14 +286,14 @@ Used when the character with the effect makes an attack roll against a target
 **Parameters:**
 - `target`: The Statblock of the target of the attack
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
 
 ### `recieve_attack_roll(attacker)`
 Used when the character with the effect is targeted by an attacker, before the attack is determined to hit or not
 **Parameters:**
 - `attacker`: The Statblock of the attacker
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
 
 ### `get_melee_attack_stat()`
 Used when the character with the effect references the statistic with which to make a melee attack roll with
@@ -325,7 +330,7 @@ Used when the character with the effect forces a target to make a saving throw
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
 - `target`: The Statblock of the target making the saving throw
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
 
 ### `saving_throw_impose(type, trigger)`
 Used when the character with the effect is forced to make a saving throw by a triggering creature
@@ -333,7 +338,7 @@ Used when the character with the effect is forced to make a saving throw by a tr
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
 - `trigger`: The Statblock of the triggering creature or object forcing the character with the effect to make the saving throw
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
 
 ### `ability_check_make(type, target)`
 Used when the character with the effect makes an ability check
@@ -341,7 +346,7 @@ Used when the character with the effect makes an ability check
 - `type`: The 3 letter key for the ability check ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
 - `target`: The Statblock of the target making the saving throw, may be nil in cases with no target creature
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
 
 ### `ability_check_impose(type, trigger)`
 Used when a triggering creature makes an ability check against the creature with the effect
@@ -349,7 +354,7 @@ Used when a triggering creature makes an ability check against the creature with
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
 - `trigger`: The Statblock of the triggering creature making the ability check against the character with the effect 
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
 
 ### `skill_check_make(skill, target)`
 Used when the character with the effect makes an skill check
@@ -357,7 +362,7 @@ Used when the character with the effect makes an skill check
 - `skill`: The skill for the check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
 - `target`: The Statblock of the target of the skill check, may be nil in cases with no target creature
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
 
 ### `skill_check_impose(type, trigger)`
 Used when a triggering creature makes an skill check against the creature with the effect
@@ -365,7 +370,7 @@ Used when a triggering creature makes an skill check against the creature with t
 - `skill`: The skill for the check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
 - `trigger`: The Statblock of the triggering creature making the skill check against the character with the effect 
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
 
 ### `modify_stat(stat)`
 Used to change the numerical value of a given stat on the character with the effect's statsheet
@@ -387,7 +392,7 @@ Used to change the numerical value of the character with the effect's armor clas
 ### `roll_initiative()`
 Used when the character with the effect rolls initiative
 **Returns:**
-- **RollResult**: Roll table created using the `RollResult()` helper function, note auto success and failure have no effect in this function.
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note auto success and failure have no effect in this function.
 
 ### `move(old_position, new_position)`
 Used whenever the character with the effect moves willingly from one position to the next.

@@ -94,7 +94,7 @@ class Skills:
 
 class ScriptData:
     ROLL_RESULT = '''
-    function RollResult(modifiers)
+    function RollModifier(modifiers)
         roll_mod = {
             advantage = false,
             disadvantage = false,

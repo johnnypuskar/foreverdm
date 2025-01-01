@@ -16,17 +16,17 @@ class TestEffect(unittest.TestCase):
         index = EffectIndex()
         effect_a = Effect("effect_a", '''
             function make_attack_roll(target)
-                return RollResult({bonus = 5})
+                return RollModifier({bonus = 5})
             end
         ''')
         effect_b = Effect("effect_b", '''
             function make_attack_roll(target)
-                return RollResult({bonus = -2})
+                return RollModifier({bonus = -2})
             end
         ''')   
         effect_c = Effect("effect_c", '''
             function receive_attack_roll(attacker)
-                return RollResult({auto_fail = true})
+                return RollModifier({auto_fail = true})
             end
         ''')
         index.add(effect_a, 1)
@@ -61,12 +61,12 @@ class TestEffect(unittest.TestCase):
         effect = Effect("test_effect", '''
             test_subeffect = {
                 receive_attack_roll = function(attacker)
-                    return RollResult({auto_fail = true})
+                    return RollModifier({auto_fail = true})
                 end
             }
 
             function make_attack_roll(target)
-                return RollResult({bonus = 5})
+                return RollModifier({bonus = 5})
             end
                         
             function end_turn()
@@ -121,7 +121,7 @@ class TestEffect(unittest.TestCase):
         ability_script = '''
             ability_effect = {
                 make_attack_roll = function(target)
-                    return RollResult({bonus = 5})
+                    return RollModifier({bonus = 5})
                 end
             }
         '''
@@ -158,12 +158,12 @@ class TestEffect(unittest.TestCase):
         ability_script = '''
             first_effect = {
                 make_attack_roll = function(target)
-                    return RollResult({bonus = 5})
+                    return RollModifier({bonus = 5})
                 end
             }
             second_effect = {
                 make_attack_roll = function(target)
-                    return RollResult({bonus = -2})
+                    return RollModifier({bonus = -2})
                 end
             }
         '''
@@ -208,14 +208,14 @@ class TestEffect(unittest.TestCase):
             spell_concentration = true
             
             test_effect = {
-                make_attack_roll = function(target) return RollResult({bonus = 5}) end
+                make_attack_roll = function(target) return RollModifier({bonus = 5}) end
             }
             alt_effect ={
-                make_ability_check = function(target) return RollResult({bonus = 1}) end
+                make_ability_check = function(target) return RollModifier({bonus = 1}) end
             }
         '''
         effect = Effect("static_effect", '''
-            function make_attack_roll(target) return RollResult({bonus = -3}) end
+            function make_attack_roll(target) return RollModifier({bonus = -3}) end
         ''')
 
         # Add the static effect to the index
@@ -274,7 +274,7 @@ class TestEffect(unittest.TestCase):
             subeffects = {
                 test_subeffect = {
                     receive_attack_roll = function(attacker)
-                        return RollResult({auto_fail = true})
+                        return RollModifier({auto_fail = true})
                     end
                 }
             }
@@ -407,8 +407,8 @@ class TestEffect(unittest.TestCase):
                 return SpeedModifier({walk = AddValue(10)})
             end
                         
-            function roll_result()
-                return RollResult({advantage = true, bonus = 5})
+            function roll_modifier()
+                return RollModifier({advantage = true, bonus = 5})
             end
                         
             function duration()
@@ -449,7 +449,7 @@ class TestEffect(unittest.TestCase):
         for key in expected:
             self.assertDictEqual(results[key], expected[key])
 
-        # Verify that RollResult works
+        # Verify that RollModifier works
         expected = {
             "disadvantage": False,
             "advantage": True,
@@ -457,7 +457,7 @@ class TestEffect(unittest.TestCase):
             "auto_fail": False,
             "bonus": 5
         }
-        results = index.get_function_results("roll_result", None, None)[0]
+        results = index.get_function_results("roll_modifier", None, None)[0]
         self.assertDictEqual(results, expected)
 
         # Verify that Duration works
