@@ -423,7 +423,7 @@ class Statblock:
         return self._attack_roll(target, ability_name, damage_string, EventType.TRIGGER_ATTACK_ROLL_RANGED)
 
     def _attack_roll(self, target, attack_stat, damage_string, attack_type_event):
-        effect_roll_modifiers = self._effects.get_function_results("make_attack_roll", self, target)
+        effect_roll_modifiers = self._effects.get_function_results("make_attack_roll", self, target) + target._effects.get_function_results("recieve_attack_roll", target, self)
         modifier_table = {
             "advantage": any(d["advantage"] for d in effect_roll_modifiers),
             "disadvantage": any(d["disadvantage"] for d in effect_roll_modifiers),
