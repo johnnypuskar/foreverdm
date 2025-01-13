@@ -5,13 +5,14 @@ from src.util.lua_manager import LuaManager
 from src.util.constants import EventType, ScriptData, AbilityHeaderControlFlag
 from src.events.observer import Observer, Emitter
 
-class Ability:
+class Ability(Observer):
     def __init__(self, name, script, function_name = "run", globals = {}):
         if not all(c.isalnum() or c in ["_"] for c in name):
             raise ValueError("Ability name can only include alphanumerics and underscores.")
+        super().__init__()
         self._name = name
         self._function_name = function_name
-        self._globals = globals
+        self._globals = {key: StatblockAbilityWrapper.create_wrapper(value, self) for key, value in globals.items()}
         self._lua = None
         self._uuid = None
         self.regenerate_uuid()
@@ -38,6 +39,11 @@ class Ability:
         self._duration = Timer.from_table(dict(lua.globals['spell_duration']))
 
         self.reset_use_delay()
+
+    def signal(self, event, *data):
+        if event == "set_reference":
+            key, value = data
+            self._globals[key] = StatblockAbilityWrapper.create_wrapper(value, self)
 
     @property
     def header(self):
@@ -92,6 +98,7 @@ class Ability:
 
     def initialize(self, globals):
         self._lua = LuaManager(self._globals)
+        self._lua.connect(self)
         self._lua.merge_globals(globals)
         self._lua.execute(self._script)
         return self._lua
@@ -200,7 +207,7 @@ class SubAbility(Ability):
     def __init__(self, name, script, function_name = "run", globals = {}):
         self._name = name
         self._function_name = function_name
-        self._globals = globals
+        self._globals = {key: StatblockAbilityWrapper.create_wrapper(value, self) for key, value in globals.items()}
         self._lua = None
         self._uuid = None
         self.regenerate_uuid()
@@ -523,6 +530,12 @@ class StatblockAbilityWrapper:
         self._statblock = statblock
         self._ability = ability
     
+    @staticmethod
+    def create_wrapper(obj, effect):
+        if isinstance(obj, (int, float, str, bool, type(None), dict)):
+            return obj
+        return StatblockAbilityWrapper(obj, effect)
+
     def __getitem__(self, key):
         return getattr(self, key)
         

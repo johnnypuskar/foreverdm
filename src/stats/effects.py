@@ -2,16 +2,15 @@ from src.util.lua_manager import LuaManager
 from src.util.constants import EventType, ScriptData
 from src.events.observer import Emitter, Observer
 
-class Effect:
-    def __init__(self, name, script, duration = -1, globals = {}):
+class Effect(Observer):
+    def __init__(self, name, script, globals = {}, duration = -1):
+        super().__init__()
         self._name = name
-        self._globals = globals
+        self._globals = {key: StatblockSubEffectWrapper.create_wrapper(value, self) for key, value in globals.items()}
         self._lua = None
         self._duration = duration
 
         self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.MULTIPLY_VALUE + ScriptData.DURATION + ScriptData.SPEED + script
-
-        lua = LuaManager()
     
     @property
     def duration(self):
@@ -21,8 +20,14 @@ class Effect:
     def duration(self, value):
         self._duration = value
 
+    def signal(self, event, *data):
+        if event == "set_reference":
+            key, value = data
+            self._globals[key] = StatblockSubEffectWrapper.create_wrapper(value, self)
+
     def initialize(self, globals = {}):
         self._lua = LuaManager(self._globals)
+        self._lua.connect(self)
         self._lua.merge_globals(globals)
         self._lua.execute(self._script)
         return self._lua
@@ -135,7 +140,13 @@ class StatblockSubEffectWrapper:
     def __init__(self, statblock, effect):
         self._statblock = statblock
         self._effect = effect
-    
+
+    @staticmethod
+    def create_wrapper(obj, effect):
+        if isinstance(obj, (int, float, str, bool, type(None), dict)):
+            return obj
+        return StatblockSubEffectWrapper(obj, effect)
+
     def __getitem__(self, key):
         return getattr(self, key)
         

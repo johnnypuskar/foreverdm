@@ -1,16 +1,29 @@
 import lupa, re
 from lupa import LuaRuntime, lua_type
 
-class LuaManager:
+from src.events.observer import Emitter
+from src.util.constants import ScriptData
+
+class LuaManager(Emitter):
     def __init__(self, globals = {}):
+        super().__init__()
         self._lua = LuaRuntime(unpack_returned_tuples=True)
+        self._lua.globals()["SetGlobal"] = self.emit_set_reference
         self._initial_globals = list(self._lua.globals().keys())
+        
         for key, value in globals.items():
-            self._lua.globals()[key] = value
+            self.set_global(key, value)
 
     @property
     def globals(self):
         return dict(self._lua.globals())
+
+    def set_global(self, key, value):
+        self._lua.globals()[key] = value
+
+    def emit_set_reference(self, key, value):
+        self.emit('set_reference', key, value)
+        self.set_global(key, value)
 
     @staticmethod
     def is_type(value, type):
@@ -65,13 +78,13 @@ class LuaManager:
     def merge_globals(self, globals):
         # Inserts all global values into the Lua environment, overwriting any existing values
         for key, value in globals.items():
-            self._lua.globals()[key] = value
+            self.set_global(key, value)
 
     def append_globals(self, globals):
         # Inserts all global values into the Lua environment, skipping any existing values
         for key, value in globals.items():
             if key not in self._lua.globals():
-                self._lua.globals()[key] = value
+                self.set_global(key, value)
     
     def get_defined_functions(self):
         function_names = []

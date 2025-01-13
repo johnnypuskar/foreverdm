@@ -141,6 +141,17 @@ In the case of spells, there are 6 additional global values that must be defined
 #### `spell_concentration`
 - `spell_concentration` is defined with a boolean value indicating whether the spell requires concentration or not.
 
+## SetReference Helper Function
+
+Certain abilities or effects may need to remember information or references across multiple uses. Whether it's a reference to the source of an effect, the last target statblock affected, a cumulative sum value, or any other variable, the `SetReference(name, value)` function allows storing and setting values to access them across subsequent uses or turns. Set references can then be used as normal global variables.
+(Note: Effect duration is tracked internally and does not require manual handling via this method).
+
+### `SetReference(name, value)`
+Sets a global reference which is remained across subsequent uses of an ability or effect script.
+**Parameters:**
+- `name`: A string name to call the reference variable
+- `value`: The value to store at the reference variable name
+
 # Effect Lua Script Format
 
 An effect is any status that alters how a character acts or behaves, by changing the properties of rolls or the characters statistics. It is defined by a .lua file that implements one or more of the following functions, returning a value that alters the corresponding function on the character statblock. Effects act as a form of Decorator pattern.
@@ -148,6 +159,7 @@ An effect is any status that alters how a character acts or behaves, by changing
 A effect .lua file will contain function definitions and implementations that handle how that effect should affect those function calls. Effects will only ever implement the functions listed in this documentation.
 
 In cases where a function runs, but is determined to have no effect - such as an effect which only activates under certain conditions - returning `nil` is the correct behavior to speficy that no modifications should be made for that case. Otherwise, functions must always return the correct type of value specified in the function documentation definition.
+
 
 ## RollModifier Helper Function
 

@@ -1171,6 +1171,46 @@ class TestAbility(unittest.TestCase):
         with self.assertRaises(ValueError):
             index.run("incorrect_ability", statblock, None)
 
+    @patch('src.stats.statblock.Statblock')
+    @patch('src.stats.statblock.Statblock')
+    def test_statblock_reference(self, StatblockMock2, StatblockMock1):
+        # Create test index, statblocks, and abilities
+        index = AbilityIndex()
+        statblock_reference = StatblockMock1.return_value
+        new_statblock_reference = StatblockMock2.return_value
+        statblock_reference.get_hit_points.return_value = 10
+        new_statblock_reference.get_hit_points.return_value = 20
+
+        ability = Ability("test_ability", '''
+            function run(target)
+                value = reference:get_hit_points()
+                SetGlobal("reference", target)
+                return value
+            end
+        ''', "run", {"reference": statblock_reference})
+
+        # Add ability to index
+        index.add(ability)
+
+        # Run ability and verify it passed the correct arguments to the statblock, and that the reference remains the same
+        expected = 10
+        result = index.run("test_ability", None, statblock_reference)
+        self.assertEqual(expected, result)
+        self.assertEqual(index._abilities["test_ability"]._globals["reference"]._statblock, statblock_reference)
+
+        # Run ability and verify it still returns the normal value, but the reference was updated
+        result = index.run("test_ability", None, new_statblock_reference)
+        self.assertEqual(expected, result)
+        self.assertEqual(index._abilities["test_ability"]._globals["reference"]._statblock, new_statblock_reference)
+
+        # Run ability and verify it returns the new value and the reference remains the same
+        expected = 20
+        result = index.run("test_ability", None, new_statblock_reference)
+        self.assertEqual(expected, result)
+        self.assertEqual(index._abilities["test_ability"]._globals["reference"]._statblock, new_statblock_reference)
+
+
+
     def test_use_time(self):
         # Create test index and abilities
         index = AbilityIndex()

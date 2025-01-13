@@ -311,6 +311,47 @@ class TestEffect(unittest.TestCase):
         statblock.add_effect.assert_called_once()
         self.assertEqual(type(statblock.add_effect.call_args[0][0]), SubEffect)
 
+    @patch('src.stats.statblock.Statblock')
+    @patch('src.stats.statblock.Statblock')
+    def test_statblock_reference(self, StatblockMock2, StatblockMock1):
+        index = EffectIndex()
+
+        # Create two reference statblocks with different behaviors
+        reference_statblock = StatblockMock1.return_value
+        new_reference_statblock = StatblockMock2.return_value
+
+        effect = Effect("test_effect", '''
+            function start_turn()
+                reference:restore_hp(10)
+            end
+                        
+            function change_reference(target)
+                SetGlobal("reference", target)
+            end
+        ''', {"reference": reference_statblock})
+
+        # Add effect to index and verify it was added
+        index.add(effect, 1)
+        self.assertIn("test_effect", index.effect_names)
+        self.assertEqual(effect._globals["reference"]._statblock, reference_statblock)
+
+        # Verify that the reference statblock was called correctly
+        index.get_function_results("start_turn", None, None)
+        reference_statblock.restore_hp.assert_called_once()
+        new_reference_statblock.restore_hp.assert_not_called()
+
+        # Verify that the reference was changed
+        index.get_function_results("change_reference", None, new_reference_statblock)
+        self.assertEqual(effect._globals["reference"]._statblock, new_reference_statblock)
+
+        # Reset the first mock's call count to verify it's not called again
+        reference_statblock.restore_hp.reset_mock()
+
+        # Verify that the new reference statblock was called correctly
+        index.get_function_results("start_turn", None, None)
+        new_reference_statblock.restore_hp.assert_called_once()
+        reference_statblock.restore_hp.assert_not_called()
+
     def test_effect_duration(self):
         effect = Effect("test_effect", "")
 
@@ -387,7 +428,7 @@ class TestEffect(unittest.TestCase):
         self.assertNotIn("test_effect", index.effect_names)
         statblock.restore_hp.assert_called_once()
         self.assertEqual(statblock.restore_hp.call_args[0][1], 10)
-
+    
     def test_script_helpers(self):
         index = EffectIndex()
         effect = Effect("test_effect", '''
@@ -468,4 +509,4 @@ class TestEffect(unittest.TestCase):
 
 
 
-        
+
