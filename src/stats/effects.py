@@ -25,7 +25,28 @@ class Effect(Observer):
             key, value = data
             self._globals[key] = StatblockSubEffectWrapper.create_wrapper(value, self)
 
+    def _synchronize_globals(self, new_globals):
+        if isinstance(new_globals, dict):
+            for key, value in new_globals.items():
+                if isinstance(value, StatblockSubEffectWrapper):
+                    for existing_key, existing_value in self._globals.items():
+                        if isinstance(existing_value, StatblockSubEffectWrapper) and existing_value._statblock == value._statblock:
+                            new_globals[key] = existing_value
+                            break
+            return new_globals
+        elif isinstance(new_globals, (list, tuple)):
+            keep_list = isinstance(new_globals, list)
+            new_globals = list(new_globals)
+            for i in range(len(new_globals)):
+                if isinstance(new_globals[i], StatblockSubEffectWrapper):
+                    for existing_key, existing_value in self._globals.items():
+                        if isinstance(existing_value, StatblockSubEffectWrapper) and existing_value._statblock == new_globals[i]._statblock:
+                            new_globals[i] = existing_value
+                            break
+            return new_globals if keep_list else tuple(new_globals)
+
     def initialize(self, globals = {}):
+        globals = self._synchronize_globals(globals)
         self._lua = LuaManager(self._globals)
         self._lua.connect(self)
         self._lua.merge_globals(globals)
@@ -38,6 +59,10 @@ class Effect(Observer):
         return function_name in self._lua.get_defined_functions()
 
     def run(self, function_name, *args):
+        args = list(args)
+        for i in range(len(args)):
+            args[i] = StatblockSubEffectWrapper.create_wrapper(args[i], self)
+        args = self._synchronize_globals(args)
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
         return self._lua.run(function_name, *args)
@@ -58,6 +83,9 @@ class SubEffect(Effect):
         return function_name in self._lua.globals[self._name]
     
     def run(self, function_name, *args):
+        for i in range(len(args)):
+            args[i] = StatblockSubEffectWrapper.create_wrapper(args[i], self)
+        args = self._synchronize_globals(args)
         if self._lua is None:
             raise RuntimeError("LuaManager not initialized.")
         return self._lua.run_nested(f'{self._name}.{function_name}', *args)
@@ -156,4 +184,9 @@ class StatblockSubEffectWrapper:
     def add_effect(self, subeffect_name, duration, globals = {}):
         subeffect = SubEffect(subeffect_name, self._effect._script, globals)
         return self._statblock.add_effect(subeffect, duration)
+    
+    def __eq__(self, value):
+        if isinstance(value, StatblockSubEffectWrapper):
+            return self._statblock == value._statblock
+        return self._statblock == value
     
