@@ -126,5 +126,21 @@ class NavAgent:
                     full_path.insert(0, next_position)
                 return next_position, turn, full_path
         return None, -1, None
-                
-                
+    
+    def get_directed_push_to(self, map, start_position, toward_position, max_distance):
+        line_nodes = map.get_tiles_in_line(start_position, toward_position)
+        distance_remaining = max_distance
+        path = []
+        for i in range(len(line_nodes) - 1):
+            move_start = line_nodes[i]
+            move_end = line_nodes[i + 1]
+            move_cost = map.calculate_movement_cost(move_start, move_end, self.size)
+
+            if move_cost is None or move_cost.flying > distance_remaining:
+                return path
+            else:
+                path.append(move_end)
+                distance_remaining -= move_cost.flying
+        return path
+
+        
