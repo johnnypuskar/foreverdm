@@ -187,7 +187,6 @@ class TestStatblock(unittest.TestCase):
         ability._use_time.is_action = True
         statblock.add_ability(ability)
 
-
         # Verify running returns correct values and expends action
         self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
         self.assertFalse(statblock._turn_resources._action)
@@ -242,6 +241,122 @@ class TestStatblock(unittest.TestCase):
         statblock._turn_resources.reset()
         self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
     
+    @patch('src.stats.abilities.Ability')
+    @patch('src.util.time.UseTime')
+    @patch('src.stats.effect_index.EffectIndex.get_function_results')
+    def test_ability_effect_action_blocking(self, effect_results, UseTimeMock, AbilityMock):
+        statblock = Statblock("Tester")
+
+        ability = AbilityMock.return_value
+        ability._name = "test_ability"
+        ability.is_modifier = False
+        ability.validate.return_value = (True, None)
+        ability.run.return_value = (True, "Ran test")
+        ability._use_time = UseTimeMock.return_value
+        ability._use_time.is_action.return_value = True
+        ability._use_time.is_bonus_action.return_value = False
+        ability._use_time.is_reaction.return_value = False
+        ability._use_time.__str__.return_value = "action"
+
+        def block_neither(func_name, *args):
+            return []
+
+        def block_actions(func_name, *args):
+            if func_name == "allow_actions":
+                return [False]
+            elif func_name == "allow_reactions":
+                return [] 
+            return []
+        
+        def block_reactions(func_name, *args):
+            if func_name == "allow_actions":
+                return []
+            elif func_name == "allow_reactions":
+                return [False] 
+            return []
+
+        effect_results.side_effect = block_neither
+
+        # Add ability and check it is in the index
+        statblock.add_ability(ability)
+        self.assertTrue(statblock._abilities.has_ability("test_ability"))
+
+        # Verify ability can be used with no blocking effects
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+        statblock._turn_resources.reset()
+
+        # Change ability to bonus action and verify it can be used with no blocking effects
+        ability._use_time.is_action.return_value = False
+        ability._use_time.is_bonus_action.return_value = True
+        ability._use_time.__str__.return_value = "bonus_action"
+
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+        statblock._turn_resources.reset()
+
+        # Change ability to reaction and verify it can be used with no blocking effects
+        ability._use_time.is_bonus_action.return_value = False
+        ability._use_time.is_reaction.return_value = True
+        ability._use_time.__str__.return_value = "reaction"
+
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+        statblock._turn_resources.reset()
+
+        # Change effect to block actions
+        effect_results.side_effect = block_actions
+
+        # Change ability to action and verify it cannot be used with action blocking effect
+        ability._use_time.is_action.return_value = True
+        ability._use_time.is_bonus_action.return_value = False
+        ability._use_time.__str__.return_value = "action"
+        
+        self.assertEqual((False, "Unable to take action."), statblock.use_ability("test_ability"))
+
+        # Change ability to bonus action and verify it cannot be used with action blocking effect
+        ability._use_time.is_action.return_value = False
+        ability._use_time.is_bonus_action.return_value = True
+        ability._use_time.__str__.return_value = "bonus_action"
+
+        self.assertEqual((False, "Unable to take bonus action."), statblock.use_ability("test_ability"))
+
+        # Change ability to reaction and verify it can be used with action blocking effect
+        ability._use_time.is_bonus_action.return_value = False
+        ability._use_time.is_reaction.return_value = True
+        ability._use_time.__str__.return_value = "reaction"
+
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+        statblock._turn_resources.reset()
+
+        # Reset statblock and change effect to block reactions
+        effect_results.side_effect = block_reactions
+
+        # Verify ability cannot be used with blocking effect
+        self.assertEqual((False, "Unable to take reaction."), statblock.use_ability("test_ability"))
+
+        # Change ability to action and verify it can be used with reaction blocking effect
+        ability._use_time.is_action.return_value = True
+        ability._use_time.is_reaction.return_value = False
+        ability._use_time.__str__.return_value = "action"
+
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+        statblock._turn_resources.reset()
+
+        # Change ability to bonus action and verify it can be used with reaction blocking effect
+        ability._use_time.is_action.return_value = False
+        ability._use_time.is_bonus_action.return_value = True
+        ability._use_time.__str__.return_value = "bonus_action"
+
+        self.assertEqual((True, "Ran test"), statblock.use_ability("test_ability"))
+
+
+
+
+
+
+
+
+
+
+
     # Health
     def test_get_hit_points(self):
         statblock = Statblock("Tester")
@@ -457,6 +572,7 @@ class TestStatblock(unittest.TestCase):
         effect = MagicMock(spec=Effect)
         effect._name = "test_effect"
         effect._granted_abilities = []
+        effect._conditions = []
 
         def test_has_function(function_name):
             return function_name == "make_attack_roll"
@@ -488,6 +604,7 @@ class TestStatblock(unittest.TestCase):
         effect = MagicMock(spec=Effect)
         effect._name = "test_effect"
         effect._granted_abilities = []
+        effect._conditions = []
 
         def test_has_function(function_name):
             return function_name == "make_attack_roll"
@@ -530,6 +647,7 @@ class TestStatblock(unittest.TestCase):
         effect = MagicMock(spec=Effect)
         effect._name = "test_effect"
         effect._granted_abilities = []
+        effect._conditions = []
 
         def test_has_function(function_name):
             return function_name == "make_attack_roll"
@@ -652,6 +770,7 @@ class TestStatblock(unittest.TestCase):
         effect = MagicMock(spec=Effect)
         effect._name = "test_effect"
         effect._granted_abilities = []
+        effect._conditions = []
 
         def test_has_function(function_name):
             return function_name == "roll_initiative"
@@ -778,7 +897,6 @@ class TestStatblock(unittest.TestCase):
         self.assertEqual(10, statblock_speed.burrow)
         self.assertFalse(statblock_speed.hover)
 
-
     def test_temporary_speed(self):
         speed = MagicMock()
         temp_speed = MagicMock()
@@ -786,3 +904,19 @@ class TestStatblock(unittest.TestCase):
 
         statblock.add_temporary_speed(temp_speed)
         speed.__iadd__.assert_called_with(temp_speed)
+
+    def test_default_position_functions(self):
+        statblock = Statblock("Tester")
+
+        # Check default position is (0, 0)
+        self.assertEqual((0, 0), statblock.get_position())
+
+        # Check position is not changed with set function
+        statblock.set_position(5, 5)
+        self.assertEqual((0, 0), statblock.get_position())
+
+        self.assertEqual(5, statblock.distance_to(None))
+        self.assertEqual(5, statblock.distance_to(10, 10))
+
+        self.assertEqual((0, 0), statblock.pull_towards(10, 5, 10))
+        self.assertEqual((0, 0), statblock.push_from(10, 5, 10))
