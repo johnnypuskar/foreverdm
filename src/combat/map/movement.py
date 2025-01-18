@@ -4,7 +4,7 @@ class MovementCost():
 
     def __init__(self, walking = None, flying = None, swimming = None, climbing = None, burrowing = None):
         self._walking = walking
-        self._flying = flying
+        self._flying = flying if flying is not None else walking
         self._swimming = swimming
         self._climbing = climbing
         self._burrowing = burrowing
