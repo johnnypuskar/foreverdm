@@ -176,5 +176,8 @@ class TestConditions(unittest.TestCase):
         result = target.ability_check(10, "cha", statblock)
         Mock_roll_d20.assert_called_with(True, False)
 
+    def test_deafened(self):
+        # TODO: Create test for deafened condition once proper hearing senses have been implemented
+        pass
 
-
+    
