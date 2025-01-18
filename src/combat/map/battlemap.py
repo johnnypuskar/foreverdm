@@ -128,6 +128,75 @@ class Map:
             tile_range += 1
         return max_size
 
+    def get_tiles_in_line(self, start, end):
+        # Based off Bresenham's line algorithm
+        # https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+        if start == end:
+            return [start]
+        points = []
+        x1, y1 = start
+        x2, y2 = end
+        if x1 == x2:
+            sign = int(abs(y2 - y1) / (y2 - y1))
+            points = [(x1, y) for y in range(y1, min(y2, self._height), sign)]
+            if y2 < self._height:
+                points.append((x2, y2))
+        elif y1 == y2:
+            sign = int(abs(x2 - x1) / (x2 - x1))
+            points = [(x, y1) for x in range(x1, min(x2, self._width), sign)]
+            if x2 < self._width:
+                points.append((x2, y2))
+        elif abs(y2 - y1) < abs(x2 - x1):
+            if x1 > x2:
+                x1, y1, x2, y2 = x2, y2, x1, y1
+            dx = x2 - x1
+            dy = y2 - y1
+            yi = 1
+            if dy < 0:
+                yi = -1
+                dy = -dy
+            D = (2 * dy) - dx
+            y = y1
+
+            for x in range(x1, x2):
+                points.append((x, y))
+                if D > 0:
+                    y += yi
+                    D += 2 * (dy - dx)
+                else:
+                    D += 2 * dy
+            points.append((x2, y2))
+        else:
+            if y1 > y2:
+                x1, y1, x2, y2 = x2, y2, x1, y1
+            dx = x2 - x1
+            dy = y2 - y1
+            xi = 1
+            if dx < 0:
+                xi = -1
+                dx = -dx
+            D = (2 * dx) - dy
+            x = x1
+
+            for y in range(y1, y2):
+                points.append((x, y))
+                if D > 0:
+                    x += xi
+                    D += 2 * (dx - dy)
+                else:
+                    D += 2 * dx
+            points.append((x2, y2))
+
+        def distance_to_end(point):
+            dx = end[0] - point[0]
+            dy = end[1] - point[1]
+            return math.sqrt(dx*dx + dy*dy)
+            
+        points = [point for point in points if 0 <= point[0] < self._width and 0 <= point[1] < self._height]
+        points.sort(key=distance_to_end, reverse=True)
+        return points
+
+
     def calculate_cover(self, attacking, defending):
         # get_integer_points(start, end) - determines the points which would potentially overlap walls
         def get_integer_points(start, end):
@@ -362,7 +431,11 @@ class Map:
             return map_grid
 
     def get_map_as_string(self, highlighted = []):
-        string_width = 6 * self._width + 4
+        string_width = 6 * (self._width + 1) + 4
+        
+        col_label_string = " " * 7
+        for x in range(self._width):
+            col_label_string += f"  {x:^4}"
         
         def insert_into_map_string(m_string, x, y, row_1, row_2, row_3):
             tile_text_index = (y * string_width * 2) + 6 * x
@@ -378,8 +451,9 @@ class Map:
 
         TILE_CHAR_WIDTH = 9
 
-        for x in range(self._width):
-            for y in range(self._height):
+        for y in range(self._height):
+            map_string = insert_into_map_string(map_string, 0, y, " " * 6, f" {y:>4} ", " " * 6)
+            for x in range(self._width):
 
                 # Top Row
                 wall_up = False
@@ -422,7 +496,8 @@ class Map:
                 wall_side_down = self.get_tile(x, y).wall_right is not None
 
                 try:
-                    wall_side_up = self.get_tile(x, y - 1).wall_right is not None
+                    if y > 0:
+                        wall_side_up = self.get_tile(x, y - 1).wall_right is not None
                 except IndexError:
                     pass
 
@@ -457,7 +532,8 @@ class Map:
                 wall_bottom_right = self.get_tile(x, y).wall_bottom is not None
 
                 try:
-                    wall_bottom_left = self.get_tile(x - 1, y).wall_bottom is not None
+                    if x > 0:
+                        wall_bottom_left = self.get_tile(x - 1, y).wall_bottom is not None
                 except IndexError:
                     pass
                 
@@ -480,9 +556,9 @@ class Map:
                     middle_row += "\n"
                     bottom_row += "\n"
 
-                map_string = insert_into_map_string(map_string, x, y, top_row, middle_row, bottom_row)
+                map_string = insert_into_map_string(map_string, x + 1, y, top_row, middle_row, bottom_row)
 
-        return map_string[:string_width * (self._height * 2 + 1) - 1]
+        return "\n" + col_label_string + "\n" + map_string[:string_width * (self._height * 2 + 1) - 1]
 
     def __str__(self):
         return self.get_map_as_string()
