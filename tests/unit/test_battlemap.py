@@ -98,6 +98,101 @@ class TestMap(unittest.TestCase):
         self.assertEqual(grid.get_tile(2, 2).max_token_size, Size.LARGE)
         self.assertEqual(grid.get_tile(3, 3).max_token_size, Size.MEDIUM)
 
+    def test_get_tiles_in_line(self):
+        grid = Map(20, 20)
+
+        # Testing getting tiles in a horizontal line
+        expected = [(10, 10), (11, 10), (12, 10), (13, 10), (14, 10), (15, 10)]
+        result = grid.get_tiles_in_line((10, 10), (15, 10))
+        self.assertListEqual(expected, result)
+
+        # Testing getting tiles in a backwards horizontal line
+        expected = [(10, 10), (9, 10), (8, 10), (7, 10), (6, 10), (5, 10)]
+        result = grid.get_tiles_in_line((10, 10), (5, 10))
+        self.assertListEqual(expected, result)
+
+        # Testing getting tiles in a vertical line
+        expected = [(10, 10), (10, 11), (10, 12), (10, 13), (10, 14), (10, 15)]
+        result = grid.get_tiles_in_line((10, 10), (10, 15))
+        self.assertListEqual(expected, result)
+
+        # Testing getting tiles in a backwards vertical line
+        expected = [(10, 10), (10, 9), (10, 8), (10, 7), (10, 6), (10, 5)]
+        result = grid.get_tiles_in_line((10, 10), (10, 5))
+        self.assertListEqual(expected, result)
+
+        # Testing getting tiles in a 45 degree diagonal line in all four directions
+        expected = [(10, 10), (11, 11), (12, 12), (13, 13), (14, 14), (15, 15)]
+        result = grid.get_tiles_in_line((10, 10), (15, 15))
+        self.assertListEqual(expected, result)
+
+        expected = [(10, 10), (11, 9), (12, 8), (13, 7), (14, 6), (15, 5)]
+        result = grid.get_tiles_in_line((10, 10), (15, 5))
+        self.assertListEqual(expected, result)
+
+        expected = [(10, 10), (9, 11), (8, 12), (7, 13), (6, 14), (5, 15)]
+        result = grid.get_tiles_in_line((10, 10), (5, 15))
+        self.assertListEqual(expected, result)
+
+        expected = [(10, 10), (9, 9), (8, 8), (7, 7), (6, 6), (5, 5)]
+        result = grid.get_tiles_in_line((10, 10), (5, 5))
+        self.assertListEqual(expected, result)
+
+        # Testing getting tiles in other non-45 degree diagonal lines
+        expected = [(10, 10), (11, 11), (12, 11), (13, 12), (14, 13), (15, 13), (16, 14)]
+        result = grid.get_tiles_in_line((10, 10), (16, 14))
+        self.assertListEqual(expected, result)
+
+        expected = [(10, 10), (9, 10), (8, 9), (7, 9), (6, 9), (5, 9), (4, 8), (3, 8)]
+        result = grid.get_tiles_in_line((10, 10), (3, 8))
+        self.assertListEqual(expected, result)
+
+        expected = [(10, 10), (9, 11), (8, 12), (7, 13), (7, 14), (6, 15), (5, 16), (4, 17)]
+        result = grid.get_tiles_in_line((10, 10), (4, 17))
+        self.assertListEqual(expected, result)
+
+        expected = [(10, 10), (10, 9), (10, 8), (11, 7), (11, 6), (11, 5), (11, 4), (12, 3), (12, 2), (12, 1)]
+        result = grid.get_tiles_in_line((10, 10), (12, 1))
+        self.assertListEqual(expected, result)
+
+        # Testing that getting tiles in a line that goes off the map returns only the tiles on the map
+        expected = [(18, 10), (19, 10)]
+        result = grid.get_tiles_in_line((18, 10), (25, 10))
+        self.assertListEqual(expected, result)
+
+        expected = [(10, 18), (10, 19)]
+        result = grid.get_tiles_in_line((10, 18), (10, 25))
+        self.assertListEqual(expected, result)
+
+        expected = [(18, 18), (19, 19)]
+        result = grid.get_tiles_in_line((18, 18), (25, 25))
+        self.assertListEqual(expected, result)
+
+        expected = [(1, 1), (0, 0)]
+        result = grid.get_tiles_in_line((1, 1), (-5, -5))
+        self.assertListEqual(expected, result)
+
+        expected = [(1, 10), (0, 10)]
+        result = grid.get_tiles_in_line((1, 10), (-5, 10))
+        self.assertListEqual(expected, result)
+
+        expected = [(10, 1), (10, 0)]
+        result = grid.get_tiles_in_line((10, 1), (10, -5))
+        self.assertListEqual(expected, result)
+
+        small_grid = Map(3, 3)
+
+        expected = [(0, 1), (1, 1), (2, 1)]
+        result = small_grid.get_tiles_in_line((-10, 1), (20, 1))
+        self.assertListEqual(expected, result)
+
+        expected = [(1, 0), (1, 1), (1, 2)]
+        result = small_grid.get_tiles_in_line((1, -10), (1, 20))
+        self.assertListEqual(expected, result)
+
+        expected = [(0, 0), (1, 1), (2, 2)]
+        result = small_grid.get_tiles_in_line((-10, -10), (20, 20))
+        self.assertListEqual(expected, result)
 
     def test_load_file(self):
         # Load test map
@@ -262,6 +357,75 @@ class TestNavigation(unittest.TestCase):
         reachable, _, _ = tiny_agent.get_reachable_nodes(grid, (1, 1))
         self.assertListEqual(WALKABLE_TILES, list(reachable.keys()))
 
+    def test_directed_push(self):
+        grid = Map.load_from_file(self.TEST_LEVEL_TERRAIN)
+        agent = NavAgent(Speed(15), Size.MEDIUM)
+
+        # Testing that the directed push works horizontally, vertically, and at an angle.
+        expected = [(3, 10), (4, 10), (5, 10)]
+        result = agent.get_directed_push_to(grid, (2, 10), (15, 10), 15)
+        self.assertListEqual(expected, result)
+
+        expected = [(8, 5), (8, 6), (8, 7)]
+        result = agent.get_directed_push_to(grid, (8, 4), (8, 15), 15)
+        self.assertListEqual(expected, result)
+
+        expected = [(4, 10), (5, 9), (6, 8)]
+        result = agent.get_directed_push_to(grid, (5, 11), (15, 1), 15)
+
+        # Testing that the directed push goes different distances based on max_distance
+        expected = [(2, 8)]
+        result = agent.get_directed_push_to(grid, (1, 8), (15, 8), 5)
+        self.assertListEqual(expected, result)
+
+        expected = [(2, 8), (3, 8)]
+        result = agent.get_directed_push_to(grid, (1, 8), (15, 8), 10)
+        self.assertListEqual(expected, result)
+
+        expected = [(2, 8), (3, 8), (4, 8)]
+        result = agent.get_directed_push_to(grid, (1, 8), (15, 8), 15)
+        self.assertListEqual(expected, result)
+
+        expected = [(2, 8), (3, 8), (4, 8), (5, 8)]
+        result = agent.get_directed_push_to(grid, (1, 8), (15, 8), 20)
+        self.assertListEqual(expected, result)
+
+        # Testing that the directed push stops at obstacle tiles
+        expected = [(8, 11)]
+        for i in range(5, 30, 5):
+            result = agent.get_directed_push_to(grid, (9, 11), (1, 11), i)
+            self.assertListEqual(expected, result)
+        
+        # Testing that the directed push stops at walls
+        expected = [(8, 8)]
+        for i in range(5, 30, 5):
+            result = agent.get_directed_push_to(grid, (9, 9), (1, 1), i)
+            self.assertListEqual(expected, result)
+        
+        # Testing that the directed push does not stop at pits
+        expected = [(2, 9), (3, 9), (4, 9)]
+        result = agent.get_directed_push_to(grid, (1, 9), (15, 9), 15)
+        self.assertListEqual(expected, result)
+
+        expected = [(2, 9), (3, 9), (4, 9), (5, 9), (6, 9), (7, 9)]
+        result = agent.get_directed_push_to(grid, (1, 9), (15, 9), 30)
+        self.assertListEqual(expected, result)
+
+        # Testing that the directed push does not care about difficult terrain
+        expected = [(10, 4), (11, 4), (12, 4), (13, 4)]
+        result = agent.get_directed_push_to(grid, (9, 4), (15, 4), 20)
+        self.assertListEqual(expected, result)
+
+        # Testing that the directed push does not care about water, pits, and stops at obstacles all in one
+        expected = [(14, 3), (14, 4), (14, 5), (14, 6), (14, 7), (14, 8), (14, 9), (14, 10), (14, 11), (14, 12), (14, 13), (14, 14)]
+        result = agent.get_directed_push_to(grid, (14, 2), (14, 15), 200)
+
+        # Testing that the directed push stops at the edge of the map
+        empty_grid = Map(5, 5)
+
+        expected = [(3, 1), (2, 1), (1, 1), (0, 1)]
+        result = agent.get_directed_push_to(empty_grid, (4, 1), (0, 1), 40)
+        self.assertListEqual(expected, result)
 
 class TestTiles(unittest.TestCase):
     def test_map_tile(self):
