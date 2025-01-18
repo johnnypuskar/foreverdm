@@ -1,16 +1,14 @@
-from src.events.event_manager import EventManager
+from src.combat.map.movement import MovementCost
 from src.util.dice import DiceParser, DiceRoller
 from src.stats.abilities import AbilityIndex
-from src.stats.effects import EffectIndex
+from src.stats.effect_index import EffectIndex
 from src.stats.proficiencies import Proficiencies, ProficiencyIndex
 from src.stats.resources import ResourceIndex
 from src.control.controller import Controller
 from src.util.resettable_value import ResettableValue
 from src.stats.statistics import AbilityScore, Speed
 from src.util.constants import Abilities, Skills, EventType
-from src.util.time import UseTime
 from src.events.event_context import *
-from src.events.event import ReactionEvent, CompositeEvent
 
 class Statblock:
     def __init__(self, name, speed = Speed(30), size = 5):
@@ -53,6 +51,13 @@ class Statblock:
     def use_ability(self, ability_name, *args):
         # if effect grants use of ability, use that instead
         ability = self._abilities.get_ability(ability_name)
+        allow_actions = all(self._effects.get_function_results("allow_actions", self, ability))
+        allow_reactions = all(self._effects.get_function_results("allow_reactions", self, ability))
+        if not allow_actions and (ability._use_time.is_action() or ability._use_time.is_bonus_action()):
+            action_type = "bonus action." if ability._use_time.is_bonus_action() else "action."
+            return (False, f"Unable to take {action_type}")
+        if not allow_reactions and ability._use_time.is_reaction():
+            return (False, "Unable to take reaction.")
         if not self._turn_resources.use_from_use_time(ability._use_time):
             if not ability._use_time.is_special:
                 return (False, f"No action remaining to use {ability_name}.")
@@ -61,6 +66,7 @@ class Statblock:
         return self._abilities.run(ability_name, self, *args)
 
     def use_ability_chain(self, main_ability_params, *args):
+        # TODO: Check for having the available actions
         for ability_params in (main_ability_params,) + args:
             if not isinstance(ability_params, tuple):
                 raise ValueError("Ability chain parameters must be tuples with ability parameters")
@@ -80,6 +86,9 @@ class Statblock:
 
     def add_effect(self, effect, duration):
         self._effects.add(effect, duration, self)
+
+    def remove_effect(self, effect_name):
+        self._effects.remove(effect_name)
 
     async def handle_reaction(self, composite_event):
         if not self._turn_resources._reaction:
@@ -208,6 +217,31 @@ class Statblock:
             return
 
         # TODO: Replace character in world with corpse
+
+    ## Position - Mostly default, properly implemented via PositionedStatblock
+    def get_position(self):
+        # Return default position (0, 0)
+        return (0, 0)
+
+    def set_position(self, x: int, y: int):
+        # Position not stored, no changes made.
+        pass
+
+    def in_melee(self, other):
+        # Position not stored, assume always in melee.
+        return True
+
+    def distance_to(self, other, y: int = None):
+        # Defaults to 5 feet away.
+        return 5
+
+    def pull_towards(self, x: int, y: int, distance: int):
+        # Position not stored, no changes made. Returns (0, 0) as default position.
+        return (0, 0)
+
+    def push_from(self, x: int, y: int, distance: int):
+        # Position not stored, no changes made. Returns (0, 0) as default position.
+        return (0, 0)
 
     ## Abilities
     def get_ability_score(self, ability):
@@ -477,7 +511,7 @@ class Statblock:
         effect_bonus_stats = self._effects.get_function_results("modify_speed", self)
 
         for speed_type in speed_values.keys():
-            max_set_value = None
+            set_value = None
             add_value = 0
             multiplier_value = 1
             for effect_bonus_stat in effect_bonus_stats:
@@ -487,18 +521,52 @@ class Statblock:
                         hover_defined = modifier and hover_defined if hover_defined is not None else modifier
                     continue
                 if modifier["operation"] == "set":
-                    max_set_value = max(max_set_value, modifier["value"]) if max_set_value is not None else modifier["value"]
+                    set_value = max(set_value, modifier["value"]) if set_value is not None else modifier["value"]
                 elif modifier["operation"] == "add":
                     add_value += modifier["value"]
                 elif modifier["operation"] == "multiply":
                     multiplier_value *= modifier["value"]
             if speed_type != "hover":
-                if max_set_value is not None:
-                    speed_values[speed_type] = max_set_value
+                if set_value is not None:
+                    speed_values[speed_type] = set_value
                 speed_values[speed_type] += add_value
                 speed_values[speed_type] *= multiplier_value
         
         return Speed(speed_values["walk"], speed_values["fly"], speed_values["swim"], speed_values["climb"], speed_values["burrow"], hover_defined if hover_defined is not None else self._speed.hover)
+
+    def expend_speed(self, speed_modifier):
+        walk_cost = speed_modifier["walk"].value
+        if speed_modifier["walk"].operation == "set":
+            walk_cost = max(0, walk_cost - self._speed.walk)
+        elif speed_modifier["walk"].operation == "multiply":
+            walk_cost = max(0, self._speed.walk * (1 - walk_cost))
+        
+        fly_cost = speed_modifier["fly"].value
+        if speed_modifier["fly"].operation == "set":
+            fly_cost = max(0, fly_cost - self._speed.fly)
+        elif speed_modifier["fly"].operation == "multiply":
+            fly_cost = max(0, self._speed.fly * (1 - fly_cost))
+
+        swim_cost = speed_modifier["swim"].value
+        if speed_modifier["swim"].operation == "set":
+            swim_cost = max(0, swim_cost - self._speed.swim)
+        elif speed_modifier["swim"].operation == "multiply":
+            swim_cost = max(0, self._speed.swim * (1 - swim_cost))
+
+        climb_cost = speed_modifier["climb"].value
+        if speed_modifier["climb"].operation == "set":
+            climb_cost = max(0, climb_cost - self._speed.climb)
+        elif speed_modifier["climb"].operation == "multiply":
+            climb_cost = max(0, self._speed.climb * (1 - climb_cost))
+
+        burrow_cost = speed_modifier["burrow"].value
+        if speed_modifier["burrow"].operation == "set":
+            burrow_cost = max(0, burrow_cost - self._speed.burrow)
+        elif speed_modifier["burrow"].operation == "multiply":
+            burrow_cost = max(0, self._speed.burrow * (1 - burrow_cost))
+        
+        cost = MovementCost(walk_cost, fly_cost, swim_cost, climb_cost, burrow_cost)
+        return self._speed.move(cost)
 
     def add_temporary_speed(self, new_speed):
         self._speed += new_speed
