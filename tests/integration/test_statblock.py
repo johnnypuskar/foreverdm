@@ -1,7 +1,9 @@
 import unittest
 from unittest.mock import patch
+from src.stats.abilities import Ability
 from src.control.controller import Controller
 from src.stats.statblock import Statblock
+from src.stats.positioned_statblock import PositionedStatblock
 from src.events.event_manager import EventManager
 
 class IntegrationTestStatblock(unittest.TestCase):
@@ -30,4 +32,31 @@ class IntegrationTestStatblock(unittest.TestCase):
         primary.skill_check(15, "athletics")
 
         primary.saving_throw(10, "con")
+    
+    def test_positional_abilities(self):
+        event_manager = EventManager()
+
+        primary_controller = Controller()
+        primary = PositionedStatblock("Primary")
+        primary.set_position(10, 0)
+        primary._controller = primary_controller
+
+        secondary_controller = Controller()
+        secondary = PositionedStatblock("Secondary")
+        secondary.set_position(-5, 0)
+        secondary._controller = secondary_controller
+
+        test_ability = Ability("test_ability", '''
+            use_time = UseTime("action")
+            
+            function run(target)
+                x, y = statblock.get_position()
+                target.push_from(x, y, 15)
+                return target.get_position()
+            end
+        ''')
+        primary.add_ability(test_ability)
+
+        print(primary.use_ability("test_ability", secondary))
+
 
