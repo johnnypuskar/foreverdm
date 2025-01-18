@@ -160,6 +160,12 @@ A effect .lua file will contain function definitions and implementations that ha
 
 In cases where a function runs, but is determined to have no effect - such as an effect which only activates under certain conditions - returning `nil` is the correct behavior to speficy that no modifications should be made for that case. Otherwise, functions must always return the correct type of value specified in the function documentation definition.
 
+## RemoveEffect Helper Function
+
+The statblock object allows you to remove any effect by name, but any effect can easily remove itself without needing to pass it's name as a parameter with the `RemoveEffect()` helper function. The lua script will finish out whatever function called this helper function, so it is typical to return right after calling it.
+
+### `RemoveEffect()`
+Removes and ends the current effect on the statblock. No parameters, equivalent to running `statblock.remove_effect("<effect name>")`.
 
 ## RollModifier Helper Function
 
@@ -289,7 +295,12 @@ Used once when the effect has just been applied successfully to the character.
 - `nil`: No return value
 
 ## `on_expire()`
-Used when the effect's remaining duration has reached 0 and it is about to be removed from the character. Function is run just before automatic removal, so no effect removal logic needs to be implemented.
+Used when the effect's remaining duration has reached 0 and it is about to be removed from the character. Not run when effect is manually removed. Function is run just before automatic removal, so no effect removal logic needs to be implemented.
+**Returns:**
+- `nil`: No return value
+
+## `on_removal()`
+Used once when the effect is about to be removed from the character. Function is run after expiry function.
 **Returns:**
 - `nil`: No return value
 
@@ -336,7 +347,15 @@ Used when the character with the effect references their skill, saving throw, to
 **Returns:**
 - `list[string]`: A list of zero, one or more additional proficiencies this effect grants, valid proficiency names are: `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `religion`, `slight_of_hand`, `stealth`, `survival`, `strength_saving_throws`, `dexterity_saving_throws`, `constitution_saving_throws`, `intelligence_saving_throws`, `wisdom_saving_throws`, `charisma_saving_throws`, `light_armor`, `medium_armor`, `heavy_armor`, `shields`, `simple_weapons`, `martial_weapons`, `firearms`, `dice_gaming_sets`, `card_gaming_sets`, `bagpipes`, `drum`, `dulcimer`, `flute`, `lute`, `lyre`, `horn`, `pan_flute`, `shawm`, `viol`, `alchemists_supplies`, `brewers_supplies`, `calligraphers_supplies`, `carpenters_tools`, `cartographers_tools`, `cobblers_tools`, `cooks_utensils`, `glassblowers_tools`, `jewelers_tools`, `leatherworkers_tools`, `masons_tools`, `painters_supplies`, `potters_tools`, `smiths_tools`, `tinkers_tools`, `weavers_tools`, `woodcarvers_tools`, `navigators_tools`, `thieves_tools`, `land_vehicles`, `sea_vehicles`, `disguise_kit`, `forgery_kit`, `herbalism_kit`, `poisoners_kit`
 
-### `saving_throw_make(type, target)`
+### `make_saving_throw(type, trigger)`
+Used when the character with the effect is forced to make a saving throw by a triggering creature or object
+**Parameters:**
+- `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
+- `trigger`: The Statblock of the triggering creature or object forcing the character with the effect to make the saving throw
+**Returns:**
+- **RollModifier**: Roll table created using the `RollModifier()` helper function
+
+### `force_saving_throw(type, target)`
 Used when the character with the effect forces a target to make a saving throw
 **Parameters:**
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
@@ -344,15 +363,7 @@ Used when the character with the effect forces a target to make a saving throw
 **Returns:**
 - **RollModifier**: Roll table created using the `RollModifier()` helper function
 
-### `saving_throw_impose(type, trigger)`
-Used when the character with the effect is forced to make a saving throw by a triggering creature
-**Parameters:**
-- `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
-- `trigger`: The Statblock of the triggering creature or object forcing the character with the effect to make the saving throw
-**Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function
-
-### `ability_check_make(type, target)`
+### `make_ability_check(type, target)`
 Used when the character with the effect makes an ability check
 **Parameters:**
 - `type`: The 3 letter key for the ability check ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
@@ -360,7 +371,7 @@ Used when the character with the effect makes an ability check
 **Returns:**
 - **RollModifier**: Roll table created using the `RollModifier()` helper function
 
-### `ability_check_impose(type, trigger)`
+### `recieve_ability_check(type, trigger)`
 Used when a triggering creature makes an ability check against the creature with the effect
 **Parameters:**
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
@@ -368,7 +379,7 @@ Used when a triggering creature makes an ability check against the creature with
 **Returns:**
 - **RollModifier**: Roll table created using the `RollModifier()` helper function
 
-### `skill_check_make(skill, target)`
+### `make_skill_check(skill, target)`
 Used when the character with the effect makes an skill check
 **Parameters:**
 - `skill`: The skill for the check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
@@ -376,7 +387,7 @@ Used when the character with the effect makes an skill check
 **Returns:**
 - **RollModifier**: Roll table created using the `RollModifier()` helper function
 
-### `skill_check_impose(type, trigger)`
+### `recieve_skill_check(type, trigger)`
 Used when a triggering creature makes an skill check against the creature with the effect
 **Parameters:**
 - `skill`: The skill for the check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
@@ -406,11 +417,25 @@ Used when the character with the effect rolls initiative
 **Returns:**
 - **RollModifier**: Roll table created using the `RollModifier()` helper function, note auto success and failure have no effect in this function.
 
-### `move(old_position, new_position)`
+### `allow_actions()`
+Used to block the character with the effect from performing actions or bonus actions on their turn.
+**Returns:**
+- `boolean`: 
+ - `true` if taking actions is allowed (default)
+ - `false` if taking actions is not allowed
+
+## `allow_reactions()`
+Used to block the character with the effect from performing reactions on their turn.
+**Returns:**
+- `boolean`:
+ - `true` if taking reactions is allowed (default)
+ - `false` if taking reactions is not allowed
+
+### `move(old_pos, new_pos)`
 Used whenever the character with the effect moves willingly from one position to the next.
 **Parameters:**
-- `old_position`: An (x, y) tuple of the position the character with the effect is moving from
-- `new_position`: An (x, y) tuple of the position the character with the effect is moving to
+- `old_pos`: An (x, y) tuple of the position the character with the effect is moving from
+- `new_pos`: An (x, y) tuple of the position the character with the effect is moving to
 **Returns:**
 - **Boolean**:
   - `true` if the movement is allowed
@@ -419,7 +444,7 @@ Used whenever the character with the effect moves willingly from one position to
 ### `get_abilities()`
 Used to return a list of the additional abilities this effect grants.
 **Returns:**
-- `list[string]`: A list of ability names that correspond to the names of top-level tables in the script that the effect allows the use of. The table must be formatted in the correct format for an effect-dependant ability.
+- `list[string]`: A list of ability names that correspond to the names of top-level tables in the script that the effect allows the use of. The table must be formatted in the correct format for an effect-dependent ability.
 
 ## Defining SubEffects
 
