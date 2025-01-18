@@ -178,6 +178,18 @@ class ScriptData:
     end
     '''
 
+    POSITION = '''
+        function Distance(pos1, pos2)
+            return math.sqrt((pos1[1] - pos2[1])^2 + (pos1[2] - pos2[2])^2)
+        end
+    '''
+
+    REMOVE_EFFECT = '''
+        function RemoveEffect()
+            statblock.remove_effect()
+        end
+    '''
+
 class EventType:
     EFFECT_GRANTED_ABILITY = "effect_granted_ability"
     EFFECT_REMOVED_ABILITY = "effect_removed_ability"
