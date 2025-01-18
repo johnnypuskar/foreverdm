@@ -1130,6 +1130,7 @@ class TestAbility(unittest.TestCase):
     @patch('src.stats.statblock.Statblock')
     def test_statblock_wrapper(self, StatblockMock):
         statblock = StatblockMock.return_value
+        statblock.spell_attack_roll.return_value = 15
 
         # Create test index and abilities
         index = AbilityIndex()
@@ -1137,12 +1138,12 @@ class TestAbility(unittest.TestCase):
             spellcasting_ability = "int"
 
             function run(target)
-                return statblock:spell_attack_roll(target, "1d4")
+                return statblock.spell_attack_roll(target, "1d4")
             end
         ''')
         other_ability = Ability("other_ability", '''
             function run(target)
-                return statblock:melee_attack_roll(target, "2d4")
+                return statblock.melee_attack_roll(target, "2d4")
             end
         ''')
         incorrect_ability = Ability("incorrect_ability", '''
@@ -1156,7 +1157,7 @@ class TestAbility(unittest.TestCase):
         index.add(other_ability)
         index.add(incorrect_ability)
 
-        # Run ability and verify it passed the correct arguments to the statblock
+        # Run ability and verify it passed the correct arguments to the ability attack roll function in statblock
         index.run("test_ability", statblock, None)
         self.assertEqual(statblock.ability_attack_roll.call_args[0][0], None)
         self.assertEqual(statblock.ability_attack_roll.call_args[0][1], "int")
@@ -1164,8 +1165,8 @@ class TestAbility(unittest.TestCase):
 
         # Run melee ability and verify runs melee attack roll function
         index.run("other_ability", statblock, None)
-        self.assertEqual(statblock.melee_attack_roll.call_args[0][1], None)
-        self.assertEqual(statblock.melee_attack_roll.call_args[0][2], "2d4")
+        self.assertEqual(statblock.melee_attack_roll.call_args[0][0], None)
+        self.assertEqual(statblock.melee_attack_roll.call_args[0][1], "2d4")
 
         # Verify that running a spell attack roll in an ability with no defined spellcasting ability raises an error
         with self.assertRaises(ValueError):
