@@ -1,6 +1,6 @@
 from src.util.lua_manager import LuaManager
-from src.util.constants import EventType, ScriptData
-from src.events.observer import Emitter, Observer
+from src.util.constants import ScriptData
+from src.events.observer import Observer
 
 class Effect(Observer):
     def __init__(self, name, script, globals = {}, duration = -1):
@@ -11,7 +11,13 @@ class Effect(Observer):
         self._duration = duration
 
         self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.MULTIPLY_VALUE + ScriptData.DURATION + ScriptData.SPEED + script
-    
+
+        lua = LuaManager()
+        lua.execute("conditions = {}")
+        lua.execute(self._script)
+
+        self._conditions = list(lua.globals["conditions"].values())
+        
     @property
     def duration(self):
         return self._duration
@@ -29,7 +35,7 @@ class Effect(Observer):
         if isinstance(new_globals, dict):
             for key, value in new_globals.items():
                 if isinstance(value, StatblockSubEffectWrapper):
-                    for existing_key, existing_value in self._globals.items():
+                    for _, existing_value in self._globals.items():
                         if isinstance(existing_value, StatblockSubEffectWrapper) and existing_value._statblock == value._statblock:
                             new_globals[key] = existing_value
                             break
@@ -39,7 +45,7 @@ class Effect(Observer):
             new_globals = list(new_globals)
             for i in range(len(new_globals)):
                 if isinstance(new_globals[i], StatblockSubEffectWrapper):
-                    for existing_key, existing_value in self._globals.items():
+                    for _, existing_value in self._globals.items():
                         if isinstance(existing_value, StatblockSubEffectWrapper) and existing_value._statblock == new_globals[i]._statblock:
                             new_globals[i] = existing_value
                             break
@@ -51,6 +57,7 @@ class Effect(Observer):
         self._lua.connect(self)
         self._lua.merge_globals(globals)
         self._lua.execute(self._script)
+
         return self._lua
 
     def has_function(self, function_name):
@@ -83,6 +90,7 @@ class SubEffect(Effect):
         return function_name in self._lua.globals[self._name]
     
     def run(self, function_name, *args):
+        args = list(args)
         for i in range(len(args)):
             args[i] = StatblockSubEffectWrapper.create_wrapper(args[i], self)
         args = self._synchronize_globals(args)
@@ -90,80 +98,6 @@ class SubEffect(Effect):
             raise RuntimeError("LuaManager not initialized.")
         return self._lua.run_nested(f'{self._name}.{function_name}', *args)
     
-class EffectIndex(Observer, Emitter):
-    def __init__(self):
-        super().__init__()
-        self._effects = {}
-    
-    def signal(self, event: str, *data):
-        if event == EventType.ABILITY_APPLIED_EFFECT:
-            # [data] = [effect_name, script, duration, globals, ability_uuid]
-            ability_effect = SubEffect(data[0], data[1], data[3], data[4])
-            self.add(ability_effect, data[2])
-        elif event == EventType.ABILITY_REMOVED_EFFECT:
-            # [data] = [effect_name]
-            self.remove(data[0])
-        elif event == EventType.ABILITY_CONCENTRATION_ENDED:
-            # [data] = [ability_uuid]
-            keys = list(self.effect_names)
-            for effect_name in keys:
-                effect = self._effects[effect_name]
-                if isinstance(effect, SubEffect) and effect._ability_uuid == data[0]:
-                    self.remove(effect_name)
-
-    @property
-    def effect_names(self):
-        return self._effects.keys()
-
-    def add(self, effect, duration, statblock = None):
-        if isinstance(effect, Effect):
-            if effect._name in self._effects:
-                raise ValueError(f"Effect {effect._name} already exists in index.")
-            effect.duration = duration
-            self._effects[effect._name] = effect
-            effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
-            if effect.has_function("get_abilities"):
-                for effect_ability in effect.run("get_abilities"):
-                    self.emit(EventType.EFFECT_GRANTED_ABILITY, effect_ability, effect._script, "run")
-            if effect.has_function("on_apply"):
-                effect.run("on_apply")
-        elif type(effect) is str:
-            self.add(Effect("temp_name", effect), duration)
-        
-    def remove(self, name):
-        if name not in self._effects:
-            raise ValueError(f"Effect {name} not found in index.")
-        removed_effect = self._effects.pop(name)
-        removed_effect.initialize()
-        if removed_effect.has_function("get_abilities"):
-            for effect_ability in removed_effect.run("get_abilities"):
-                self.emit(EventType.EFFECT_REMOVED_ABILITY, effect_ability)
-    
-    def get_function_results(self, function_name, statblock, *args):
-        results = []
-        # Creating a copy list so that mid-execution dictionary editing does not throw an error
-        keys = list(self.effect_names)
-        for effect_name in keys:
-            effect = self._effects[effect_name]
-            effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
-            if effect.has_function(function_name):
-                result = results.append(effect.run(function_name, *args))
-                if result is not None:
-                    results.append(result)
-        return results
-
-    def tick_timers(self, statblock):
-        # Creating a copy list so that mid-execution dictionary editing does not throw an error
-        keys = list(self.effect_names)
-        for effect_name in keys:
-            effect = self._effects[effect_name]
-            effect.tick_timer()
-            if effect.duration == 0:
-                effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
-                if effect.has_function("on_expire"):
-                    effect.run("on_expire")
-                self.remove(effect_name)
-
 class StatblockSubEffectWrapper:
     def __init__(self, statblock, effect):
         self._statblock = statblock
@@ -185,8 +119,22 @@ class StatblockSubEffectWrapper:
         subeffect = SubEffect(subeffect_name, self._effect._script, globals)
         return self._statblock.add_effect(subeffect, duration)
     
+    def add_condition(self, condition_name, duration = -1):
+        condition_effect = self._statblock._effects._condition_manager.new_condition(condition_name, None, duration)
+        return self._statblock.add_effect(condition_effect, duration)
+
+    def remove_effect(self, effect_name = None):
+        if effect_name is None:
+            self._effect.remove(self._effect._name)
+        else:
+            self._effect.remove(effect_name)
+
+    def remove_condition(self, condition_name):
+        if condition_name not in self._statblock._effects._condition_manager.CONDITIONS.keys():
+            raise ValueError(f"{condition_name} is not a valid condition.")
+        self._statblock.remove_effect(condition_name)
+    
     def __eq__(self, value):
         if isinstance(value, StatblockSubEffectWrapper):
             return self._statblock == value._statblock
         return self._statblock == value
-    
