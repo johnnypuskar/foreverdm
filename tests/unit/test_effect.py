@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import patch
 from src.util.constants import EventType
-from src.stats.effects import EffectIndex, Effect, SubEffect
+from src.stats.effects import Effect, SubEffect
+from src.stats.effect_index import EffectIndex
 
 class TestEffect(unittest.TestCase):
     def test_add_effect(self):
@@ -429,6 +430,48 @@ class TestEffect(unittest.TestCase):
         statblock.restore_hp.assert_called_once()
         self.assertEqual(statblock.restore_hp.call_args[0][1], 10)
     
+    @patch('src.stats.statblock.Statblock')
+    def test_effect_add_condition(self, StatblockMock):
+        index = EffectIndex()
+        statblock = StatblockMock.return_value
+        effect = Effect("test_effect", '''
+            function make_attack_roll(target)
+                statblock.add_condition("poisoned", 3)
+            end
+        ''')
+
+        index.add(effect, 1)
+
+        index.get_function_results("make_attack_roll", statblock, None)
+
+        statblock._effects._condition_manager.new_condition.assert_called_once()
+        condition_name, parent_effect_name, duration = statblock._effects._condition_manager.new_condition.call_args[0]
+        self.assertEqual(condition_name, "poisoned")
+        self.assertEqual(parent_effect_name, None)
+        self.assertEqual(duration, 3)
+
+    def test_effect_derived_conditions(self):
+        index = EffectIndex()
+
+        effect = Effect("test_effect", '''
+            conditions = {"poisoned"}
+        ''')
+
+        index.add(effect, 5)
+
+        self.assertIn("test_effect%poisoned", index.effect_names)
+
+        expected = [{"disadvantage": True, "advantage": False, "auto_succeed": False, "auto_fail": False, "bonus": 0}]
+        result = index.get_function_results("make_attack_roll", None, None)
+        self.assertEqual(result, expected)
+
+        with self.assertRaises(ValueError):
+            index.remove("test_effect%poisoned")
+
+        index.remove("test_effect")
+
+        self.assertNotIn("test_effect%poisoned", index.effect_names)
+
     def test_script_helpers(self):
         index = EffectIndex()
         effect = Effect("test_effect", '''
