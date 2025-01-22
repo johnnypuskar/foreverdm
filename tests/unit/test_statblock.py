@@ -578,7 +578,7 @@ class TestStatblock(unittest.TestCase):
             return function_name == "make_attack_roll"
         effect.has_function.side_effect = test_has_function
 
-        effect.run.return_value = {"advantage": False, "disadvantage": False, "auto_succeed": False, "auto_fail": False, "bonus": 5}
+        effect.run.return_value = {"advantage": False, "disadvantage": False, "auto_succeed": False, "auto_fail": False, "bonus": 5, "make_critical": False}
 
         # Verify attack roll fails without effect
         target._armor_class = 16
@@ -610,7 +610,7 @@ class TestStatblock(unittest.TestCase):
             return function_name == "make_attack_roll"
         effect.has_function.side_effect = test_has_function
 
-        effect.run.return_value = {"advantage": True, "disadvantage": False, "auto_succeed": False, "auto_fail": False, "bonus": 0}
+        effect.run.return_value = {"advantage": True, "disadvantage": False, "auto_succeed": False, "auto_fail": False, "bonus": 0, "make_critical": False}
 
         # Verify attack roll is not run with advantage or disadvantage
         statblock.melee_attack_roll(target, "1d4 slashing")
@@ -626,7 +626,7 @@ class TestStatblock(unittest.TestCase):
         self.assertFalse(roll_d20.call_args[0][1])
 
         # Change effect to disadvantage
-        effect.run.return_value = {"advantage": False, "disadvantage": True, "auto_succeed": False, "auto_fail": False, "bonus": 0}
+        effect.run.return_value = {"advantage": False, "disadvantage": True, "auto_succeed": False, "auto_fail": False, "bonus": 0, "make_critical": False}
 
         # Verify attack roll is just run with disadvantage
         statblock.melee_attack_roll(target, "1d4 slashing")
@@ -653,7 +653,7 @@ class TestStatblock(unittest.TestCase):
             return function_name == "make_attack_roll"
         effect.has_function.side_effect = test_has_function
 
-        effect.run.return_value = {"advantage": False, "disadvantage": False, "auto_succeed": True, "auto_fail": False, "bonus": 0}
+        effect.run.return_value = {"advantage": False, "disadvantage": False, "auto_succeed": True, "auto_fail": False, "bonus": 0, "make_critical": False}
 
         # Verify nigh-impossible attack roll fails
         target._armor_class = 1000
@@ -664,7 +664,7 @@ class TestStatblock(unittest.TestCase):
         self.assertTrue(statblock.melee_attack_roll(target, "1d4 slashing"))
 
         # Change effect to auto fail and reduce armor class
-        effect.run.return_value = {"advantage": False, "disadvantage": False, "auto_succeed": False, "auto_fail": True, "bonus": 0}
+        effect.run.return_value = {"advantage": False, "disadvantage": False, "auto_succeed": False, "auto_fail": True, "bonus": 0, "make_critical": False}
         target._armor_class = 0
 
         # Verify attack roll fails with auto fail regardless of die result and armor class with effect
@@ -686,6 +686,33 @@ class TestStatblock(unittest.TestCase):
         self.assertTrue(statblock.melee_attack_roll(target, "1d4 slashing"))
 
         # Verify die count is doubled on critical hit
+        self.assertEqual(2, roll_custom.call_args[0][0])
+
+    @patch('src.control.controller.Controller')
+    @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
+    @patch('src.util.dice.DiceRoller.roll_custom', return_value = 0)
+    @patch('src.stats.effect_index.EffectIndex.get_function_results', return_value = [])
+    def test_attack_critical_hit_forced(self, index_functions, roll_custom, roll_d20, ControllerMock):
+        # Create statblocks
+        statblock = Statblock("Tester")
+        target = Statblock("Target")
+
+        statblock._controller = ControllerMock.return_value
+        target._controller = ControllerMock.return_value
+        target._armor_class = 10
+
+        # Verify normal attack hits, but is not a critical hit
+        self.assertTrue(statblock.melee_attack_roll(target, "1d4 slashing"))
+        self.assertEqual(1, roll_custom.call_args[0][0])
+
+        # Set EffectIndex function to return an effect that forces a critical hit
+        index_functions.side_effect = lambda func_name, *args: (
+            [{'advantage': False, 'disadvantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 0, 'critical_threshold_modifier': {'operation': 'set', 'value': 0}}]
+            if func_name == 'make_attack_roll' else []
+        )
+
+        # Verify roll is made into a critical hit and dice are doubled
+        self.assertTrue(statblock.melee_attack_roll(target, "1d4 slashing"))
         self.assertEqual(2, roll_custom.call_args[0][0])
 
     @patch('src.control.controller.Controller')

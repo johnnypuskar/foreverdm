@@ -123,7 +123,6 @@ class Invisible(Condition):
         super().__init__("invisible", Invisible.SCRIPT, {}, duration)
 
 class Paralyzed(Condition):
-    # TODO: Add check to make an attack roll a critical when the attacker hits within melee range.
     SCRIPT = '''
         conditions = {"incapacitated"}
 
@@ -135,7 +134,11 @@ class Paralyzed(Condition):
         end
 
         function recieve_attack_roll(attacker)
-            return RollModifier({advantage = true})
+            modifier = {advantage = true}
+            if attacker.in_melee(statblock) then
+                modifier["critical_threshold_modifier"] = SetValue(0)
+            end
+            return RollModifier(modifier)
         end
     '''
 
@@ -237,7 +240,6 @@ class Stunned(Condition):
         super().__init__("stunned", Stunned.SCRIPT, {}, duration)
 
 class Unconscious(Condition):
-    # TODO: Implement auto-critically hit when within melee range.
     SCRIPT = '''
         conditions = {"incapacitated", "prone"}
 
@@ -253,7 +255,11 @@ class Unconscious(Condition):
         end
 
         function recieve_attack_roll(attacker)
-            return RollModifier({advantage = true})
+            modifier = {advantage = true}
+            if attacker.in_melee(statblock) then
+                modifier["critical_threshold_modifier"] = SetValue(0)
+            end
+            return RollModifier(modifier)
         end
     '''
 

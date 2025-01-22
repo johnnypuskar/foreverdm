@@ -185,6 +185,8 @@ Creates and returns the table to designate the proper modifiers of a die roll fr
     - `true` if the roll auto-succeeds regardless of die result
   - `auto_fail`: Boolean
     - `true` if the roll auto-fails regardless of die result
+  - `critical_threshold_modifier`: AddValue, MultiplyValue, or SetValue
+    - Math operator function to add to, multiply, or set the minimum value that the die roll needs to be for the roll to be considered a critical success. Defaults to leaving it untouched at 20.
 
 #### RollModifier Examples
 
@@ -194,6 +196,9 @@ return RollModifier({advantage = true, bonus = 2})
 
 -- Return a Roll table which automatically fails
 return RollModifier({auto_succeed = true})
+
+-- Return a Roll table which makes a roll into a critical success no matter what
+return RollModifier({critical_threshold_modifier = SetValue(0)})
 
 -- Return a default Roll table which doesn't affect the roll
 return RollModifier({})
@@ -353,7 +358,7 @@ Used when the character with the effect is forced to make a saving throw by a tr
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
 - `trigger`: The Statblock of the triggering creature or object forcing the character with the effect to make the saving throw
 **Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note make critical has no effect in this function.
 
 ### `force_saving_throw(type, target)`
 Used when the character with the effect forces a target to make a saving throw
@@ -361,7 +366,7 @@ Used when the character with the effect forces a target to make a saving throw
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
 - `target`: The Statblock of the target making the saving throw
 **Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note make critical has no effect in this function.
 
 ### `make_ability_check(type, target)`
 Used when the character with the effect makes an ability check
@@ -369,7 +374,7 @@ Used when the character with the effect makes an ability check
 - `type`: The 3 letter key for the ability check ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
 - `target`: The Statblock of the target making the saving throw, may be nil in cases with no target creature
 **Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note make critical has no effect in this function.
 
 ### `recieve_ability_check(type, trigger)`
 Used when a triggering creature makes an ability check against the creature with the effect
@@ -377,7 +382,7 @@ Used when a triggering creature makes an ability check against the creature with
 - `type`: The 3 letter key for the saving throw ability, valid keys are `str`, `dex`, `con`, `int`, `wis`, `cha`
 - `trigger`: The Statblock of the triggering creature making the ability check against the character with the effect 
 **Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note make critical has no effect in this function.
 
 ### `make_skill_check(skill, target)`
 Used when the character with the effect makes an skill check
@@ -385,7 +390,7 @@ Used when the character with the effect makes an skill check
 - `skill`: The skill for the check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
 - `target`: The Statblock of the target of the skill check, may be nil in cases with no target creature
 **Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note make critical has no effect in this function.
 
 ### `recieve_skill_check(type, trigger)`
 Used when a triggering creature makes an skill check against the creature with the effect
@@ -393,7 +398,7 @@ Used when a triggering creature makes an skill check against the creature with t
 - `skill`: The skill for the check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
 - `trigger`: The Statblock of the triggering creature making the skill check against the character with the effect 
 **Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note make critical has no effect in this function.
 
 ### `modify_stat(stat)`
 Used to change the numerical value of a given stat on the character with the effect's statsheet
@@ -415,7 +420,7 @@ Used to change the numerical value of the character with the effect's armor clas
 ### `roll_initiative()`
 Used when the character with the effect rolls initiative
 **Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function, note auto success and failure have no effect in this function.
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note auto success, auto failure, and make critical have no effect in this function.
 
 ### `allow_actions()`
 Used to block the character with the effect from performing actions or bonus actions on their turn.

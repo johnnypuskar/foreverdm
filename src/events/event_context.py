@@ -63,7 +63,7 @@ class AttackRollEventContext(TargetedEventContext, RollEventContext):
         TargetedEventContext.__init__(self, source, target)
     
     def decompose(self):
-        return [self._source, self.target, self.advantage, self.disadvantage, self.auto_succeed, self.auto_fail, self.bonus]
+        return [self._source, self.target, self.advantage, self.disadvantage, self.auto_succeed, self.auto_fail, self.bonus, self.make_critical]
 
 class DamageEventContext(EventContext):
     def __init__(self, source, amount: int, type: str):

@@ -100,7 +100,8 @@ class ScriptData:
             disadvantage = false,
             bonus = 0,
             auto_succeed = false,
-            auto_fail = false
+            auto_fail = false,
+            critical_threshold_modifier = {operation = "add", value = 0}
         }
         for key, value in pairs(modifiers) do
             roll_mod[key] = value

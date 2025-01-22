@@ -40,15 +40,15 @@ class TestEffect(unittest.TestCase):
 
         results = index.get_function_results("make_attack_roll", None, None)
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5},
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -2}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}},
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -2, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
 
         self.assertEqual(results, expected)
 
         results = index.get_function_results("receive_attack_roll", None, None)
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': True, 'bonus': 0}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': True, 'bonus': 0, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
 
         self.assertEqual(results, expected)
@@ -82,7 +82,7 @@ class TestEffect(unittest.TestCase):
         # Verify effect is returning typical function results correctly
         results = index.get_function_results("make_attack_roll", None, None)
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
         self.assertEqual(results, expected)
 
@@ -106,14 +106,14 @@ class TestEffect(unittest.TestCase):
         # Verify that the original typical function results are still returned correctly
         results = index.get_function_results("make_attack_roll", None, None)
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
         self.assertEqual(results, expected)
 
         # Verify that the subeffect now has results for the function defined in the subeffect
         results = index.get_function_results("receive_attack_roll", None, None)
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': True, 'bonus': 0}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': True, 'bonus': 0, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
         self.assertEqual(results, expected)
     
@@ -143,7 +143,7 @@ class TestEffect(unittest.TestCase):
 
         # Verify that the effect has the expected function results
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
         results = effect_index.get_function_results("make_attack_roll", None, None)
         self.assertEqual(results, expected)
@@ -187,8 +187,8 @@ class TestEffect(unittest.TestCase):
 
         # Verify that the effects have the expected function results
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5},
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -2}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}},
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -2, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
         results = effect_index.get_function_results("make_attack_roll", None, None)
         self.assertEqual(results, expected)
@@ -236,14 +236,14 @@ class TestEffect(unittest.TestCase):
 
         # Verify that the effect has the expected function results
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -3},
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -3, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}},
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 5, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
         results = index.get_function_results("make_attack_roll", None, None)
         self.assertEqual(results, expected)
 
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 1}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': 1, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
         results = index.get_function_results("make_ability_check", None, None)
         self.assertEqual(results, expected)
@@ -255,7 +255,7 @@ class TestEffect(unittest.TestCase):
         self.assertNotIn("alt_effect", index.effect_names)
 
         expected = [
-            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -3}
+            {'disadvantage': False, 'advantage': False, 'auto_succeed': False, 'auto_fail': False, 'bonus': -3, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}
         ]
         results = index.get_function_results("make_attack_roll", None, None)
         self.assertEqual(results, expected)
@@ -461,7 +461,7 @@ class TestEffect(unittest.TestCase):
 
         self.assertIn("test_effect%poisoned", index.effect_names)
 
-        expected = [{"disadvantage": True, "advantage": False, "auto_succeed": False, "auto_fail": False, "bonus": 0}]
+        expected = [{"disadvantage": True, "advantage": False, "auto_succeed": False, "auto_fail": False, "bonus": 0, 'critical_threshold_modifier': {'operation': 'add', 'value': 0}}]
         result = index.get_function_results("make_attack_roll", None, None)
         self.assertEqual(result, expected)
 
@@ -539,7 +539,8 @@ class TestEffect(unittest.TestCase):
             "advantage": True,
             "auto_succeed": False,
             "auto_fail": False,
-            "bonus": 5
+            "bonus": 5,
+            'critical_threshold_modifier': {'operation': 'add', 'value': 0}
         }
         results = index.get_function_results("roll_modifier", None, None)[0]
         self.assertDictEqual(results, expected)

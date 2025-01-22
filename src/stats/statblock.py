@@ -251,7 +251,11 @@ class Statblock:
         # First, set the base stat to the highest value any effect directly sets it to
         if any(d["operation"] == "set" for d in effect_bonus_stats):
             base_stat = max(d["value"] for d in effect_bonus_stats if d["operation"] == "set")
-        # Then, add all the bonuses
+        # Then, multiply the base stat by all the multipliers
+        for d in effect_bonus_stats:
+            if d["operation"] == "multiply":
+                base_stat = int(d["value"] * base_stat)
+        # Finally, add all the bonuses
         base_stat += sum(d["value"] for d in effect_bonus_stats if d["operation"] == "add")
 
         return base_stat
@@ -463,7 +467,8 @@ class Statblock:
             "disadvantage": any(d["disadvantage"] for d in effect_roll_modifiers),
             "auto_succeed": any(d["auto_succeed"] for d in effect_roll_modifiers),
             "auto_fail": any(d["auto_fail"] for d in effect_roll_modifiers),
-            "bonus": sum(d["bonus"] for d in effect_roll_modifiers)
+            "bonus": sum(d["bonus"] for d in effect_roll_modifiers),
+            "critical_threshold_modifier": [d["critical_threshold_modifier"] for d in effect_roll_modifiers if "critical_threshold_modifier" in d]
         }
         
         roll_context = AttackRollEventContext(self, target, modifier_table["advantage"], modifier_table["disadvantage"], modifier_table["auto_succeed"], modifier_table["auto_fail"], modifier_table["bonus"])
@@ -472,16 +477,25 @@ class Statblock:
         if roll_context.auto_fail or not roll_context.proceed:
             return False
         
+        critical_threshold = 20
+        if any(d["operation"] == "set" for d in modifier_table["critical_threshold_modifier"]):
+            critical_threshold = min(d["value"] for d in modifier_table["critical_threshold_modifier"] if d["operation"] == "set")
+        # Then, multiply the base stat by all the multipliers
+        for d in modifier_table["critical_threshold_modifier"]:
+            if d["operation"] == "multiply":
+                critical_threshold = int(d["value"] * critical_threshold)
+        critical_threshold += sum(d["value"] for d in modifier_table["critical_threshold_modifier"] if d["operation"] == "add")
+
         # TODO: Factor in proficiency bonus for equipped weapons
         roll_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage)
-        result_context = TargetedRollResultEventContext(self, target, roll_result, roll_result == 20 or roll_context.auto_succeed or (roll_result != 1 and roll_result + self.get_ability_modifier(attack_stat) + roll_context.bonus >= target.get_armor_class()), roll_result == 20)
+        result_context = TargetedRollResultEventContext(self, target, roll_result, roll_result >= critical_threshold or roll_context.auto_succeed or (roll_result != 1 and roll_result + self.get_ability_modifier(attack_stat) + roll_context.bonus >= target.get_armor_class()), roll_result >= critical_threshold)
         
         if roll_result == 1 or not (roll_context.auto_succeed or result_context.success):
             self._controller.trigger_reaction(EventType.TRIGGER_ATTACK_ROLL_FAIL, result_context)
-        if roll_result == 20 or roll_context.auto_succeed or result_context.success:
+        if roll_result == critical_threshold or roll_context.auto_succeed or result_context.success:
 
             events = [(EventType.TRIGGER_ATTACK_ROLL_SUCCEED, result_context)]
-            if roll_result == 20:
+            if result_context.critical_success:
                 events.append((EventType.TRIGGER_ATTACK_ROLL_CRITICAL, result_context))
             self._controller.trigger_reactions(events)
 
@@ -491,7 +505,7 @@ class Statblock:
             hit_context = TargetedEventContext(target, self)
             target._controller.trigger_reaction(EventType.TRIGGER_HIT_BY_ATTACK, hit_context)
 
-            target.take_damage(damage_string, 2 if roll_result == 20 else 1)
+            target.take_damage(damage_string, 2 if result_context.critical_success else 1)
 
             return True
         return False
