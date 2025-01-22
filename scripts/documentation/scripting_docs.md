@@ -197,7 +197,7 @@ return RollModifier({advantage = true, bonus = 2})
 -- Return a Roll table which automatically fails
 return RollModifier({auto_succeed = true})
 
--- Return a Roll table which makes a roll into a critical success no matter what
+-- Return a Roll table which makes any successful roll into a critical success
 return RollModifier({critical_threshold_modifier = SetValue(0)})
 
 -- Return a default Roll table which doesn't affect the roll
