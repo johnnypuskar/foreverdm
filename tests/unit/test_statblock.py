@@ -97,6 +97,30 @@ class TestStatblock(unittest.TestCase):
         self.assertEqual(6, statblock.get_proficiency_bonus())
         self.assertEqual(20, statblock.get_level())
 
+    @patch('src.stats.effect_index.EffectIndex.get_function_results')
+    def test_passive_skill(self, effect_function):
+        statblock = Statblock("Tester")
+
+        # Verify that passive skills are 10 by default
+        self.assertEqual(10, statblock.get_passive_skill("perception"))
+
+        # Increase wisdom to 16 and verify passive perception increases to 13
+        statblock._ability_scores["wis"].value = 16
+        self.assertEqual(13, statblock.get_passive_skill("perception"))
+
+        # Add proficiency in perception and verify passive perception increases to 15
+        statblock.add_proficiency("perception")
+        self.assertEqual(15, statblock.get_passive_skill("perception"))
+
+        # Add effect to increase passive perception by 3 and verify passive perception increases to 18
+        effect_function.side_effect = lambda func_name, *args: (
+            [{"operation": "add", "value": 3}] if func_name == "modify_passive_skill" and args[1] == "perception" else []
+        )
+        self.assertEqual(18, statblock.get_passive_skill("perception"))
+
+        # Verify other passive wisdom skills are 13
+        self.assertEqual(13, statblock.get_passive_skill("insight"))
+
     # Abilities
     @patch('src.stats.abilities.Ability')
     def test_add_ability(self, AbilityMock):
