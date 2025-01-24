@@ -43,6 +43,11 @@ class LuaManager(Emitter):
         function = self._get_function(function_name)
         if function is None:
             raise ValueError("Function not found.")
+        args = list(args)
+        for i in range(len(args)):
+            arg = args[i]
+            if type(arg) == list or type(arg) == tuple or type(arg) == dict:
+                args[i] = self._lua.table_from(arg)
         result = function(*args)
         if lua_type(result) == 'table':
             return self._recursive_table_convert(result)
