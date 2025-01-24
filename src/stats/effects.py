@@ -10,7 +10,7 @@ class Effect(Observer):
         self._lua = None
         self._duration = duration
 
-        self._script = ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.MULTIPLY_VALUE + ScriptData.DURATION + ScriptData.SPEED + script
+        self._script = ScriptData.REMOVE_EFFECT + ScriptData.ROLL_RESULT + ScriptData.ADD_VALUE + ScriptData.SET_VALUE + ScriptData.MULTIPLY_VALUE + ScriptData.DURATION + ScriptData.SPEED + script
 
         lua = LuaManager()
         lua.execute("conditions = {}")
@@ -125,9 +125,9 @@ class StatblockSubEffectWrapper:
 
     def remove_effect(self, effect_name = None):
         if effect_name is None:
-            self._effect.remove(self._effect._name)
+            self._statblock.remove_effect(self._effect._name)
         else:
-            self._effect.remove(effect_name)
+            self._statblock.remove_effect(effect_name)
 
     def remove_condition(self, condition_name):
         if condition_name not in self._statblock._effects._condition_manager.CONDITIONS.keys():
