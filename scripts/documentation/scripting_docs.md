@@ -98,8 +98,8 @@ Some global variables must be defined with certain syntax in order to be evaluat
 #### `Duration(value, unit)`
 Creates the time value specified, in the amount of units specified.
 **Parameters:**
-- `unit`: the unit of time, valid units are `round`, `minute` or `hour`
-- `value`: the integer value of how much time is being defined, defaults to 1
+- `unit`: the unit of time, valid units are `round`, `minute`, `hour`, or `indefinite`
+- `value`: the integer value of how much time is being defined, defaults to 1, ignored for `indefinite` unit type
 
 #### Duration Examples
 ```
@@ -114,6 +114,9 @@ Duration("minute", 10)
 
 -- Defines a period of time which lasts for 12 hours.
 Duration("hour", 12)
+
+-- Defines a period of time which lasts forever.
+Duration("indefinite")
 ```
 
 ### Spell Definitions
@@ -400,12 +403,19 @@ Used when a triggering creature makes an skill check against the creature with t
 **Returns:**
 - **RollModifier**: Roll table created using the `RollModifier()` helper function, note make critical has no effect in this function.
 
+## `modify_passive_skill(type)`
+Used to change the numerical value of a creatures passive skill score, such as passive Perception.
+**Parameters:**
+- `skill`: The skill for the passive check, valid skills are `acrobatics`, `animal_handling`, `arcana`, `athletics`, `deception`, `history`, `insight`, `intimidation`, `investigation`, `medicine`, `nature`, `perception`, `performance`, `persuasion`, `religion`, `sleight_of_hand`, `stealth`, `survival`
+**Returns:**
+- **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiply, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
+
 ### `modify_stat(stat)`
 Used to change the numerical value of a given stat on the character with the effect's statsheet
 **Parameters:**
 - `stat`: The stat to be modified, valid stats are `str`, `dex`, `con`, `int`, `wis`, `cha`, `max_hp`
 **Returns:**
-- **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiple, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
+- **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiply, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
 
 ### `modify_speed()`
 Used to change the numerical value of the character with the effect's base speed, i.e. what it resets to at the start of their turn
@@ -415,7 +425,7 @@ Used to change the numerical value of the character with the effect's base speed
 ### `modify_armor_class()`
 Used to change the numerical value of the character with the effect's armor class
 **Returns:**
-- **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiple, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
+- **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiply, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
 
 ### `roll_initiative()`
 Used when the character with the effect rolls initiative
@@ -451,6 +461,25 @@ Used to return a list of the additional abilities this effect grants.
 **Returns:**
 - `list[string]`: A list of ability names that correspond to the names of top-level tables in the script that the effect allows the use of. The table must be formatted in the correct format for an effect-dependent ability.
 
+### `modify_visibility()`
+Used to alter the level of visibility of the character with the effect between 2 (visible), 1 (lightly obscured), and 0 (heavily obscured). Visibility is capped in the range of 0 to 2 inclusive.
+**Returns:**
+- **AddValue** or **SetValue**: Add or Set table created using `AddValue()` or `SetValue()` helper function. `MultiplyValue()` is invalid in this case.
+
+### `notice_target(target)`
+Used when determining if a character is able to see a target statblock or object.
+**Returns:**
+- `boolean`:
+  - `true` if the target can be noticed or seen
+  - `false` if the target cannot be noticed or seen
+
+### `is_noticed(perception)`
+Used to determine if a given perception roll is enough to see a character. Defaults to always true.
+**Returns:**
+- `boolean`:
+  - `true`  if the given perception roll is enough to notice the character
+  - `false` if the given perception roll is not enough to notice the character
+
 ## Defining SubEffects
 
 Some effects are defined as a part of a related ability or effect, such as a secondary effect applied after meeting certain conditions, or an effect applied by using ability. These SubEffects have their functions and parameters defined in a table format within the ability script at the top level. The table name can then be passed to the statblock to apply its effects. Specific global constant values for things such as statblock reference values may also be passed to the SubEffect through a table parameter in the `add_effect` function, which is optional and defaults to an empty table when not used, but SubEffects also have access to other top level variables defined in the script.
@@ -460,7 +489,7 @@ This example defines an ability which applies a specially-created effect called 
 ```
 -- Effect definition, made at top level
 effect_name = {
-  ability_check_give = function(type, trigger)
+  make_ability_check = function(type, trigger)
     -- Effect effect logic goes here, example gives advantage on any ability check
     return {advantage = true, disadvantage = false, bonus = 0, auto_succeed = false, auto_fail = false}
   end
@@ -468,7 +497,8 @@ effect_name = {
 
 function run(...)
   -- Example application of effect
-  statblock:add_effect("effect_name", Duration("round", 1), {"caster": statblock:get_name()})
+  statblock.add_effect("effect_name", Duration("round", 1), {"caster": statblock:get_name()})
+  return true
 end
 ```
 ## Defining SubAbilities
@@ -490,6 +520,7 @@ other_ability = {
   can_modify = {"attack"},
   run = function(target)
     -- Function definition for the `other_ability` ability
+    return true
   end
 }
 
@@ -516,7 +547,7 @@ applied_effect = {
 secondary_ability = {
   use_time = UseTime("bonus_action", 1),
   run = function(target)
-    target:add_effect("secondary_effect", Duration("round", 4))
+    target.add_effect("secondary_effect", Duration("round", 4))
   end
 }
 
@@ -525,6 +556,7 @@ secondary_effect = {
 }
 
 function run(target)
-  target:add_effect("applied_effect", Duration("minute", 1))
+  target.add_effect("applied_effect", Duration("minute", 1))
+  return true
 end
 ```
