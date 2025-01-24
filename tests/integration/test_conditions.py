@@ -1,9 +1,11 @@
 import unittest
 from unittest.mock import patch
 
+from src.events.event_manager import EventManager
 from src.control.controller import Controller
 from src.stats.statblock import Statblock
 from src.stats.conditions import Blinded, Charmed
+from src.stats.actions import Hide
 
 class TestConditions(unittest.TestCase):
     
@@ -81,14 +83,12 @@ class TestConditions(unittest.TestCase):
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 20)
     def test_charmed(self, Mock_roll_d20):
         # Create primary statblock
-        test_controller = Controller()
         statblock = Statblock("Source")
-        statblock._controller = test_controller
+        statblock._controller = Controller()
 
         # Create secondary statblock
-        target_controller = Controller()
         target = Statblock("Target")
-        target._controller = target_controller
+        target._controller = Controller()
 
         # Create charmed effect
         charmed_effect = Charmed(target)
@@ -179,5 +179,45 @@ class TestConditions(unittest.TestCase):
     def test_deafened(self):
         # TODO: Create test for deafened condition once proper hearing senses have been implemented
         pass
+
+    @patch('src.util.dice.DiceRoller.roll_d20', return_value = 12)
+    def test_hiding(self, roll_d20):
+        statblock = Statblock("Hider")
+        statblock._controller = Controller()
+
+        target_a = Statblock("Seeker A")
+        target_a._controller = Controller()
+
+        target_b = Statblock("Seeker B")
+        target_b._controller = Controller()
+        target_b._ability_scores["wis"].value = 20
+
+        statblock.add_ability(Hide())
+        statblock.use_ability("hide", [target_b])
+
+        self.assertNotIn("hidden", statblock._effects.effect_names)
+        
+        statblock._turn_resources.reset()
+        statblock.use_ability("hide", [])
+        self.assertIn("hidden", statblock._effects.effect_names)
+
+        target_a.sight_to(statblock)
+        self.assertIn("hidden", statblock._effects.effect_names)
+        
+        target_b.sight_to(statblock)
+        self.assertNotIn("hidden", statblock._effects.effect_names)
+
+        statblock._turn_resources.reset()
+        statblock.use_ability("hide", [])
+        self.assertIn("hidden", statblock._effects.effect_names)
+
+        target_a.sight_to(statblock, 20)
+        self.assertNotIn("hidden", statblock._effects.effect_names)
+
+
+
+
+
+
 
     
