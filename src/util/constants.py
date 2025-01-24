@@ -153,10 +153,11 @@ class ScriptData:
     DURATION = '''
     function Duration(unit, value)
         value = value or 1
-        if unit ~= "round" and unit ~= "minute" and unit ~= "hour" then
+        if unit ~= "round" and unit ~= "minute" and unit ~= "hour" and unit ~= "indefinite" then
             error("Invalid unit for Duration")
         end
-        if value <= 0 then
+        if value <= 0 and unit ~= "indefinite" then
+            error("Duration value must be greater than 0")
         end
         return {unit = unit, value = value}
     end
@@ -180,15 +181,15 @@ class ScriptData:
     '''
 
     POSITION = '''
-        function Distance(pos1, pos2)
-            return math.sqrt((pos1[1] - pos2[1])^2 + (pos1[2] - pos2[2])^2)
-        end
+    function Distance(pos1, pos2)
+        return math.sqrt((pos1[1] - pos2[1])^2 + (pos1[2] - pos2[2])^2)
+    end
     '''
 
     REMOVE_EFFECT = '''
-        function RemoveEffect()
-            statblock.remove_effect()
-        end
+    function RemoveEffect()
+        statblock.remove_effect()
+    end
     '''
 
 class EventType:
