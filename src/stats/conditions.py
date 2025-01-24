@@ -28,7 +28,7 @@ class Charmed(Condition):
             return RollModifier({})
         end
 
-        function ability_check_impose(type, trigger)
+        function recieve_ability_check(type, trigger)
             if type == "cha" and trigger == charmer then
                 return RollModifier({advantage = true})
             end
