@@ -35,6 +35,9 @@ class Statblock:
 
         self._abilities = AbilityIndex()
         self._effects = EffectIndex()
+        self._abilities.connect(self._effects)
+        self._effects.connect(self._abilities)
+
         self._resources = ResourceIndex()
         self._turn_resources = TurnResources()
         self._controller: Controller = None
@@ -89,6 +92,9 @@ class Statblock:
 
     def remove_effect(self, effect_name):
         self._effects.remove(effect_name)
+
+    def has_effect(self, effect_name):
+        return effect_name in self._effects.effect_names
 
     async def handle_reaction(self, composite_event):
         if not self._turn_resources._reaction:
@@ -182,7 +188,7 @@ class Statblock:
                 [EventType.TRIGGER_SAVING_THROW_ROLL, EventType.TRIGGER_CONCENTRATION_SAVING_THROW_ROLL],
                 [EventType.TRIGGER_SAVING_THROW_SUCCEED, EventType.TRIGGER_CONCENTRATION_SAVING_THROW_SUCCEED],
                 [EventType.TRIGGER_SAVING_THROW_FAIL, EventType.TRIGGER_CONCENTRATION_SAVING_THROW_FAIL]
-            )
+            )[0]
             if not save_success:
                 self._abilities._concentration_tracker.end_concentration()
 
@@ -243,29 +249,41 @@ class Statblock:
         # Position not stored, no changes made. Returns (0, 0) as default position.
         return (0, 0)
 
+    def visibility(self):
+        # No environment to check, always have full visibility unless effect prevents it.
+        visibility = 2
+
+        visibility_modifiers = self._effects.get_function_results("modify_visibility", self)
+        if any(d["operation"] == "multiply" for d in visibility_modifiers):
+            raise ValueError("Visibility cannot be multiplied.")
+        
+        visibility = self._apply_value_modifiers(visibility, visibility_modifiers)
+        visibility = max(0, min(2, visibility))
+
+        return visibility
+
+    def sight_to(self, target, perception_value = None):
+        # No environment to check, always return targets base visibility.
+        if perception_value is None:
+            perception_value = self.get_passive_skill("perception")
+        noticed_results = target._effects.get_function_results("is_noticed", target, perception_value)
+        can_see = True if len(noticed_results) == 0 else any(d for d in noticed_results)
+        if not can_see:
+            return 0
+        return target.visibility()
+    
     ## Abilities
     def get_ability_score(self, ability):
         effect_bonus_stats = self._effects.get_function_results("modify_stat", self, ability)
         base_stat = self._ability_scores[ability].value
-
-        # First, set the base stat to the highest value any effect directly sets it to
-        if any(d["operation"] == "set" for d in effect_bonus_stats):
-            base_stat = max(d["value"] for d in effect_bonus_stats if d["operation"] == "set")
-        # Then, multiply the base stat by all the multipliers
-        for d in effect_bonus_stats:
-            if d["operation"] == "multiply":
-                base_stat = int(d["value"] * base_stat)
-        # Finally, add all the bonuses
-        base_stat += sum(d["value"] for d in effect_bonus_stats if d["operation"] == "add")
-
-        return base_stat
+        return self._apply_value_modifiers(base_stat, effect_bonus_stats)
 
     def get_ability_modifier(self, ability):
         return self.get_ability_score(ability) // 2 - 5
 
     ## Proficiencies and Skills
     def get_proficiency_bonus(self):
-        return 2 + ((self.get_level() - 1) // 4)
+        return 2 + max(0, ((self.get_level() - 1) // 4))
     
     def add_proficiency(self, proficiency):
         self._proficiencies.add(proficiency)
@@ -277,11 +295,11 @@ class Statblock:
         effect_proficiencies = self._effects.get_function_results("get_proficiencies", self)
         return proficiency in effect_proficiencies or self._proficiencies.has(proficiency)
 
-    def ability_check(self, dc, ability_name, trigger = None):
-        self_effect_bonus_stats = self._effects.get_function_results("ability_check_make", self, ability_name, trigger)
+    def _get_ability_check_modifiers(self, ability_name, trigger = None):
+        self_effect_bonus_stats = self._effects.get_function_results("make_ability_check", self, ability_name, trigger)
         target_effect_bonus_stats = []
         if isinstance(trigger, Statblock):
-            target_effect_bonus_stats = trigger._effects.get_function_results("ability_check_impose", trigger, ability_name, self)
+            target_effect_bonus_stats = trigger._effects.get_function_results("recieve_ability_check", trigger, ability_name, self)
         else: # TODO: Implement target effects for ability checks from objects
             pass
 
@@ -293,10 +311,28 @@ class Statblock:
             "bonus": sum(d["bonus"] for d in self_effect_bonus_stats + target_effect_bonus_stats),
         }
 
+        return modifier_table, self.get_ability_modifier(ability_name)
+
+    def _apply_value_modifiers(self, base_stat, value_modifier_table):
+        # First, set the base stat to the highest value any effect directly sets it to
+        if any(d["operation"] == "set" for d in value_modifier_table):
+            base_stat = max(d["value"] for d in value_modifier_table if d["operation"] == "set")
+        # Then, multiply the base stat by all the multipliers
+        for d in value_modifier_table:
+            if d["operation"] == "multiply":
+                base_stat = int(d["value"] * base_stat)
+        # Finally, add all the bonuses
+        base_stat += sum(d["value"] for d in value_modifier_table if d["operation"] == "add")
+
+        return base_stat
+
+    def ability_check(self, dc, ability_name, trigger = None):
+        modifier_table, roll_bonus = self._get_ability_check_modifiers(ability_name, trigger)
+
         return self._determine_d20_roll(
             modifier_table,
             dc,
-            self.get_ability_modifier(ability_name),
+            roll_bonus,
             [EventType.TRIGGER_ABILITY_CHECK_ROLL],
             [EventType.TRIGGER_ABILITY_CHECK_SUCCEED],
             [EventType.TRIGGER_ABILITY_CHECK_FAIL]
@@ -315,10 +351,10 @@ class Statblock:
             Abilities.CHARISMA: Proficiencies.SAVING_THROW_CHARISMA
         }
 
-        self_effect_bonus_stats = self._effects.get_function_results("saving_throw_make", self, ability_name, trigger)
+        self_effect_bonus_stats = self._effects.get_function_results("make_saving_throw", self, ability_name, trigger)
         target_effect_bonus_stats = []
         if isinstance(trigger, Statblock):
-            target_effect_bonus_stats = trigger._effects.get_function_results("saving_throw_impose", trigger, ability_name, self)
+            target_effect_bonus_stats = trigger._effects.get_function_results("force_saving_throw", trigger, ability_name, self)
         else: # TODO: Implement target effects for saving throws from objects
             pass
 
@@ -339,7 +375,30 @@ class Statblock:
             fail_events
         )
 
-    def skill_check(self, dc, skill_name, trigger = None):
+    def _map_skill_to_ability(self, skill_name):
+        skill_ability_map = {
+            Skills.ACROBATICS: Abilities.DEXTERITY,
+            Skills.ANIMAL_HANDLING: Abilities.WISDOM,
+            Skills.ARCANA: Abilities.INTELLIGENCE,
+            Skills.ATHLETICS: Abilities.STRENGTH,
+            Skills.DECEPTION: Abilities.CHARISMA,
+            Skills.HISTORY: Abilities.INTELLIGENCE,
+            Skills.INSIGHT: Abilities.WISDOM,
+            Skills.INTIMIDATION: Abilities.CHARISMA,
+            Skills.INVESTIGATION: Abilities.INTELLIGENCE,
+            Skills.MEDICINE: Abilities.WISDOM,
+            Skills.NATURE: Abilities.INTELLIGENCE,
+            Skills.PERCEPTION: Abilities.WISDOM,
+            Skills.PERFORMANCE: Abilities.CHARISMA,
+            Skills.PERSUASION: Abilities.CHARISMA,
+            Skills.RELIGION: Abilities.INTELLIGENCE,
+            Skills.SLEIGHT_OF_HAND: Abilities.DEXTERITY,
+            Skills.STEALTH: Abilities.DEXTERITY,
+            Skills.SURVIVAL: Abilities.WISDOM
+        }
+        return skill_ability_map[skill_name]
+
+    def _get_skill_check_modifiers(self, skill_name, trigger = None, ability_name = None):
         skill_proficiencies = {
             Skills.ACROBATICS: Proficiencies.ACROBATICS,
             Skills.ANIMAL_HANDLING: Proficiencies.ANIMAL_HANDLING,
@@ -361,31 +420,10 @@ class Statblock:
             Skills.SURVIVAL: Proficiencies.SURVIVAL
         }
 
-        skill_ability_map = {
-            Skills.ACROBATICS: Abilities.DEXTERITY,
-            Skills.ANIMAL_HANDLING: Abilities.WISDOM,
-            Skills.ARCANA: Abilities.INTELLIGENCE,
-            Skills.ATHLETICS: Abilities.STRENGTH,
-            Skills.DECEPTION: Abilities.CHARISMA,
-            Skills.HISTORY: Abilities.INTELLIGENCE,
-            Skills.INSIGHT: Abilities.WISDOM,
-            Skills.INTIMIDATION: Abilities.CHARISMA,
-            Skills.INVESTIGATION: Abilities.INTELLIGENCE,
-            Skills.MEDICINE: Abilities.WISDOM,
-            Skills.NATURE: Abilities.INTELLIGENCE,
-            Skills.PERCEPTION: Abilities.WISDOM,
-            Skills.PERFORMANCE: Abilities.CHARISMA,
-            Skills.PERSUASION: Abilities.CHARISMA,
-            Skills.RELIGION: Abilities.INTELLIGENCE,
-            Skills.SLEIGHT_OF_HAND: Abilities.DEXTERITY,
-            Skills.STEALTH: Abilities.DEXTERITY,
-            Skills.SURVIVAL: Abilities.WISDOM
-        }
-
-        self_effect_bonus_stats = self._effects.get_function_results("skill_check_make", self, skill_name, trigger)
+        self_effect_bonus_stats = self._effects.get_function_results("make_skill_check", self, skill_name, trigger)
         target_effect_bonus_stats = []
         if isinstance(trigger, Statblock):
-            target_effect_bonus_stats = trigger._effects.get_function_results("skill_check_impose", trigger, skill_name, self)
+            target_effect_bonus_stats = trigger._effects.get_function_results("recieve_skill_check", trigger, skill_name, self)
         else: # TODO: Implement target effects for skill checks from objects
             pass
 
@@ -396,24 +434,72 @@ class Statblock:
             "auto_fail": any(d["auto_fail"] for d in self_effect_bonus_stats + target_effect_bonus_stats),
             "bonus": sum(d["bonus"] for d in self_effect_bonus_stats + target_effect_bonus_stats),
         }
+        skill_bonus = self.get_ability_modifier(ability_name) + (self.get_proficiency_bonus() if self.has_proficiency(skill_proficiencies[skill_name]) else 0)
+
+        return modifier_table, skill_bonus
+
+    def get_skill_roll(self, skill_name, ability_name = None):
+        if ability_name is None:
+            ability_name = self._map_skill_to_ability(skill_name)
+        
+        ability_modifier_table, _ = self._get_ability_check_modifiers(ability_name)
+        skill_modifier_table, roll_bonus = self._get_skill_check_modifiers(skill_name, None, ability_name)
+
+        modifier_table = {
+            "advantage": ability_modifier_table["advantage"] or skill_modifier_table["advantage"],
+            "disadvantage": ability_modifier_table["disadvantage"] or skill_modifier_table["disadvantage"],
+            "auto_succeed": ability_modifier_table["auto_succeed"] or skill_modifier_table["auto_succeed"],
+            "auto_fail": ability_modifier_table["auto_fail"] or skill_modifier_table["auto_fail"],
+            "bonus": ability_modifier_table["bonus"] + skill_modifier_table["bonus"]
+        }
+
+        return DiceRoller.roll_d20(modifier_table["advantage"], modifier_table["disadvantage"]) + roll_bonus + modifier_table["bonus"]
+
+    def skill_check(self, dc, skill_name, trigger = None, ability_name = None):
+        if ability_name is None:
+            ability_name = self._map_skill_to_ability(skill_name)
+        
+        ability_modifier_table, _ = self._get_ability_check_modifiers(ability_name, trigger)
+        skill_modifier_table, roll_bonus = self._get_skill_check_modifiers(skill_name, trigger, ability_name)
+
+        modifier_table = {
+            "advantage": ability_modifier_table["advantage"] or skill_modifier_table["advantage"],
+            "disadvantage": ability_modifier_table["disadvantage"] or skill_modifier_table["disadvantage"],
+            "auto_succeed": ability_modifier_table["auto_succeed"] or skill_modifier_table["auto_succeed"],
+            "auto_fail": ability_modifier_table["auto_fail"] or skill_modifier_table["auto_fail"],
+            "bonus": ability_modifier_table["bonus"] + skill_modifier_table["bonus"]
+        }
 
         return self._determine_d20_roll(
             modifier_table,
             dc,
-            self.get_ability_modifier(skill_ability_map[skill_name]) + (self.get_proficiency_bonus() if self.has_proficiency(skill_proficiencies[skill_name]) else 0),
+            roll_bonus,
             [EventType.TRIGGER_SKILL_CHECK_ROLL],
             [EventType.TRIGGER_SKILL_CHECK_SUCCEED],
             [EventType.TRIGGER_SKILL_CHECK_FAIL]
         )
 
+    def get_passive_skill(self, skill_name):
+        skill_roll_modifiers, roll_bonus = self._get_skill_check_modifiers(skill_name, None, self._map_skill_to_ability(skill_name))
+
+        passive_score = 10 + roll_bonus
+        passive_score += 5 if skill_roll_modifiers["advantage"] else 0
+        passive_score -= 5 if skill_roll_modifiers["disadvantage"] else 0
+
+        self_effect_passive_modifiers = self._effects.get_function_results("modify_passive_skill", self, skill_name)
+        return self._apply_value_modifiers(passive_score, self_effect_passive_modifiers)
+
     def _determine_d20_roll(self, modifier_table, dc, roll_skill_bonus, roll_events, success_events, fail_events):
+        die_result = DiceRoller.roll_d20(modifier_table["advantage"], modifier_table["disadvantage"])
+        return self._handle_d20_roll(die_result, modifier_table, dc, roll_skill_bonus, roll_events, success_events, fail_events)
+
+    def _handle_d20_roll(self, die_result, modifier_table, dc, roll_skill_bonus, roll_events, success_events, fail_events):
         roll_context = RollEventContext(self, modifier_table["advantage"], modifier_table["disadvantage"], modifier_table["auto_succeed"], modifier_table["auto_fail"], modifier_table["bonus"])
         self._controller.trigger_reactions([(event, roll_context) for event in roll_events])
         
         if roll_context.auto_fail or not roll_context.proceed:
             return False
 
-        die_result = DiceRoller.roll_d20(roll_context.advantage, roll_context.disadvantage)
         roll_result = die_result + roll_context.bonus + roll_skill_bonus
         result_context = RollResultEventContext(self, roll_result, roll_result >= dc, die_result == 20)
         
@@ -423,10 +509,9 @@ class Statblock:
             self._controller.trigger_reactions([(success_event, result_context) for success_event in success_events])
 
             if not result_context.proceed:
-                return False
-
-            return True
-        return False
+                return False, roll_result
+            return True, roll_result
+        return False, roll_result
 
     ## Combat Statistics
     def get_armor_class(self):
@@ -477,6 +562,7 @@ class Statblock:
         if roll_context.auto_fail or not roll_context.proceed:
             return False
         
+        # Critical hit threshold does not use helper function, because set must set to minimum rather than maximum
         critical_threshold = 20
         if any(d["operation"] == "set" for d in modifier_table["critical_threshold_modifier"]):
             critical_threshold = min(d["value"] for d in modifier_table["critical_threshold_modifier"] if d["operation"] == "set")
