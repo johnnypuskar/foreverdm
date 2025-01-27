@@ -30,7 +30,6 @@ class Statblock:
             Abilities.CHARISMA: AbilityScore(Abilities.CHARISMA, 10)
         }
         self._proficiencies = ProficiencyIndex()
-        self._damage_multipliers = {}
 
         self._armor_class = 10
 
@@ -196,11 +195,22 @@ class Statblock:
 
     def _damage(self, amount, type):
         # TODO: Check to make sure the damage type is valid
-        if type in self._damage_multipliers:
-            amount = int(amount * self._damage_multipliers[type])
         
-        if amount <= 0:
+        effect_immunities = self._effects.get_function_results("get_immunities", self)
+        damage_immunities = list(set([immunity for sublist in effect_immunities for immunity in sublist]))
+        if type in damage_immunities:
             return
+
+        effect_resistances = self._effects.get_function_results("get_resistances", self)
+        damage_resistances = list(set([resistance for sublist in effect_resistances for resistance in sublist]))
+
+        effect_vulnerabilities = self._effects.get_function_results("get_vulnerabilities", self)
+        damage_vulnerabilities = list(set([vulnerability for sublist in effect_vulnerabilities for vulnerability in sublist]))
+
+        if type in damage_vulnerabilities:
+            amount = amount * 2
+        if type in damage_resistances:
+            amount = int(amount / 2)
         
         if self._temp_hp > 0:
             if amount <= self._temp_hp:
@@ -219,15 +229,6 @@ class Statblock:
             self._controller.trigger_reaction(EventType.TRIGGER_ZERO_HP, context)
 
             self._hp.value = 0
-
-    def add_resistance(self, damage_type):
-        self._damage_multipliers[damage_type] = 0.5
-    
-    def add_immunity(self, damage_type):
-        self._damage_multipliers[damage_type] = 0
-    
-    def add_vulnerability(self, damage_type):
-        self._damage_multipliers[damage_type] = 2
 
     def kill(self):
         context = EventContext(self)

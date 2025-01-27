@@ -459,21 +459,25 @@ class TestStatblock(unittest.TestCase):
 
         self.assertEqual(0, statblock.get_hit_points())
     
+    @patch('src.stats.effect_index.EffectIndex.get_function_results')
     @patch('src.control.controller.Controller')
-    def test_take_damage_resist_immune_vulnerable(self, ControllerMock):
+    def test_take_damage_resist_immune_vulnerable(self, ControllerMock, effect_results):
         # Create statblock and set health to 30/30
         statblock = Statblock("Tester")
         statblock._hp._initial = 30
         statblock._hp.value = 30
         statblock._controller = ControllerMock.return_value
 
+        # Setup effect results mock function
+        effect_results.side_effect = lambda func_name, *args: (
+            [["slashing"], ["slashing", "radiant"]] if func_name == "get_resistances" else
+            [["fire"], ["fire", "lightning"]] if func_name == "get_immunities" else
+            [["thunder"], ["thunder", "acid"]] if func_name == "get_vulnerabilities" else
+            []
+        )
+
         # Verify health is full
         self.assertEqual(30, statblock.get_hit_points())
-
-        # Add slashing resistance, fire immunity, and thunder vulnerability
-        statblock.add_resistance("slashing")
-        statblock.add_immunity("fire")
-        statblock.add_vulnerability("thunder")
 
         # Deal 4 piercing damage and verify 4 damage taken
         statblock.take_damage("4 piercing")
