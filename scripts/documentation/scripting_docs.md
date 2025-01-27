@@ -350,6 +350,16 @@ Used when the character with the effect references their damage resistances.
 **Returns:**
 - `list[string]`: A list of any additional damage types this effect grants resistance to, valid types are `acid`, `bludgeoning`, `cold`, `fire`, `force`, `lightning`, `necrotic`, `piercing`, `poison`, `psychic`, `radiant`, `slashing`, `thunder`
 
+### `get_immunities()`
+Used when the character with the effect references their damage immunities.
+**Returns:**
+- `list[string]`: A list of any additional damage types this effect grants immunity to, valid types are `acid`, `bludgeoning`, `cold`, `fire`, `force`, `lightning`, `necrotic`, `piercing`, `poison`, `psychic`, `radiant`, `slashing`, `thunder`
+
+### `get_vulnerabilities()`
+Used when the character with the effect references their damage vulnerabilities.
+**Returns:**
+- `list[string]`: A list of any additional damage types this effect causes vulnerability to, valid types are `acid`, `bludgeoning`, `cold`, `fire`, `force`, `lightning`, `necrotic`, `piercing`, `poison`, `psychic`, `radiant`, `slashing`, `thunder`
+
 ### `get_proficiencies()`
 Used when the character with the effect references their skill, saving throw, tool, weapon, or armor proficiencies.
 **Returns:**
