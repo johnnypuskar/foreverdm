@@ -31,6 +31,10 @@ class DamageType:
     THUNDER = "thunder"
     TRUE = "true"
 
+    @staticmethod
+    def valid(type):
+        return type in [DamageType.ACID, DamageType.BLUDGEONING, DamageType.COLD, DamageType.FIRE, DamageType.FORCE, DamageType.LIGHTNING, DamageType.NECROTIC, DamageType.PIERCING, DamageType.POISON, DamageType.PSYCHIC, DamageType.RADIANT, DamageType.SLASHING, DamageType.THUNDER, DamageType.TRUE]
+
 class Languages:
     COMMON = "common"
     DWARVISH = "dwarvish"

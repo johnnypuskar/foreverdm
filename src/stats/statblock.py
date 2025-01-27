@@ -7,7 +7,7 @@ from src.stats.resources import ResourceIndex
 from src.control.controller import Controller
 from src.util.resettable_value import ResettableValue
 from src.stats.statistics import AbilityScore, Speed
-from src.util.constants import Abilities, Skills, EventType
+from src.util.constants import Abilities, Skills, EventType, DamageType
 from src.events.event_context import *
 
 class Statblock:
@@ -193,24 +193,25 @@ class Statblock:
                 self._abilities._concentration_tracker.end_concentration()
 
 
-    def _damage(self, amount, type):
-        # TODO: Check to make sure the damage type is valid
-        
-        effect_immunities = self._effects.get_function_results("get_immunities", self)
-        damage_immunities = list(set([immunity for sublist in effect_immunities for immunity in sublist]))
-        if type in damage_immunities:
+    def _damage(self, amount, type = DamageType.TRUE):
+        if not DamageType.valid(type):
             return
+        elif type != DamageType.TRUE:
+            effect_immunities = self._effects.get_function_results("get_immunities", self)
+            damage_immunities = list(set([immunity for sublist in effect_immunities for immunity in sublist]))
+            if type in damage_immunities:
+                return
 
-        effect_resistances = self._effects.get_function_results("get_resistances", self)
-        damage_resistances = list(set([resistance for sublist in effect_resistances for resistance in sublist]))
+            effect_resistances = self._effects.get_function_results("get_resistances", self)
+            damage_resistances = list(set([resistance for sublist in effect_resistances for resistance in sublist]))
 
-        effect_vulnerabilities = self._effects.get_function_results("get_vulnerabilities", self)
-        damage_vulnerabilities = list(set([vulnerability for sublist in effect_vulnerabilities for vulnerability in sublist]))
+            effect_vulnerabilities = self._effects.get_function_results("get_vulnerabilities", self)
+            damage_vulnerabilities = list(set([vulnerability for sublist in effect_vulnerabilities for vulnerability in sublist]))
 
-        if type in damage_vulnerabilities:
-            amount = amount * 2
-        if type in damage_resistances:
-            amount = int(amount / 2)
+            if type in damage_vulnerabilities:
+                amount = amount * 2
+            if type in damage_resistances:
+                amount = int(amount / 2)
         
         if self._temp_hp > 0:
             if amount <= self._temp_hp:
