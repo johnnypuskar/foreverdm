@@ -460,6 +460,43 @@ class TestStatblock(unittest.TestCase):
         self.assertEqual(0, statblock.get_hit_points())
     
     @patch('src.control.controller.Controller')
+    def test_take_damage_resist_immune_vulnerable(self, ControllerMock):
+        # Create statblock and set health to 30/30
+        statblock = Statblock("Tester")
+        statblock._hp._initial = 30
+        statblock._hp.value = 30
+        statblock._controller = ControllerMock.return_value
+
+        # Verify health is full
+        self.assertEqual(30, statblock.get_hit_points())
+
+        # Add slashing resistance, fire immunity, and thunder vulnerability
+        statblock.add_resistance("slashing")
+        statblock.add_immunity("fire")
+        statblock.add_vulnerability("thunder")
+
+        # Deal 4 piercing damage and verify 4 damage taken
+        statblock.take_damage("4 piercing")
+        self.assertEqual(26, statblock.get_hit_points())
+
+        # Deal 5 slashing damage and verify 2 damage taken due to resistance (rounds down)
+        statblock.take_damage("5 slashing")
+        self.assertEqual(24, statblock.get_hit_points())
+
+        # Deal 4 fire damage and verify no damage taken due to immunity
+        statblock.take_damage("4 fire")
+        self.assertEqual(24, statblock.get_hit_points())
+
+        # Deal 4 thunder damage and verify 8 damage taken due to vulnerability
+        statblock.take_damage("4 thunder")
+        self.assertEqual(16, statblock.get_hit_points())
+
+        # Deal multiple damage types and verify correct damage taken
+        statblock.take_damage("1 piercing, 8 slashing, 100 fire, 3 thunder")
+        self.assertEqual(5, statblock.get_hit_points())
+
+
+    @patch('src.control.controller.Controller')
     def test_take_damage_temporary_hp(self, ControllerMock):
         statblock = Statblock("Tester")
         statblock._hp._initial = 15

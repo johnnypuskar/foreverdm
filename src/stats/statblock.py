@@ -30,6 +30,7 @@ class Statblock:
             Abilities.CHARISMA: AbilityScore(Abilities.CHARISMA, 10)
         }
         self._proficiencies = ProficiencyIndex()
+        self._damage_multipliers = {}
 
         self._armor_class = 10
 
@@ -194,9 +195,13 @@ class Statblock:
 
 
     def _damage(self, amount, type):
-        # TODO: Implement damage resistance and vulnerability based on type
         # TODO: Check to make sure the damage type is valid
-
+        if type in self._damage_multipliers:
+            amount = int(amount * self._damage_multipliers[type])
+        
+        if amount <= 0:
+            return
+        
         if self._temp_hp > 0:
             if amount <= self._temp_hp:
                 self._temp_hp -= amount
@@ -214,6 +219,15 @@ class Statblock:
             self._controller.trigger_reaction(EventType.TRIGGER_ZERO_HP, context)
 
             self._hp.value = 0
+
+    def add_resistance(self, damage_type):
+        self._damage_multipliers[damage_type] = 0.5
+    
+    def add_immunity(self, damage_type):
+        self._damage_multipliers[damage_type] = 0
+    
+    def add_vulnerability(self, damage_type):
+        self._damage_multipliers[damage_type] = 2
 
     def kill(self):
         context = EventContext(self)
