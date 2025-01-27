@@ -66,8 +66,8 @@ class EffectIndex(Observer, Emitter):
         for remove_name in to_remove:
             removed_effect = self._effects.pop(remove_name)
             removed_effect.initialize()
-            if removed_effect.has_function("on_remove"):
-                removed_effect.run("on_remove")
+            if removed_effect.has_function("on_removal"):
+                removed_effect.run("on_removal")
             if removed_effect.has_function("get_abilities"):
                 for effect_ability in removed_effect.run("get_abilities"):
                     self.emit(EventType.EFFECT_REMOVED_ABILITY, effect_ability)
