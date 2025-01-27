@@ -1,4 +1,4 @@
-from src.stats.conditions import Blinded, Charmed, Deafened, Frightened, Grappled, Incapacitated, Invisible, Paralyzed, Poisoned
+from src.stats.conditions import Blinded, Charmed, Deafened, Frightened, Grappled, Incapacitated, Invisible, Paralyzed, Poisoned, Prone, Restrained, Stunned, Unconscious
 
 class ConditionManager:
     CONDITIONS = {
@@ -10,7 +10,11 @@ class ConditionManager:
         "incapacitated": Incapacitated,
         "invisible": Invisible,
         "paralyzed": Paralyzed,
-        "poisoned": Poisoned
+        "poisoned": Poisoned,
+        "prone": Prone,
+        "restrained": Restrained,
+        "stunned": Stunned,
+        "unconscious": Unconscious
     }
 
     def __init__(self):
