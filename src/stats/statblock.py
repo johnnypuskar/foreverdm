@@ -117,6 +117,13 @@ class Statblock:
     def trigger_custom_event(self, custom_event_type):
         self._controller.trigger_reaction(custom_event_type, EventContext(self))
 
+    def start_turn(self):
+        self._turn_resources.reset()
+        self._effects.get_function_results("start_turn", self)
+    
+    def end_turn(self):
+        self._effects.get_function_results("end_turn", self)
+
     ## Leveling
     def add_level(self, class_level, levels = 1):
         if class_level not in self._level:
