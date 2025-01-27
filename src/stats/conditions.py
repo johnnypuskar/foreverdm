@@ -14,6 +14,10 @@ class Blinded(Condition):
         function recieve_attack_roll(attacker)
             return RollModifier({advantage = true})
         end
+
+        function notice_target(target)
+            return false
+        end
     '''
 
     def __init__(self, duration = -1):
@@ -108,7 +112,6 @@ class Incapacitated(Condition):
 
 
 class Invisible(Condition):
-    # TODO: Add heavily obscured status for hiding and prevent being seen.
     SCRIPT = '''
         function make_attack_roll(target)
             return RollModifier({advantage = true})
@@ -116,6 +119,10 @@ class Invisible(Condition):
 
         function recieve_attack_roll(attacker)
             return RollModifier({disadvantage = true})
+        end
+
+        function modify_visibility()
+            return SetValue(0)
         end
     '''
 
