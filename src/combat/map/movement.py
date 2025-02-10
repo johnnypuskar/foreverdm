@@ -3,11 +3,12 @@ class MovementCost():
     cost_types = ('walking', 'flying', 'swimming', 'climbing', 'burrowing')
 
     def __init__(self, walking = None, flying = None, swimming = None, climbing = None, burrowing = None):
-        self._walking = walking
-        self._flying = flying if flying is not None else walking
-        self._swimming = swimming
-        self._climbing = climbing
-        self._burrowing = burrowing
+        DECIMAL_PRECISION = 5
+        self._walking = int(round(walking, DECIMAL_PRECISION)) if walking is not None else None
+        self._flying = int(round(flying, DECIMAL_PRECISION)) if flying is not None else self._walking
+        self._swimming = int(round(swimming, DECIMAL_PRECISION)) if swimming is not None else None
+        self._climbing = int(round(climbing, DECIMAL_PRECISION)) if climbing is not None else None
+        self._burrowing = int(round(burrowing, DECIMAL_PRECISION)) if burrowing is not None else None
 
     @property
     def walking(self):
