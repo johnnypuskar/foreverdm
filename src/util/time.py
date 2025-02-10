@@ -3,7 +3,7 @@ from enum import Enum
 class UseTime():
     class Special(Enum):
         Action = -1
-        BonusAction = -2
+        Bonus_Action = -2
         Reaction = -3
 
     def __init__(self, minutes):
@@ -19,7 +19,7 @@ class UseTime():
             if time_table["unit"] == "action":
                 return UseTime(UseTime.Special.Action.value)
             if time_table["unit"] == "bonus_action":
-                return UseTime(UseTime.Special.BonusAction.value)
+                return UseTime(UseTime.Special.Bonus_Action.value)
             if time_table["unit"] == "reaction":
                 return UseTime(UseTime.Special.Reaction.value)
         return UseTime(time_table["value"] * 60) if time_table["unit"] == "hour" else UseTime(time_table["value"])
@@ -38,7 +38,7 @@ class UseTime():
     
     @property
     def is_bonus_action(self):
-        return self._minutes == UseTime.Special.BonusAction.value
+        return self._minutes == UseTime.Special.Bonus_Action.value
     
     @property
     def is_reaction(self):
@@ -49,7 +49,7 @@ class UseTime():
     
     def __str__(self) -> str:
         if self.is_special:
-            return self.Special(self._minutes).name.lower()
+            return self.Special(self._minutes).name.replace("_", " ").lower()
         else:
             return f"{self._minutes} minute" + ("s" if self._minutes > 1 else "")
 
