@@ -564,7 +564,7 @@ class Map:
         return self.get_map_as_string()
 
 class MapTile:
-    def __init__(self, position = (-1, -1), movement_cost = MovementCost(5, 5), prop = None, wall_top = None, wall_bottom = None, wall_left = None, wall_right = None):
+    def __init__(self, position = (-1, -1), movement_cost = MovementCost(5), prop = None, wall_top = None, wall_bottom = None, wall_left = None, wall_right = None):
         self._position = position
         self._movement_cost = movement_cost
         self._solid = movement_cost.has_no_movement
