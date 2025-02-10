@@ -2,30 +2,6 @@ import math
 from src.combat.map.movement import MovementCost
 from src.util.resettable_value import ResettableValue, CappedValue
 
-class AbilityScore:
-    def __init__(self, name, value):
-        self._name = name
-        self._value = value
-    
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, new_value):
-        self._value = new_value
-
-    @property
-    def modifier(self):
-        return math.floor((self._value - 10) / 2)
-    
-    def __repr__(self):
-        return f"{self._value} {self._name.upper()}"
-
 class Speed:
     def __init__(self, value: int, fly = 0, swim = 0, climb = 0, burrow = 0, hover = False):
         # if (swim is not None and value < swim) or (climb is not None and value < climb) or (burrow is not None and value < burrow):
