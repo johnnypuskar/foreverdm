@@ -91,6 +91,61 @@ use_time = UseTime("reaction")
 use_time = UseTime("minute", 10)
 ```
 
+#### Reaction Abilities and Triggers
+
+Some abilities have their use time as a reaction, which requires a triggering event which the ability may be used in response to. Reaction abilities require an additional parameter to be defined at the top level, alongside the `use_time` value, named `reaction_trigger`. `reaction_trigger` is a string, and is set to the type of trigger which the reaction should be able to be used in response to, and is required for any abilities with a use time of a reaction. 
+
+Each built-in trigger can be classified by the context parameter passed into the ability `validate(context)` and `run(context)` functions when it is used. Different triggers will be provided with different types of context objects, holding different data depending on the trigger type. 
+
+**Built-in Triggers and Provided Contexts:**
+- Context(`source`: statblock which triggered the event)
+  - `trigger_zero_hp`: Triggers when the trigger source statblock hits zero hit points.
+  - `trigger_death`: Triggers when the trigger source statblock dies.
+
+- TargetedContext(`source`: statblock which triggered the event, `target`: statblock which was targeted by the source statblock)
+  - `trigger_hit_by_attack`: Triggers when the target is hit by an attack from the source.
+
+- AttackRollContext(`source`: statblock of the attacker, `target`: statblock of the attack target, `advantage`: bool, if the attack roll has advantage, `disadvantage`: bool, if the attack roll has disadvantage, `auto_succeed`: bool, if the roll should automatically succeed, `auto_fail`: bool, if the roll should automatically fail, `bonus`: int, value added to the result of the die roll)
+  - `trigger_roll_attack`: Triggers when the trigger source statblock makes an attack roll against a target.
+
+- RollContext(`source`: statblock that rolled the dice, `advantage`: bool, if the roll is made with advantage, `disadvantage`: bool, if the roll is made with disadvantage, `auto_succeed`: bool, if the roll should automatically succeed, `auto_fail`: bool, if the roll should automatically fail, `bonus`: int, value added to the result of the die roll)
+  - `trigger_roll_ability_check`: Triggers when an ability check is rolled.
+  - `trigger_roll_skill_check`: Triggers when a skill check is rolled.
+  - `trigger_roll_saving_throw`: Triggers when a saving throw is rolled.
+  - `trigger_roll_concentration_saving_throw`: Triggers when a concentration saving throw is rolled.
+
+- RollResultContext(`source`: statblock that rolled the dice, `result`: int, numeric value of the roll result, `success`: bool, if the roll was successful, `critical_success`: bool, if the roll is considered a critical success)
+  - `trigger_ability_check_succeed`: Triggers when an ability check is successful.
+  - `trigger_ability_check_fail`: Triggers when an ability check is unsuccessful.
+  - `trigger_skill_check_succeed`: Triggers when a skill check is successful.
+  - `trigger_skill_check_fail`: Triggers when a skill check is unsuccessful.
+  - `trigger_saving_throw_succeed`: Triggers when a saving throw is successful.
+  - `trigger_concentration_saving_throw_succeed`: Triggers when a concentration saving throw is successful.
+  - `trigger_saving_throw_fail`: Triggers when a saving throw is unsuccessful.
+  - `trigger_concentration_saving_throw_fail`: Triggers when a concentration saving throw is unsuccessful.
+
+- TargetedRollResultContext(`source`: statblock that rolled the dice, `target`: statblock of the target of the rolled event, `result`: int, numeric value of the roll result, `success`: bool, if the roll was successful, `critical_success`: bool, if the roll is considered a critical success)
+  - `trigger_attack_roll_fail`: Triggers when the trigger source statblock fails an attack roll on the target.
+  - `trigger_attack_roll_succeed`: Triggers when the trigger source statblock succeeds an attack roll on the target.
+  - `trigger_attack_roll_critical`: Triggers when the trigger source lands a critical hit on the target.
+
+- DamageRollContext(`source`: statblock who is taking the rolled damage, `type`: str, type of damage taken, `dice`: list[table], a list of all dice rolled for damage in the format of {size = N, amount = M} where N is the sides on the die, and M is the resulting face after the roll)
+  - `trigger_roll_damage`: Triggers when the trigger source statblock rolls to take damage.
+
+- DamageEventContext(`source`: statblock who is taking damage, `type`: str, type of damage taken, `amount`: int, value of damage taken)
+  - `trigger_take_damage`: Triggers when a creature is damaged.
+
+Context values can be accessed using dot notation. Triggers are sent out just as the triggering event occurs, but before the result is confirmed, and the context of the triggering event can be altered to have an effect on the outcome or conditions of the event.
+
+**Reaction Ability Function Example**
+```
+function run(context)
+  context.source.take_damage("1d4 piercing")
+  context.disadvantage = true
+  return True, "Damaged source and gave the roll disadvantage."
+end
+```
+
 ### Duration Helper Function
 
 Some global variables must be defined with certain syntax in order to be evaluated correctly. In the case of defining the duration of time it takes to use an ability, as when casting a spell, or the duration of some effect, the Duration helper function is used to define the size of that window of time.
@@ -189,7 +244,7 @@ Creates and returns the table to designate the proper modifiers of a die roll fr
   - `auto_fail`: Boolean
     - `true` if the roll auto-fails regardless of die result
   - `critical_threshold_modifier`: AddValue, MultiplyValue, or SetValue
-    - Math operator function to add to, multiply, or set the minimum value that the die roll needs to be for the roll to be considered a critical success. Defaults to leaving it untouched at 20.
+    - Math operator function to add to, multiply, or set the minimum value that the die roll needs to be for the roll to be considered a critical success. Defaults to undefined, leaving it untouched at 20.
 
 #### RollModifier Examples
 
@@ -432,15 +487,20 @@ Used to change the numerical value of the character with the effect's base speed
 **Returns:**
 - **SpeedModifier**: SpeedModifier table created using the `SpeedModifier()` helper function to define which speed type is modified, and in what way.
 
+### `modify_size_class()`
+Used to alter the size of the character with the effect. Size is determined by taking a numerical size index into the following zero-indexed list: [`tiny`, `small`, `medium`, `large`, `huge`, `gargantuan`]
+**Returns:**
+- **AddValue** or **SetValue**: Add or Set table created using `AddValue()` or `SetValue()` helper function, changes size by changing the value of the index into the provided size list - i.e. `AddValue(-1)` will decrease size by one class, such as `large` to `medium`, and `SetValue(1)` will set size to index 1, or to `small`.
+
 ### `modify_armor_class()`
 Used to change the numerical value of the character with the effect's armor class
 **Returns:**
 - **AddValue**, **MultiplyValue**, or **SetValue**: Add, Multiply, or Set table created using `AddValue()`, `MultiplyValue()`, or `SetValue()` helper function
 
-### `roll_initiative()`
+### `modify_initiative_roll()`
 Used when the character with the effect rolls initiative
 **Returns:**
-- **RollModifier**: Roll table created using the `RollModifier()` helper function, note auto success, auto failure, and make critical have no effect in this function.
+- **RollModifier**: Roll table created using the `RollModifier()` helper function, note auto success, auto failure, and critical threshold have no effect in this function.
 
 ### `allow_actions()`
 Used to block the character with the effect from performing actions or bonus actions on their turn.
