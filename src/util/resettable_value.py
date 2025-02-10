@@ -17,10 +17,10 @@ class ResettableValue:
         self.value = self._initial
 
     def __str__(self):
-        return f'({self.value}/{self._initial})'
+        return f'{self.value}/{self._initial}'
     
     def __repr__(self):
-        return f'({self.value}/{self._initial})'
+        return f'{self.value}/{self._initial}'
 
     def __lt__(self, other):
         if isinstance(other, ResettableValue):
