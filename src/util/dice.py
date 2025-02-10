@@ -1,3 +1,4 @@
+from __future__ import annotations
 import random, re
 
 class DiceRoller:
@@ -53,43 +54,75 @@ class DiceSum:
     def roll(self):
         return DiceRoller.roll_d4(self._d4) + DiceRoller.roll_d6(self._d6) + DiceRoller.roll_d8(self._d8) + DiceRoller.roll_d10(self._d10) + DiceRoller.roll_d12(self._d12) + self._modifier
 
+class DiceInstance:
+    def __init__(self):
+        self._dice = {}
+        self.modifier = 0
+    
+    @property
+    def has_dice(self):
+        return len(self._dice) > 0
+
+    def add_dice(self, sides: int, amount: int):
+        if sides < 0:
+            raise ValueError("Sides must be greater than 0.")
+        if amount <= 0:
+            return
+        if sides in self._dice.keys():
+            self._dice[sides] += amount
+        else:
+            self._dice["d" + str(sides)] = amount
+    
+    def merge(self, other: DiceInstance):
+        for die in other._dice.keys():
+            if die in self._dice.keys():
+                self._dice[die] += other._dice[die]
+            else:
+                self._dice[die] = other._dice[die]
+        self.modifier += other.modifier
+
+    def roll(self, die_multiplier = 1):
+        total = self.modifier
+        for die in self._dice:
+            total += DiceRoller.roll_custom(self._dice[die] * die_multiplier, int(die[1:]))
+        return total
+    
+    def roll_from_list(self, die_list):
+        return sum([die["result"] for die in die_list]) + self.modifier
+
+    def roll_to_list(self, die_multiplier = 1):
+        roll_results = []
+        for die in self._dice:
+            for i in range(self._dice[die] * die_multiplier):
+                roll_results.append({"sides": int(die[1:]), "result": DiceRoller.roll_custom(1, int(die[1:]))})
+        return roll_results
+
 class DiceParser:
     def __init__(self):
         pass
     
     @staticmethod
     def parse_string(dice_string):
-        just_numbers = r"(\d+)"
-        check_pattern = r"^(\d*d\d+)([\+\-](\d*d\d+))*([\+\-]\d+)*$"
-        groups_pattern = r"([\+\-]?(\d+d\d+|\d+))"
-        if not re.match(check_pattern, dice_string):
-            if re.match(just_numbers, dice_string):
-                return {"MOD": int(dice_string)}
+        # Split the dice string into individual dice substrings
+        regex = r"(^\d+|[+-]\d+)(d\d+)?"
+        matches = re.findall(regex, dice_string)
+
+        matched_string = "".join([match[0] + match[1] for match in matches])
+
+        if matched_string != dice_string:
             raise ValueError(f"Invalid dice string: {dice_string}")
         
-        return_table = {"MOD": 0}
+        dice = DiceInstance()
 
-        groups = re.findall(groups_pattern, dice_string)
-
-        for group in groups:
+        for match in matches:
             multiplier = 1
-            if group[0] != group[1] and group[1][0] == '-':
+            if match[0] == "-":
                 multiplier = -1
-            dice_roll = group[0]
-
-            if "d" in dice_roll:
-                amount, sides = dice_roll.split("d")
-                if amount == "":
-                    amount = 1
-                else:
-                    amount = int(amount)
-                sides = int(sides)
-                return_table[sides] = amount * multiplier
+            
+            amount = int(match[0][1:]) if match[0][0] == "+" else int(match[0])
+            if len(match[1]) > 1:
+                dice.add_dice(int(match[1][1:]), amount * multiplier)
             else:
-                return_table["MOD"] += int(dice_roll) * multiplier
+                dice.modifier += amount * multiplier
         
-        return return_table
-
-                
-        
-    
+        return dice
