@@ -128,9 +128,9 @@ class ReactionAbility(Ability):
         
         lua = LuaManager()
         lua.execute(self._script)
-        if "reaction_event" not in lua.get_defined_variables():
-            raise ValueError("Reaction ability must define a reaction_event variable.")
-        self._reaction_event = lua.globals["reaction_event"]
+        if "reaction_trigger" not in lua.get_defined_variables():
+            raise ValueError("Reaction ability must define a reaction_trigger variable.")
+        self._reaction_trigger = lua.globals["reaction_trigger"]
 
 class CompositeAbility(Ability):
     def __init__(self, name, script, function_name = "run", globals = {}):
@@ -176,7 +176,7 @@ class CompositeAbility(Ability):
             return self._sub_abilities[name]
         else:
             if name_split[0] not in self._sub_abilities:
-                raise ValueError(f"Subability {name} does not exist in index ({name_split[0]} not found).")
+                raise ValueError(f"Subability {name_split[0]} not found in index.")
             if type(self._sub_abilities[name_split[0]]) is not CompositeAbility:
                 raise ValueError(f"Subability {name_split[0]} is not a composite ability.")
             
@@ -332,7 +332,7 @@ class AbilityIndex(Observer, Emitter):
         headers = []
         for header in self.get_headers_reactions():
             ability = self.get_ability(header[0])
-            if ability._reaction_event == event:
+            if ability._reaction_trigger == event:
                 headers.append(header)
         return headers
 
@@ -369,6 +369,83 @@ class AbilityIndex(Observer, Emitter):
     def break_concentration(self):
         self._concentration_tracker.end_concentration()
 
+    def run_ability(self, name, statblock, *args, modifier_abilities = []):
+        ability_name, control_flags = self._separate_header_control_flags(name)
+
+        # Verify that the ability, as well as any modifier abilities, all exist in the index
+        for name in [ability_name] + [modifier[0] for modifier in modifier_abilities]:
+            if not self.has_ability(name):
+                raise ValueError(f"Ability {name} does not exist in index.")
+        if self._active_use_ability is ability_name and len(control_flags) == 0:
+            raise ValueError(f"Ability {name} is active use ability, must use control flag to determine continue use or new_use.")
+
+        # TODO: Verify that you want to override the active use ability
+
+        # TODO: Verify that you want to break existing concentration
+
+        ability = self.get_ability(ability_name)
+
+        if ability.is_modifier:
+            raise ValueError(f"Ability {ability_name} is a modifier ability and cannot be run directly.")
+        
+        # Create the runtime environment for the ability
+        env = ability.initialize({"statblock": StatblockAbilityWrapper(statblock, ability)})
+
+        # Check for ability use validation, and if invalid, return false with the validation error message.
+        validated, validation_message = ability.validate(*args)
+        if not validated:
+            return (False, f"Invalid {name} use. {validation_message}" + ("." if validation_message[-1] != "." else ""))
+
+        # For each modifier ability, check for validation and that it is a valid modifer ability
+        for modifier in modifier_abilities:
+            modifier_ability = self.get_ability(modifier[0])
+            if not modifier_ability.is_modifier:
+                return (False, f"Ability {modifier[0]} is not a modifier ability and cannot be used as a modifier.")
+            if not modifier.can_modify(name):
+                raise ValueError(f"Ability {modifier[0]} cannot be used to modify {name}.")
+            modifier_ability.set_lua(env)
+            validated, validation_message = modifier_ability.validate(*modifier[1:])
+            if not validated:
+                return (False, f"Invalid {modifier[0]} use. {validation_message}" + ("." if validation_message[-1] != "." else ""))
+
+        # If ability is a new ability, or a new use of the active ability, set it as the active ability and reset it's usage delay.
+        if self._active_use_ability != ability_name or (self._active_use_ability == ability_name and AbilityHeaderControlFlag.NEW_USE in control_flags):
+            self._active_use_ability = ability_name
+            self.get_ability(self._active_use_ability).reset_use_delay()
+        
+        ability.regenerate_uuid()
+        if ability._concentration:
+            self._concentration_tracker.set_concentration(ability, ability._duration.timestamp)
+        
+        if not ability.ready_check():
+            return (False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")
+        self._active_use_ability = None
+
+        use_result_messages = []
+
+        # Store ability function in a variable for later reference to avoid overwriting the main ability function with a modifider that has the same name
+        override_protection_script = f'''
+            __ability_sequence_main_function__ = {ability._function_name}
+        '''
+        env.execute(override_protection_script)
+
+        for modifier in modifier_abilities:
+            modifier_ability = self.get_ability(modifier[0])
+            modifier_ability.set_lua(env)
+            
+            # Fix: Call run() on the ability object, not the tuple
+            modifier_result = modifier_ability.run(*modifier[1:])
+
+            if not modifier_result[0]:
+                return modifier_result
+            # Add result return string to list of return strings.
+            use_result_messages.append(modifier_result[1])
+        
+        main_return = env.run("__ability_sequence_main_function__", *args)
+        use_result_messages.append(main_return[1])
+        return (main_return[0], " ".join(use_result_messages))
+            
+
     def run(self, name, statblock, *args):
         ability_name, control_flags = self._separate_header_control_flags(name)
 
@@ -404,7 +481,7 @@ class AbilityIndex(Observer, Emitter):
 
         ability.regenerate_uuid()
         if ability._concentration:
-            self._concentration_tracker.set_concentration(ability._uuid, ability._duration.timestamp)
+            self._concentration_tracker.set_concentration(ability, ability._duration.timestamp)
 
         return ability.run(*args)
 
@@ -444,7 +521,7 @@ class AbilityIndex(Observer, Emitter):
 
         ability.regenerate_uuid()
         if ability._concentration:
-            self._concentration_tracker.set_concentration(ability._uuid, ability._duration.timestamp)
+            self._concentration_tracker.set_concentration(ability, ability._duration.timestamp)
 
         if not ability.ready_check():
             return (False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")
@@ -499,23 +576,23 @@ class AbilityIndex(Observer, Emitter):
 class ConcentrationTracker(Emitter):
     def __init__(self):
         super().__init__()
-        self._ability_use_uuid = None
+        self._ability = None
         self._remaining_ticks = 0
     
     @property
     def concentrating(self):
         return self._ability_use_uuid is not None
 
-    def set_concentration(self, uuid, duration):
-        if self._ability_use_uuid is not None:
+    def set_concentration(self, ability, duration):
+        if self._ability is not None:
             self.end_concentration()
-        self._ability_use_uuid = uuid
+        self._ability = ability
         self._remaining_ticks = duration
     
     def end_concentration(self):
-        if self._ability_use_uuid is not None:
-            self.emit(EventType.ABILITY_CONCENTRATION_ENDED, self._ability_use_uuid)
-            self._ability_use_uuid = None
+        if self._ability is not None:
+            self.emit(EventType.ABILITY_CONCENTRATION_ENDED, self._ability._uuid)
+            self._ability = None
             self._remaining_ticks = 0
 
     def tick_timer(self):
