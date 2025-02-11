@@ -386,7 +386,7 @@ class TestAbility(unittest.TestCase):
         ''')
         ability_c = Ability("ability_reaction", '''
             use_time = UseTime("reaction", 1)
-            reaction_event = "test_event"
+            reaction_trigger = "test_event"
             function run() end
         ''')
         ability_d = Ability("ability_minute", '''
@@ -437,7 +437,7 @@ class TestAbility(unittest.TestCase):
         ''')
         ability_c = Ability("ability_reaction", '''
             use_time = UseTime("reaction", 1)
-            reaction_event = "test_event"
+            reaction_trigger = "test_event"
             function run() end
         ''')
         ability_d = Ability("ability_minute", '''
@@ -481,7 +481,7 @@ class TestAbility(unittest.TestCase):
         # Create abilities
         ability_a = Ability("ability_a", '''
             use_time = UseTime("reaction", 1)
-            reaction_event = "test_event"
+            reaction_trigger = "test_event"
             function run() end
         ''')
         ability_b = Ability("ability_b", '''
@@ -493,22 +493,22 @@ class TestAbility(unittest.TestCase):
         self.assertTrue(isinstance(ability_a, ReactionAbility))
         self.assertFalse(isinstance(ability_b, ReactionAbility))
 
-    def test_get_reaction_event_headers(self):
+    def test_get_reaction_trigger_headers(self):
         # Create test index and abilities
         index = AbilityIndex()
         ability_a = Ability("ability_a", '''
             use_time = UseTime("reaction", 1)
-            reaction_event = "test_event"
+            reaction_trigger = "test_event"
             function run() end
         ''')
         ability_b = Ability("ability_b", '''
             use_time = UseTime("reaction", 1)
-            reaction_event = "test_event"
+            reaction_trigger = "test_event"
             function run() end
         ''')
         ability_c = Ability("ability_c", '''
             use_time = UseTime("reaction", 1)
-            reaction_event = "other_event"
+            reaction_trigger = "other_event"
             function run() end
         ''')
 
@@ -537,8 +537,6 @@ class TestAbility(unittest.TestCase):
             ("ability_c", ())
         ]
         self.assertEqual(expected, index.get_headers_reactions_to_event("other_event"))
-
-
 
     def test_run_ability(self):
         # Create test index and ability
@@ -1037,12 +1035,12 @@ class TestAbility(unittest.TestCase):
         # Use ability and verify concentration tracker is updated
         index.run("test_ability", None)
         self.assertTrue(index._concentration_tracker.concentrating)
-        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+        self.assertEqual(index._concentration_tracker._ability, ability)
 
         # Verify concentration changes to new ability when run
         index.run("alternate_ability", None)
         self.assertTrue(index._concentration_tracker.concentrating)
-        self.assertEqual(index._concentration_tracker._ability_use_uuid, alternate_ability._uuid)
+        self.assertEqual(index._concentration_tracker._ability, alternate_ability)
 
         # Verify concentration is broken properly
         index.break_concentration()
@@ -1066,17 +1064,17 @@ class TestAbility(unittest.TestCase):
         index.run("test_ability", None)
 
         # Verify that the index is concentrating on the ability
-        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+        self.assertEqual(index._concentration_tracker._ability, ability)
 
         # Verify that the index continues concentrating on the ability for only 3 rounds
         self.assertTrue(index._concentration_tracker.concentrating)
         index.tick_timers()
         
-        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+        self.assertEqual(index._concentration_tracker._ability, ability)
         self.assertTrue(index._concentration_tracker.concentrating)
         index.tick_timers()
 
-        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+        self.assertEqual(index._concentration_tracker._ability, ability)
         self.assertTrue(index._concentration_tracker.concentrating)
         index.tick_timers()
 
@@ -1103,7 +1101,7 @@ class TestAbility(unittest.TestCase):
         index.run("test_ability", None)
 
         # Verify that the index is concentrating on the ability
-        self.assertEqual(index._concentration_tracker._ability_use_uuid, ability._uuid)
+        self.assertEqual(index._concentration_tracker._ability, ability)
 
         # Break concentration and verify the concentration tracker emits the correct event
         index.break_concentration()
@@ -1223,7 +1221,7 @@ class TestAbility(unittest.TestCase):
         ''')
         ability_reaction = Ability("test_ability", '''
             use_time = UseTime("reaction")
-            reaction_event = "test_event"
+            reaction_trigger = "test_event"
         ''')
         ability_minute = Ability("test_ability", '''
             use_time = UseTime("minute")
@@ -1248,7 +1246,7 @@ class TestAbility(unittest.TestCase):
         self.assertFalse(ability_bonus_action._use_time.is_action)
         self.assertTrue(ability_bonus_action._use_time.is_bonus_action)
         self.assertFalse(ability_bonus_action._use_time.is_reaction)
-        self.assertEqual(UseTime.Special.BonusAction.value, ability_bonus_action._use_time.minutes)
+        self.assertEqual(UseTime.Special.Bonus_Action.value, ability_bonus_action._use_time.minutes)
 
         self.assertTrue(ability_reaction._use_time.is_special)
         self.assertFalse(ability_reaction._use_time.is_action)
