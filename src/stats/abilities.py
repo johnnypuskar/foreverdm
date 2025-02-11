@@ -581,7 +581,7 @@ class ConcentrationTracker(Emitter):
     
     @property
     def concentrating(self):
-        return self._ability_use_uuid is not None
+        return self._ability is not None
 
     def set_concentration(self, ability, duration):
         if self._ability is not None:
