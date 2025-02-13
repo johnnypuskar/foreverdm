@@ -5,10 +5,10 @@ class MapTile:
         self._x = x
         self._y = y
 
-        self.wall_top = None
-        self.wall_left = None
-        self.wall_bottom = None
-        self.wall_right = None
+        self._wall_top = None
+        self._wall_left = None
+        self._wall_bottom = None
+        self._wall_right = None
     
     @property
     def x(self):
@@ -24,12 +24,12 @@ class MapTile:
 
     def get_wall(self, direction):
         if direction == MapTileWall.WallDirection.TOP:
-            return self.wall_top
+            return self._wall_top
         elif direction == MapTileWall.WallDirection.LEFT:
-            return self.wall_left
+            return self._wall_top
         elif direction == MapTileWall.WallDirection.BOTTOM:
-            return self.wall_bottom
+            return self._wall_top
         elif direction == MapTileWall.WallDirection.RIGHT:
-            return self.wall_right
+            return self._wall_right
         else:
             raise ValueError(f"Invalid wall direction: {direction}")
