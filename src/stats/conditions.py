@@ -1,8 +1,8 @@
-from src.stats.effects import Effect
+from src.stats.effects.effect import Effect
 
 class Condition(Effect):
-    def __init__(self, name, script, globals = {}, duration = -1):
-        super().__init__(name, script, globals, duration)
+    def __init__(self, name, script, duration = -1):
+        super().__init__(name, script, duration)
         self._derived = False
 
 class Blinded(Condition):
@@ -41,7 +41,8 @@ class Charmed(Condition):
     '''
 
     def __init__(self, charmer, duration = -1):
-        super().__init__("charmed", Charmed.SCRIPT, {"charmer": charmer}, duration)
+        super().__init__("charmed", Charmed.SCRIPT, duration)
+        self._globals["charmer"] = charmer
 
 class Deafened(Condition):
     # TODO: Implement Deafened condition once senses are functional
@@ -53,7 +54,7 @@ class Deafened(Condition):
     '''
 
     def __init__(self, duration = -1):
-        super().__init__("deafened", Deafened.SCRIPT, {}, duration)
+        super().__init__("deafened", Deafened.SCRIPT, duration)
 
 class Frightened(Condition):
     SCRIPT = '''
@@ -80,7 +81,8 @@ class Frightened(Condition):
     '''
 
     def __init__(self, frightener, duration = -1):
-        super().__init__("frightened", Frightened.SCRIPT, {"frightener": frightener}, duration)
+        super().__init__("frightened", Frightened.SCRIPT, duration)
+        self._globals["frightener"] = frightener
 
 class Grappled(Condition):
     SCRIPT = '''
@@ -94,7 +96,8 @@ class Grappled(Condition):
     '''
 
     def __init__(self, grappler, duration = -1):
-        super().__init__("grappled", Grappled.SCRIPT, {"grappler": grappler}, duration)
+        super().__init__("grappled", Grappled.SCRIPT, duration)
+        self._globals["grappler"] = grappler
 
 class Incapacitated(Condition):
     SCRIPT = '''
@@ -108,7 +111,7 @@ class Incapacitated(Condition):
     '''
 
     def __init__(self, duration = -1):
-        super().__init__("incapacitated", Incapacitated.SCRIPT, {}, duration)
+        super().__init__("incapacitated", Incapacitated.SCRIPT, duration)
 
 
 class Invisible(Condition):
@@ -127,7 +130,7 @@ class Invisible(Condition):
     '''
 
     def __init__(self, duration = -1):
-        super().__init__("invisible", Invisible.SCRIPT, {}, duration)
+        super().__init__("invisible", Invisible.SCRIPT, duration)
 
 class Paralyzed(Condition):
     SCRIPT = '''
@@ -150,7 +153,7 @@ class Paralyzed(Condition):
     '''
 
     def __init__(self, duration = -1):
-        super().__init__("paralyzed", Paralyzed.SCRIPT, {}, duration)
+        super().__init__("paralyzed", Paralyzed.SCRIPT, duration)
 
 class Poisoned(Condition):
     SCRIPT = '''
@@ -164,7 +167,7 @@ class Poisoned(Condition):
     '''
 
     def __init__(self, duration = -1):
-        super().__init__("poisoned", Poisoned.SCRIPT, {}, duration)
+        super().__init__("poisoned", Poisoned.SCRIPT, duration)
 
 class Prone(Condition):
     SCRIPT = '''
@@ -200,7 +203,7 @@ class Prone(Condition):
     '''
 
     def __init__(self, duration = -1):
-        super().__init__("prone", Prone.SCRIPT, {}, duration)
+        super().__init__("prone", Prone.SCRIPT, duration)
 
 class Restrained(Condition):
     SCRIPT = '''
@@ -225,7 +228,7 @@ class Restrained(Condition):
         '''
     
     def __init__(self, duration = -1):
-        super().__init__("restrained", Restrained.SCRIPT, {}, duration)
+        super().__init__("restrained", Restrained.SCRIPT, duration)
 
 class Stunned(Condition):
     SCRIPT = '''
@@ -244,7 +247,7 @@ class Stunned(Condition):
     '''
 
     def __init__(self, duration = -1):
-        super().__init__("stunned", Stunned.SCRIPT, {}, duration)
+        super().__init__("stunned", Stunned.SCRIPT, duration)
 
 class Unconscious(Condition):
     SCRIPT = '''
@@ -271,4 +274,4 @@ class Unconscious(Condition):
     '''
 
     def __init__(self, duration = -1):
-        super().__init__("unconscious", Unconscious.SCRIPT, {}, duration)
+        super().__init__("unconscious", Unconscious.SCRIPT, duration)
