@@ -1,10 +1,11 @@
+from src.stats.wrappers.statblock_wrapper import StatblockWrapper
 from src.stats.ability_scores import AbilityScores
-from src.stats.speed import Speed
+from src.stats.movement.speed import Speed
 from src.stats.size import Size
 from src.stats.level import Level
 from src.stats.hit_points import HitPoints
-from src.stats.abilities import AbilityIndex
-from src.stats.effect_index import EffectIndex
+from src.stats.abilities.ability_index import AbilityIndex
+from src.stats.effects.effect_index import EffectIndex
 from src.control.controller import Controller
 from src.util.modifier_values import ModifierValues, ModifierRolls
 
@@ -50,6 +51,11 @@ class Statblock:
     
     def get_proficiency_bonus(self):
         return 2 + max(0, ((self._level.get_level() - 1) // 4))
+    
+    def wrap(self, wrapper):
+        if isinstance(wrapper, StatblockWrapper):
+            return wrapper(self)
+        return self
 
     
     
