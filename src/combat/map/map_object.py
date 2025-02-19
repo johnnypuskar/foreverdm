@@ -10,19 +10,25 @@ class MapObject(Observer, ABC):
         self._script_functions = []
         self._applied_objects = []
 
-        lua = LuaManager()
-        lua.execute(self._script)
-        self._script_functions = lua.get_defined_functions()
-        self._globals = {key: lua.get(key) for key in lua.get_defined_variables()}
+        if script is not None:
+            lua = LuaManager()
+            lua.execute(self._script)
+            self._script_functions = lua.get_defined_functions()
+            self._globals = {key: lua.get(key) for key in lua.get_defined_variables()}
+        else:
+            self._script_functions = []
+            self._globals = {}
 
-    
     def __getattribute__(self, name):
-        if name in ['_name', '_script', '_globals', '_script_functions', '_applied_objects', '_get_object_function', 'signal', 'apply', 'unapply']:
+        if name in ['_name', '_script', '_globals', '_script_functions', '_applied_objects', '_get_object_function', 'signal', '_has_object_function', 'apply', 'unapply']:
             return super().__getattribute__(name)
         elif name in self._script_functions:
             return self._get_object_function(name)
         return super().__getattribute__(name)
     
+    def _has_object_function(self, function_name):
+        return function_name in self._script_functions
+
     def _get_object_function(self, function_name):
         lua = LuaManager()
         script = self._script
