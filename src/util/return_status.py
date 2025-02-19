@@ -10,3 +10,9 @@ class ReturnStatus:
     @property
     def message(self):
         return self._message
+    
+    def __eq__(self, value):
+        return self._success == value.success and self._message == value.message
+    
+    def __repr__(self):
+        return f"<ReturnStatus({self._success}, '{self._message}')>"
