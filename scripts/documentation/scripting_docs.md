@@ -519,8 +519,8 @@ Used to block the character with the effect from performing reactions on their t
 ### `move(old_pos, new_pos)`
 Used whenever the character with the effect moves willingly from one position to the next.
 **Parameters:**
-- `old_pos`: An (x, y) tuple of the position the character with the effect is moving from
-- `new_pos`: An (x, y) tuple of the position the character with the effect is moving to
+- `old_pos`: An (x, y, height) tuple of the position the character with the effect is moving from
+- `new_pos`: An (x, y, height) tuple of the position the character with the effect is moving to
 **Returns:**
 - **Boolean**:
   - `true` if the movement is allowed
