@@ -1,4 +1,4 @@
-from src.combat.map.movement_cost import MovementCost
+from src.stats.movement.movement_cost import MovementCost
 
 class Speed:
     def __init__(self, walk: int, fly: int = 0, swim: int = 0, climb: int = 0, burrow: int = 0, hover: bool = False):

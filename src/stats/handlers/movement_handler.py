@@ -1,11 +1,11 @@
-from src.combat.map.movement import MovementCost
-
+from src.stats.movement.movement_cost import MovementCost
+from src.util.modifier_values import ModifierSpeed
 
 class MovementHandler:
     def __init__(self, statblock):
         self._statblock = statblock
-    
-    def expend_speed(self, speed_modifier):
+
+    def modify_speed(self, speed_modifier):
         walk_cost, fly_cost, swim_cost, climb_cost, burrow_cost = None, None, None, None, None
         if "walk" in speed_modifier.keys():
             walk_cost = speed_modifier["walk"]["value"]
