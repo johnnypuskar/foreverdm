@@ -56,8 +56,3 @@ class Statblock:
         if isinstance(wrapper, StatblockWrapper):
             return wrapper(self)
         return self
-
-    
-    
-    
-    
