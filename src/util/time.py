@@ -5,16 +5,17 @@ class UseTime():
         Action = -1
         Bonus_Action = -2
         Reaction = -3
+        Free_Action = -4
 
     def __init__(self, minutes):
-        if minutes < -3 or minutes == 0:
+        if minutes < -4 or minutes == 0:
             raise ValueError("Invalid time value.")
         self._minutes = minutes
     
     @staticmethod
     def from_table(time_table):
-        if time_table["value"] == "undefined":
-            return None
+        if time_table["unit"] == "undefined":
+            return UseTime(UseTime.Special.Free_Action.value)
         if time_table["unit"] in ["action", "bonus_action", "reaction"]:
             if time_table["unit"] == "action":
                 return UseTime(UseTime.Special.Action.value)
@@ -44,6 +45,10 @@ class UseTime():
     def is_reaction(self):
         return self._minutes == UseTime.Special.Reaction.value
     
+    @property
+    def is_free_action(self):
+        return self._minutes == UseTime.Special.Free_Action.value
+
     def __repr__(self) -> str:
         return f"UseTime({self.Special(self._minutes).name.lower()})" if not self.is_special else f"UseTime({self._minutes} minutes)"
     
