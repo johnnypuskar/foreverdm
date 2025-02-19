@@ -1,7 +1,9 @@
 from src.events.observer import Emitter, Observer
 from src.stats.conditions import Condition
 from src.stats.condition_manager import ConditionManager
-from src.stats.effects import Effect, StatblockSubEffectWrapper, SubEffect
+from src.stats.effects.effect import Effect
+from src.stats.effects.sub_effect import SubEffect
+from src.stats.wrappers.statblock_effect_wrapper import StatblockEffectWrapper
 from src.util.constants import EventType
 
 class EffectIndex(Observer, Emitter):
@@ -12,8 +14,8 @@ class EffectIndex(Observer, Emitter):
     
     def signal(self, event: str, *data):
         if event == EventType.ABILITY_APPLIED_EFFECT:
-            # [data] = [effect_name, script, duration, globals, ability_uuid]
-            ability_effect = SubEffect(data[0], data[1], data[3], data[4])
+            # [data] = [effect_name, script, duration, ability_uuid]
+            ability_effect = SubEffect(data[0], data[1], data[3])
             self.add(ability_effect, data[2])
         elif event == EventType.ABILITY_REMOVED_EFFECT:
             # [data] = [effect_name]
@@ -36,7 +38,6 @@ class EffectIndex(Observer, Emitter):
                 raise ValueError(f"Effect {effect._name} already exists in index.")
             effect.duration = duration
             self._effects[effect._name] = effect
-            effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
             if effect.has_function("get_abilities"):
                 for effect_ability in effect.run("get_abilities"):
                     self.emit(EventType.EFFECT_GRANTED_ABILITY, effect_ability, effect._script, "run")
@@ -45,6 +46,7 @@ class EffectIndex(Observer, Emitter):
                 derived_condition._derived = True
                 self.add(derived_condition, -1)
             if effect.has_function("on_apply"):
+                effect.initialize({"statblock": StatblockEffectWrapper(statblock, effect)})
                 effect.run("on_apply")
         elif type(effect) is str:
             self.add(Effect("temp_name", effect), duration)
@@ -71,16 +73,20 @@ class EffectIndex(Observer, Emitter):
             if removed_effect.has_function("get_abilities"):
                 for effect_ability in removed_effect.run("get_abilities"):
                     self.emit(EventType.EFFECT_REMOVED_ABILITY, effect_ability)
-    
+
+    def _wrap_args(self, *args):
+        args = [arg.wrap(StatblockEffectWrapper) if hasattr(arg, "wrap") else arg for arg in args]
+        return args
+
     def get_function_results(self, function_name, statblock, *args):
         results = []
         # Creating a copy list so that mid-execution dictionary editing does not throw an error
         keys = list(self.effect_names)
         for effect_name in keys:
             effect = self._effects[effect_name]
-            effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
             if effect.has_function(function_name):
-                result = effect.run(function_name, *args)
+                effect.initialize({"statblock": StatblockEffectWrapper(statblock, effect)})
+                result = effect.run(function_name, *self._wrap_args(*args))
                 if result is not None:
                     results.append(result)
         return results
@@ -92,7 +98,7 @@ class EffectIndex(Observer, Emitter):
             effect = self._effects[effect_name]
             effect.tick_timer()
             if effect.duration == 0:
-                effect.initialize({"statblock": StatblockSubEffectWrapper(statblock, effect)})
                 if effect.has_function("on_expire"):
+                    effect.initialize({"statblock": StatblockEffectWrapper(statblock, effect)})
                     effect.run("on_expire")
                 self.remove(effect_name)
