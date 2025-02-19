@@ -1,8 +1,9 @@
 import unittest
 from unittest.mock import patch
 from src.util.constants import EventType
-from src.stats.effects import Effect, SubEffect
-from src.stats.effect_index import EffectIndex
+from src.stats.effects.effect import Effect
+from src.stats.effects.sub_effect import SubEffect
+from src.stats.effects.effect_index import EffectIndex
 
 class TestEffect(unittest.TestCase):
     def test_add_effect(self):
@@ -136,7 +137,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script, 1, {}, "")
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "ability_effect", ability_script, 1, None)
 
         # Verify test effect was added to the index
         self.assertIn("ability_effect", effect_index.effect_names)
@@ -178,8 +179,8 @@ class TestEffect(unittest.TestCase):
         results = effect_index.get_function_results("make_attack_roll", None, None)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1, {}, "")
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1, {}, "")
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1, "")
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1, "")
 
         # Verify test effects were added to the index
         self.assertIn("first_effect", effect_index.effect_names)
@@ -227,8 +228,8 @@ class TestEffect(unittest.TestCase):
 
         # Emit the signal containing the effect data
         TEST_UUID = "test_uuid"
-        index.signal(EventType.ABILITY_APPLIED_EFFECT, "test_effect", ability_script, 3, {}, TEST_UUID)
-        index.signal(EventType.ABILITY_APPLIED_EFFECT, "alt_effect", ability_script, 3, {}, TEST_UUID)
+        index.signal(EventType.ABILITY_APPLIED_EFFECT, "test_effect", ability_script, 3, TEST_UUID)
+        index.signal(EventType.ABILITY_APPLIED_EFFECT, "alt_effect", ability_script, 3, TEST_UUID)
 
         # Verify test effect was added to the index
         self.assertIn("test_effect", index.effect_names)
@@ -376,7 +377,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(effect2.duration, 9)
 
     @patch('src.stats.statblock.Statblock')
-    def test_effect_on_apply(self, StatblockMock):
+    def test_effect_on_apply(self, statblock):
         index = EffectIndex()
         effect = Effect("test_effect", '''
             function on_apply()
@@ -385,15 +386,16 @@ class TestEffect(unittest.TestCase):
         ''')
 
         # Add effect to index and verify it was added
-        statblock = StatblockMock.return_value
+        statblock._hit_points._max_hp = 100
+        statblock._hit_points._hp = 50
         index.add(effect, 1, statblock)
         self.assertIn("test_effect", index.effect_names)
 
-        # Verify on_apply function was called
-        statblock.restore_hp.assert_called_once()
+        # Verify hit points were restored
+        self.assertEqual(statblock._hit_points._hp, 60)
     
     @patch('src.stats.statblock.Statblock')
-    def test_effect_expiry(self, StatblockMock):
+    def test_effect_expiry(self, statblock):
         index = EffectIndex()
         effect = Effect("test_effect", "")
 
@@ -413,22 +415,22 @@ class TestEffect(unittest.TestCase):
                 statblock:restore_hp(10)
             end
         ''')
-        statblock = StatblockMock.return_value
+        statblock._hit_points._max_hp = 100
+        statblock._hit_points._hp = 50
         index.add(effect_expires, 2)
 
         # Tick the index and verify the effect was removed and the on_expire function was called when duration reaches 0
         self.assertIn("test_effect", index.effect_names)
-        statblock.restore_hp.assert_not_called()
+        self.assertEqual(statblock._hit_points._hp, 50)
 
         # Tick once to reduce duration to 1 and verify on_expire was not called
         index.tick_timers(statblock)
-        statblock.restore_hp.assert_not_called()
+        self.assertEqual(statblock._hit_points._hp, 50)
 
         # Tick again to remove the effect and verify on_expire was called
         index.tick_timers(statblock)
         self.assertNotIn("test_effect", index.effect_names)
-        statblock.restore_hp.assert_called_once()
-        self.assertEqual(statblock.restore_hp.call_args[0][1], 10)
+        self.assertEqual(statblock._hit_points._hp, 60)
     
     @patch('src.stats.statblock.Statblock')
     def test_effect_add_condition(self, StatblockMock):
