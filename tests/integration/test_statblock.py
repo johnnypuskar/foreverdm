@@ -8,7 +8,7 @@ from src.events.event_manager import EventManager
 
 class IntegrationTestStatblock(unittest.TestCase):
     @patch('src.util.dice.DiceRoller.roll_d20', return_value = 15)
-    def test_reaction_events(self, roll_d20):
+    def test_reaction_triggers(self, roll_d20):
         event_manager = EventManager()
 
         primary_controller = Controller()
