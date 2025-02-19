@@ -149,7 +149,7 @@ class ScriptData:
     '''
 
     ABILITY_VALIDATE = '''
-    function validate(parameter)
+    function validate(...)
         return true, nil
     end
     '''
@@ -202,7 +202,6 @@ class EventType:
     ABILITY_APPLIED_EFFECT = "ability_applied_effect"
     ABILITY_REMOVED_EFFECT = "ability_removed_effect"
     ABILITY_CONCENTRATION_ENDED = "ability_concentration_ended"
-
 
     TRIGGER_ABILITY_CHECK_ROLL = "trigger_roll_ability_check"
     TRIGGER_ABILITY_CHECK_SUCCEED = "trigger_ability_check_succeed"
