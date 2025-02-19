@@ -103,7 +103,37 @@ class ModifierRolls:
         self.auto_fail = self.auto_fail or other.auto_fail
         self._crit_modifier.merge(other._crit_modifier)
 
-
+class ModifierSpeed:
+    def __init__(self, modifier_tables: list = []):
+        self.walk = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "walk"])
+        self.fly = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "fly"])
+        self.swim = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "swim"])
+        self.climb = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "climb"])
+        self.burrow = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "burrow"])
+        
+        hover_list = [modifier for modifier in modifier_tables if modifier["type"] == "hover"]
+        self.hover = None if len(hover_list) == 0 else all(hover_list)
     
+    def _sub_process(self, base, modifier):
+        base = modifier.process_mult(base)
+        base = modifier.process_add(base)
+        base = modifier.process_set_min(base)
+        return base
 
+    def process_walk(self, base):
+        return self._sub_process(base, self.walk)
     
+    def process_fly(self, base):
+        return self._sub_process(base, self.fly)
+    
+    def process_swim(self, base):
+        return self._sub_process(base, self.swim)
+    
+    def process_climb(self, base):
+        return self._sub_process(base, self.climb)
+    
+    def process_burrow(self, base):
+        return self._sub_process(base, self.burrow)
+    
+    def process_hover(self, base):
+        return base if self.hover is None else self.hover
