@@ -1,6 +1,5 @@
 from enum import Enum
 from src.util.modifier_values import ModifierValues, ModifierRolls
-from foreverdm.src.stats.statblock import Statblock
 
 class AbilityScoreHandler:
     class ABILITIES(Enum):
