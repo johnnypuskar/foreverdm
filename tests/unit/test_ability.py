@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
+from src.stats.wrappers.statblock_ability_wrapper import StatblockAbilityWrapper
 from src.util.constants import EventType
 from src.util.time import UseTime
 from src.stats.abilities.ability import Ability, ReactionAbility
@@ -1054,86 +1055,110 @@ class TestAbilityConcentration(unittest.TestCase):
         self.assertIsNone(self.INDEX._concentration_tracker._ability)
 
 class TestAbilityStatblockWrapper(unittest.TestCase):
+    STATBLOCK = None
+    ABILITY = None
+    WRAPPER = None
+
+    @patch('src.stats.statblock.Statblock')
+    def setUp(self, statblock):
+        self.STATBLOCK = statblock
+        self.ABILITY = Ability("test_ability", '''
+            use_time = UseTime("action", 1)
+            random_global = 10
+            spellcasting_ability = "int"
+                               
+            sub_ability = {
+                use_time = UseTime("bonus_action", 1),
+                random_global = 40,
+                run = function()
+                    statblock.restore_hp(5)
+                    return true, "Used sub_ability."
+                end
+            }
+
+            function run()
+                statblock.restore_hp(10)
+                return true, "Used test_ability."
+            end
+        ''')
+        self.WRAPPER = StatblockAbilityWrapper(self.STATBLOCK, self.ABILITY)
+    
+    def test_add_ability(self):
+        self.WRAPPER.add_ability("sub_ability")
+        self.STATBLOCK._abilities.add.assert_called_once()
+
+        added_ability = self.STATBLOCK._abilities.add.call_args[0][0]
+        self.assertEqual(added_ability._name, "sub_ability")
+        self.assertEqual(added_ability._globals["random_global"], 40)
+        self.assertIsInstance(added_ability, SubAbility)
+    
+    def test_remove_ability(self):
+        self.WRAPPER.remove_ability()
+        self.STATBLOCK._abilities.remove.assert_called_once_with("test_ability")
+
+        self.STATBLOCK._abilities.remove.reset_mock()
+        self.WRAPPER.remove_ability("sub_ability")
+        self.STATBLOCK._abilities.remove.assert_called_once_with("sub_ability")
+    
+    def test_add_effect(self):
+        self.WRAPPER.add_effect("test_effect", 5)
+        self.STATBLOCK._abilities.emit.assert_called_once_with(EventType.ABILITY_APPLIED_EFFECT, "test_effect", self.ABILITY._script, 5, self.ABILITY._uuid)
+    
+    def test_remove_effect(self):
+        self.WRAPPER.remove_effect("test_effect")
+        self.STATBLOCK._abilities.emit.assert_called_once_with(EventType.ABILITY_REMOVED_EFFECT, "test_effect")
+    
+    @patch('src.stats.handlers.attack_roll_handler.AttackRollHandler.ability_attack_roll')
+    def test_spell_attack_roll(self, ability_attack_roll):
+        target = MagicMock()
+        self.WRAPPER.spell_attack_roll(target, "2d6+4 fire")
+        ability_attack_roll.assert_called_once_with(target, "int", "2d6+4 fire")
     
     @patch('src.stats.statblock.Statblock')
-    def test_statblock_wrapper(self, StatblockMock):
-        statblock = StatblockMock.return_value
-        statblock.spell_attack_roll.return_value = 15
-
-        # Create test index and abilities
-        index = AbilityIndex()
-        ability = Ability("test_ability", '''
-            spellcasting_ability = "int"
-
-            function run(target)
-                return statblock.spell_attack_roll(target, "1d4")
-            end
-        ''')
-        other_ability = Ability("other_ability", '''
-            function run(target)
-                return statblock.melee_attack_roll(target, "2d4")
-            end
-        ''')
-        incorrect_ability = Ability("incorrect_ability", '''
-            function run(target)
-                return statblock.spell_attack_roll(target, "2d4")
-            end
-        ''')
-
-        # Add abilities to index
-        index.add(ability)
-        index.add(other_ability)
-        index.add(incorrect_ability)
-
-        # Run ability and verify it passed the correct arguments to the ability attack roll function in statblock
-        index.run_ability("test_ability", statblock, None)
-        self.assertEqual(statblock.ability_attack_roll.call_args[0][0], None)
-        self.assertEqual(statblock.ability_attack_roll.call_args[0][1], "int")
-        self.assertEqual(statblock.ability_attack_roll.call_args[0][2], "1d4")
-
-        # Run melee ability and verify runs melee attack roll function
-        index.run_ability("other_ability", statblock, None)
-        self.assertEqual(statblock.melee_attack_roll.call_args[0][0], None)
-        self.assertEqual(statblock.melee_attack_roll.call_args[0][1], "2d4")
-
-        # Verify that running a spell attack roll in an ability with no defined spellcasting ability raises an error
-        with self.assertRaises(ValueError):
-            index.run_ability("incorrect_ability", statblock, None)
-
     @patch('src.stats.statblock.Statblock')
-    @patch('src.stats.statblock.Statblock')
-    def test_statblock_reference(self, StatblockMock2, StatblockMock1):
-        # Create test index, statblocks, and abilities
-        index = AbilityIndex()
-        statblock_reference = StatblockMock1.return_value
-        new_statblock_reference = StatblockMock2.return_value
-        statblock_reference.get_hit_points.return_value = 10
-        new_statblock_reference.get_hit_points.return_value = 20
-
-        ability = Ability("test_ability", '''
+    def test_statblock_reference(self, target_A, target_B):
+        reference_ability = Ability("reference", '''
+            use_time = UseTime("action", 1)
+            reference = nil
+            
             function run(target)
-                value = reference:get_hit_points()
-                SetGlobal("reference", target)
-                return value
+                if reference ~= nil then
+                    reference.get_hp()
+                end
+                reference = target
+                return true, "Used reference."
             end
-        ''', "run", {"reference": statblock_reference})
+        ''')
+        index = AbilityIndex()
+        index.add(reference_ability)
 
-        # Add ability to index
-        index.add(ability)
+        def reset_mocks():
+            target_A.reset_mock()
+            target_B.reset_mock()
 
-        # Run ability and verify it passed the correct arguments to the statblock, and that the reference remains the same
-        expected = 10
-        result = index.run_ability("test_ability", None, statblock_reference)
-        self.assertEqual(expected, result)
-        self.assertEqual(index._abilities["test_ability"]._globals["reference"]._statblock, statblock_reference)
+        target_A.wrap.side_effect = lambda w: StatblockAbilityWrapper(target_A, reference_ability)
+        target_B.wrap.side_effect = lambda w: StatblockAbilityWrapper(target_B, reference_ability)
 
-        # Run ability and verify it still returns the normal value, but the reference was updated
-        result = index.run_ability("test_ability", None, new_statblock_reference)
-        self.assertEqual(expected, result)
-        self.assertEqual(index._abilities["test_ability"]._globals["reference"]._statblock, new_statblock_reference)
+        reset_mocks()
+        index.run_ability("reference", self.STATBLOCK, target_A)
+        self.assertEqual(reference_ability._globals["reference"]._statblock, target_A)
+        target_A._hit_points.get_hp.assert_not_called()
+        target_B._hit_points.get_hp.assert_not_called()
 
-        # Run ability and verify it returns the new value and the reference remains the same
-        expected = 20
-        result = index.run_ability("test_ability", None, new_statblock_reference)
-        self.assertEqual(expected, result)
-        self.assertEqual(index._abilities["test_ability"]._globals["reference"]._statblock, new_statblock_reference)
+        reset_mocks()
+        index.run_ability("reference", self.STATBLOCK, target_B)
+        self.assertEqual(reference_ability._globals["reference"]._statblock, target_B)
+        target_A._hit_points.get_hp.assert_called_once()
+        target_B._hit_points.get_hp.assert_not_called()
+
+        reset_mocks()
+        index.run_ability("reference", self.STATBLOCK, None)
+        self.assertIsNone(reference_ability._globals["reference"])
+        target_A._hit_points.get_hp.assert_not_called()
+        target_B._hit_points.get_hp.assert_called_once()
+
+        reset_mocks()
+        index.run_ability("reference", self.STATBLOCK, target_A)
+        self.assertEqual(reference_ability._globals["reference"]._statblock, target_A)
+        target_A._hit_points.get_hp.assert_not_called()
+        target_B._hit_points.get_hp.assert_not_called()
