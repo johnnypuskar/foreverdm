@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 from src.stats.size import Size
-from src.stats.speed import Speed
-from foreverdm.src.stats.statblock import Statblock
+from src.stats.movement.speed import Speed
+from src.stats.statblock import Statblock
 
 class TestStatblock(unittest.TestCase):
 
