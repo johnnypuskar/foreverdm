@@ -12,7 +12,7 @@ class TestStatblock(unittest.TestCase):
 
         self.assertEqual("Tester", statblock.get_name())
     
-    @patch("src.stats.effect_index.EffectIndex.get_function_results")
+    @patch("src.stats.effects.effect_index.EffectIndex.get_function_results")
     def test_get_size(self, effect_results):
         tiny_statblock = Statblock("Tiny", Size.TINY)
         small_statblock = Statblock("Small", Size.SMALL)
@@ -64,7 +64,7 @@ class TestStatblock(unittest.TestCase):
         self.assertEqual(Speed(10, 20, 30, 40, 50, True), statblock.get_speed())
         self.assertEqual(15, statblock.get_speed().distance_moved)
 
-    @patch("src.stats.effect_index.EffectIndex.get_function_results")
+    @patch("src.stats.effects.effect_index.EffectIndex.get_function_results")
     def test_get_initiative_modifier(self, effect_results):
         statblock = Statblock("Tester")
 
@@ -102,7 +102,7 @@ class TestStatblock(unittest.TestCase):
         self.assertTrue(initiative.auto_fail)
         self.assertEqual(1, initiative.bonus)
 
-    @patch("src.stats.effect_index.EffectIndex.get_function_results")
+    @patch("src.stats.effects.effect_index.EffectIndex.get_function_results")
     def test_get_armor_class(self, effect_results):
         statblock = Statblock("Tester")
 
