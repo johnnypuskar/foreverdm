@@ -1,4 +1,4 @@
-from src.stats.conditions import Blinded, Charmed, Deafened, Frightened, Grappled, Incapacitated, Invisible, Paralyzed, Poisoned, Prone, Restrained, Stunned, Unconscious
+from src.stats.effects.conditions.condition import Blinded, Charmed, Deafened, Frightened, Grappled, Incapacitated, Invisible, Paralyzed, Poisoned, Prone, Restrained, Stunned, Unconscious
 
 class ConditionManager:
     CONDITIONS = {

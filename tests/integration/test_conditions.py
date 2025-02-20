@@ -4,7 +4,7 @@ from unittest.mock import patch
 from src.events.event_manager import EventManager
 from src.control.controller import Controller
 from src.stats.statblock import Statblock
-from src.stats.conditions import Blinded, Charmed
+from src.stats.effects.conditions.condition import Blinded, Charmed
 from src.stats.actions import Hide
 
 class TestConditions(unittest.TestCase):

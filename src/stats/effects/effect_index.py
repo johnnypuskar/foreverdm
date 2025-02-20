@@ -1,6 +1,6 @@
 from src.events.observer import Emitter, Observer
-from src.stats.conditions import Condition
-from src.stats.condition_manager import ConditionManager
+from src.stats.effects.conditions.condition import Condition
+from src.stats.effects.conditions.condition_manager import ConditionManager
 from src.stats.effects.effect import Effect
 from src.stats.effects.sub_effect import SubEffect
 from src.stats.wrappers.statblock_effect_wrapper import StatblockEffectWrapper
