@@ -80,6 +80,8 @@ class NavigationHandler:
                     heapq.heappush(queue, (distance, neighbor.node))
                     paths[neighbor.node._position3D] = NavigationHandler.Path(paths[current_node._position3D].path + [neighbor.node._position3D], distance)
 
+        # TODO: Remove paths with endpoints on positions which have a token on them
+
         return paths
 
     def _get_traversal_distance(self, base_distance, statblock, current, destination):
@@ -97,7 +99,7 @@ class NavigationHandler:
         """
         speed = statblock.get_speed()
         tile = self._map.get_tile(*destination.node.position)
-        ft_mult = 1 + tile.terrain_difficulty
+        ft_mult = max(1 + tile.terrain_difficulty, 2 if len(self._map.get_tokens(*destination.node.position)) else 1, 1) # TODO: Get any increases terrain difficulty from map props
         traversal_distance = 0
 
         if destination.node.height > tile.height:
@@ -183,7 +185,7 @@ class NavigationHandler:
             list[Path] - if path exists, the list of positions from start to end
             None - if no path exists
         """
-        return self._get_all_paths(statblock, start).get(end, None)
+        return self.get_all_paths(statblock, start).get(end, None)
 
 
 class NavNode:
