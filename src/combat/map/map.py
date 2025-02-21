@@ -2,12 +2,17 @@ from src.combat.map.map_tile import MapTile
 from src.combat.map.map_tile_wall import MapTileWall
 
 class Map:
+    TILE_SIZE = 5
+
     def __init__(self, width: int, height: int, max_height: int = 1):
         self._width = width
         self._height = height
         self._max_height = max_height
         self._height_capped = False
         self._tiles = []
+
+        self._tokens = []
+        self._map_props = []
 
         for y in range(self._height):
             self._tiles.append([])
@@ -27,6 +32,29 @@ class Map:
     def height(self):
         return self._height
     
+    def add_token(self, token):
+        self._tokens.append(token)
+        token._map = self
+
+    def get_tokens(self, x: int = None, y: int = None):
+        if x is None and y is None:
+            return self._tokens
+        return [token for token in self._tokens if token.get_position()[2:] == (x, y)]
+    
+    def get_token_spaces(self):
+        tokens_and_extensions = []
+        for token in self._tokens:
+            tokens_and_extensions.append(token)
+            for extension in token._extensions.values():
+                tokens_and_extensions.append(extension)
+        return tokens_and_extensions
+        
+
+    def get_map_props(self, x: int = None, y: int = None):
+        if x is None and y is None:
+            return self._map_props
+        return [map_prop for map_prop in self._map_props if map_prop.get_position()[2:] == (x, y)]
+
     def get_tile(self, x: int, y: int):
         if x < 0 or x >= self._width or y < 0 or y >= self._height:
             return None
