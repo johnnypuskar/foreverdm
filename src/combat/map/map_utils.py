@@ -5,106 +5,91 @@ class MapUtils:
     def __init__(self, map):
         self._map = map
     
+    def get_tiles_in_line(self, start, end):
+        """
+        Returns a list of connected tiles between two points.
+        Function ignores height, and returned points will all be at the height of the start point.
+        
+        Based off Bresenham's line algorithm for 3D points.
+
+        param start: tuple[int, int, int] - The starting point.
+        param end: tuple[int, int, int] - The ending point.
+        return: list[tuple[int, int, int]] - A list of points between the start and end points, ordered from start to end
+        """
+        points = [start]
+        x1, y1, z1 = start
+        x2, y2, z2 = end
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        dz = abs(z2 - z1)
+        xs = 1 if x2 > x1 else -1
+        ys = 1 if y2 > y1 else -1
+        zs = 1 if z2 > z1 else -1
+
+        if dx >= dy and dx >= dz:
+            p1 = 2 * dy - dx
+            p2 = 2 * dz - dx
+            while (x1 != x2):
+                x1 += xs
+                if (p1 >= 0):
+                    y1 += ys
+                    p1 -= 2 * dx
+                if (p2 >= 0):
+                    z1 += zs
+                    p2 -= 2 * dx
+                p1 += 2 * dy
+                p2 += 2 * dz
+                points.append((x1, y1, z1))
+        elif dy >= dx and dy >= dz:    
+            p1 = 2 * dx - dy
+            p2 = 2 * dz - dy
+            while (y1 != y2):
+                y1 += ys
+                if (p1 >= 0):
+                    x1 += xs
+                    p1 -= 2 * dy
+                if (p2 >= 0):
+                    z1 += zs
+                    p2 -= 2 * dy
+                p1 += 2 * dx
+                p2 += 2 * dz
+                points.append((x1, y1, z1))
+        else:
+            p1 = 2 * dy - dz
+            p2 = 2 * dx - dz
+            while (z1 != z2):
+                z1 += zs
+                if (p1 >= 0):
+                    y1 += ys
+                    p1 -= 2 * dz
+                if (p2 >= 0):
+                    x1 += xs
+                    p2 -= 2 * dz
+                p1 += 2 * dy
+                p2 += 2 * dx
+                points.append((x1, y1, z1))
+        return points
+    
     def get_wall_points_in_line(self, start, end):
-        if start == end:
+        tiles = self.get_tiles_in_line(start, end)
+        if len(tiles) == 1:
             return []
         wall_points = []
-        x1, y1 = start
-        x2, y2 = end
-        if x1 == x2:
-            for i in range(min(y1, y2), max(y1, y2) + 1):
-                wall_points.append((x1, i + 0.5))
-        elif y1 == y2:
-            for i in range(min(x1, x2), max(x1, x2) + 1):
-                wall_points.append((i + 0.5, y1))
-        else:
-            m = (y2 - y1) / (x2 - x1)
-            b = y1 - m * x1
-            for x in range(x1 + 1, x2):
-                y = m * x + b
-                wall_points.append((x, int(y) + 0.5))
-            for y in range(y1 + 1, y2):
-                x = (y - b) / m
-                wall_points.append((int(x) + 0.5, y))
-        
-        def distance_to_end(point):
-            dx = end[0] - point[0]
-            dy = end[1] - point[1]
-            return math.sqrt(dx*dx + dy*dy)
-        
-        wall_points.sort(key=distance_to_end, reverse=True)
-        for i in range(len(wall_points)):
-            wall_x, wall_y = wall_points[i]
-            if math.isclose(wall_x, round(wall_x)):
-                wall_points[i] = (int(wall_x - 1), int(wall_y), MapTileWall.WallDirection.RIGHT) if wall_x >= self._map._width else (int(wall_x), int(wall_y), MapTileWall.WallDirection.LEFT)
-            else:
-                wall_points[i] = (int(wall_x), int(wall_y - 1), MapTileWall.WallDirection.BOTTOM) if wall_y >= self._map._height else (int(wall_x), int(wall_y), MapTileWall.WallDirection.TOP)
-        return [wall_point for wall_point in wall_points if 0 <= wall_point[0] < self._map._width and 0 <= wall_point[1] < self._map._height]
 
-    def get_tiles_in_line(self, start, end):
-        # Based off Bresenham's line algorithm
-        # https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-        if start == end:
-            return [start]
-        points = []
-        x1, y1 = start
-        x2, y2 = end
-        if x1 == x2:
-            sign = int(abs(y2 - y1) / (y2 - y1))
-            points = [(x1, y) for y in range(y1, min(y2, self._map._height), sign)]
-            if y2 < self._map._height:
-                points.append((x2, y2))
-        elif y1 == y2:
-            sign = int(abs(x2 - x1) / (x2 - x1))
-            points = [(x, y1) for x in range(x1, min(x2, self._map._width), sign)]
-            if x2 < self._map._width:
-                points.append((x2, y2))
-        elif abs(y2 - y1) < abs(x2 - x1):
-            if x1 > x2:
-                x1, y1, x2, y2 = x2, y2, x1, y1
-            dx = x2 - x1
-            dy = y2 - y1
-            yi = 1
-            if dy < 0:
-                yi = -1
-                dy = -dy
-            D = (2 * dy) - dx
-            y = y1
-
-            for x in range(x1, x2):
-                points.append((x, y))
-                if D > 0:
-                    y += yi
-                    D += 2 * (dy - dx)
-                else:
-                    D += 2 * dy
-            points.append((x2, y2))
-        else:
-            if y1 > y2:
-                x1, y1, x2, y2 = x2, y2, x1, y1
-            dx = x2 - x1
-            dy = y2 - y1
-            xi = 1
-            if dx < 0:
-                xi = -1
-                dx = -dx
-            D = (2 * dx) - dy
-            x = x1
-
-            for y in range(y1, y2):
-                points.append((x, y))
-                if D > 0:
-                    x += xi
-                    D += 2 * (dx - dy)
-                else:
-                    D += 2 * dx
-            points.append((x2, y2))
+        for i in range(len(tiles) - 1):
+            tile_pos = tiles[i]
+            next_tile_pos = tiles[i + 1]
+            if tile_pos[0] != next_tile_pos[0]:
+                wall_points.append((tile_pos[0], tile_pos[1], tile_pos[2], MapTileWall.WallDirection.RIGHT if tile_pos[0] < next_tile_pos[0] else MapTileWall.WallDirection.LEFT))
+                # Only add opposite matching wall if next tile is also shifted in the y direction, and is not higher than the current tile (provides height advantage)
+                # Exception for walls directly next to end tile, as it could feel strange to not get cover bonus from a directly adjacent wall
+                if tile_pos[1] != next_tile_pos[1] and (tile_pos[2] <= next_tile_pos[2] or next_tile_pos == end):
+                    wall_points.append((next_tile_pos[0], next_tile_pos[1], next_tile_pos[2], MapTileWall.WallDirection.LEFT if tile_pos[0] < next_tile_pos[0] else MapTileWall.WallDirection.RIGHT))
+            if tile_pos[1] != next_tile_pos[1]:
+                wall_points.append((tile_pos[0], tile_pos[1], tile_pos[2], MapTileWall.WallDirection.TOP if tile_pos[1] < next_tile_pos[1] else MapTileWall.WallDirection.BOTTOM))
+                # Only add opposite matching wall if next tile is also shifted in the y direction, and is not higher than the current tile (provides height advantage)
+                # Exception for walls directly next to end tile, as it could feel strange to not get cover bonus from a directly adjacent wall
+                if tile_pos[0] != next_tile_pos[0] and (tile_pos[2] <= next_tile_pos[2] or next_tile_pos == end):
+                    wall_points.append((next_tile_pos[0], next_tile_pos[1], next_tile_pos[2], MapTileWall.WallDirection.BOTTOM if tile_pos[1] < next_tile_pos[1] else MapTileWall.WallDirection.TOP))
         
-        def distance_to_end(point):
-            dx = end[0] - point[0]
-            dy = end[1] - point[1]
-            return math.sqrt(dx*dx + dy*dy)
-            
-        points = [point for point in points if 0 <= point[0] < self._map._width and 0 <= point[1] < self._map._height]
-        points.sort(key=distance_to_end, reverse=True)
-        return points
+        return wall_points
