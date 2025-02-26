@@ -1,4 +1,5 @@
 from src.stats.wrappers.statblock_wrapper import StatblockWrapper
+from src.util.dice.dice_roller import DiceRoller
 from src.stats.elements.ability_scores import AbilityScores
 from src.stats.movement.speed import Speed
 from src.stats.size import Size
@@ -10,9 +11,10 @@ from src.control.controller import Controller
 from src.util.modifier_values import ModifierValues, ModifierRolls
 
 class Statblock:
-    def __init__(self, name, size: int = Size.MEDIUM, speed: Speed = Speed(30)):
+    def __init__(self, name, size: int = Size.MEDIUM, speed: Speed = Speed(30), dice_roller = DiceRoller()):
         self._name = name
         self._speed = speed
+        self._dice_roller = dice_roller
         
         self._size = Size(size)
         self._hit_points = HitPoints(10)
@@ -21,8 +23,11 @@ class Statblock:
         self._abilities = AbilityIndex()
         self._effects = EffectIndex()
 
+        self._abilities.connect(self._effects)
+        self._effects.connect(self._abilities)
+
         self._controller: Controller = None
-    
+
     def get_name(self):
         return self._name
 

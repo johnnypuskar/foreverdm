@@ -1,9 +1,10 @@
 from enum import Enum
 from src.util.modifier_values import ModifierValues
 from src.util.return_status import ReturnStatus
-from src.util.dice import DiceParser, DiceInstance
+from src.util.dice.dice_roller import DiceRoller
+from src.util.dice.dice_parser import DiceParser
 from src.util.constants import EventType
-from src.events.event_context import NumericRollEventContext, DamageEventContext, EventContext, DamageRollContext
+from src.events.event_context import DamageEventContext, EventContext, DamageRollContext
 from src.stats.handlers.ability_roll_handler import AbilityRollHandler
 
 class HitPointHandler:
@@ -23,8 +24,9 @@ class HitPointHandler:
         THUNDER = "thunder"
         TRUE = "true"
 
-    def __init__(self, statblock):
+    def __init__(self, statblock, dice_roller = None):
         self._statblock = statblock
+        self._dice_roller = self._statblock._dice_roller if dice_roller is None else dice_roller
     
     def get_max_hp(self):
         """Returns the maximum hit points of the statblock."""
@@ -93,7 +95,7 @@ class HitPointHandler:
         damage_dice_events = []
         for damage_type in overall_damage_table.keys():
             if damage_type not in damage_immunities:
-                damage_dice_events.append((EventType.TRIGGER_ROLL_DAMAGE, DamageRollContext(self._statblock, damage_type, overall_damage_table[damage_type].roll_to_list(die_multiplier))))
+                damage_dice_events.append((EventType.TRIGGER_ROLL_DAMAGE, DamageRollContext(self._statblock, damage_type, overall_damage_table[damage_type].roll_to_list(self._dice_roller, die_multiplier))))
         
         if not damage_dice_events:
             return 0

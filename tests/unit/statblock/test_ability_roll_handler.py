@@ -53,9 +53,9 @@ class TestAbilityRollHandler(unittest.TestCase):
             []
         )
     
-    @patch("src.util.dice.DiceRoller.roll_d20", return_value = 10)
-    def test_ability_check(self, roller):
+    def test_ability_check(self):
         statblock = self.STATBLOCK
+        statblock._dice_roller.roll_d20.return_value = 10
 
         def validate_checks(highest_success, ability_name):
             """
@@ -81,46 +81,46 @@ class TestAbilityRollHandler(unittest.TestCase):
         self.CON = 6
         validate_checks(8, "constitution")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ABILITY = [{"advantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).ability_check(10, "strength").success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertFalse(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ABILITY = [{"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).ability_check(10, "strength").success)
-        self.assertFalse(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ABILITY = [{"advantage": True}, {"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).ability_check(10, "strength").success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ABILITY = [{"bonus": 4}]
         validate_checks(14, "charisma")
         self.SELF_ABILITY = [{"bonus": -3}]
         validate_checks(7, "charisma")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ABILITY = [{"bonus": 100}, {"auto_fail": True}]
         validate_checks(0, "charisma")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ABILITY = [{"bonus": -100}, {"auto_succeed": True}]
         validate_checks(30, "charisma")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ABILITY = [{"auto_succeed": True}, {"auto_fail": True}]
         validate_checks(0, "charisma")
     
-    @patch("src.util.dice.DiceRoller.roll_d20", return_value = 10)
-    def test_ability_check_targeted(self, roller):
+    def test_ability_check_targeted(self):
         statblock = self.STATBLOCK
         target = self.TARGET
+        statblock._dice_roller.roll_d20.return_value = 10
 
         def validate_checks(highest_success, ability_name):
             """
@@ -136,45 +136,45 @@ class TestAbilityRollHandler(unittest.TestCase):
         with self.assertRaises(ValueError):
             AbilityRollHandler(statblock).ability_check(10, "honor", target)
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_ABILITY = [{"advantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).ability_check(10, "strength", target).success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertFalse(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_ABILITY = [{"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).ability_check(10, "strength", target).success)
-        self.assertFalse(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_ABILITY = [{"advantage": True}, {"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).ability_check(10, "strength", target).success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_ABILITY = [{"bonus": 4}]
         validate_checks(14, "strength")
         self.TARGET_ABILITY = [{"bonus": -3}]
         validate_checks(7, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_ABILITY = [{"bonus": 100}, {"auto_fail": True}]
         validate_checks(0, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_ABILITY = [{"bonus": -100}, {"auto_succeed": True}]
         validate_checks(30, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_ABILITY = [{"auto_succeed": True}, {"auto_fail": True}]
         validate_checks(0, "strength")
 
-    @patch("src.util.dice.DiceRoller.roll_d20", return_value = 10)
-    def test_skill_check(self, roller):
+    def test_skill_check(self):
         statblock = self.STATBLOCK
+        statblock._dice_roller.roll_d20.return_value = 10
 
         def validate_checks(highest_success, skill_name, ability_name = None):
             """
@@ -204,39 +204,39 @@ class TestAbilityRollHandler(unittest.TestCase):
 
         validate_checks(8, "sleight_of_hand")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SKILL = [{"advantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).skill_check(10, "history").success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertFalse(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SKILL = [{"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).skill_check(10, "history").success)
-        self.assertFalse(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SKILL = [{"advantage": True}, {"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).skill_check(10, "history").success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SKILL = [{"bonus": 4}]
         validate_checks(14, "history")
         self.SELF_SKILL = [{"bonus": -3}]
         validate_checks(7, "history")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SKILL = [{"bonus": 100}, {"auto_fail": True}]
         validate_checks(0, "history")
         
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SKILL = [{"bonus": -100}, {"auto_succeed": True}]
         validate_checks(30, "history")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SKILL = [{"auto_succeed": True}, {"auto_fail": True}]
         validate_checks(0, "history")
 
@@ -246,10 +246,10 @@ class TestAbilityRollHandler(unittest.TestCase):
         validate_checks(12, "persuasion")
         validate_checks(14, "persuasion", "wisdom")
     
-    @patch("src.util.dice.DiceRoller.roll_d20", return_value = 10)
-    def test_skill_check_targeted(self, roller):
+    def test_skill_check_targeted(self):
         statblock = self.STATBLOCK
         target = self.TARGET
+        statblock._dice_roller.roll_d20.return_value = 10
 
         def validate_checks(highest_success, skill_name, ability_name = None):
             """
@@ -268,45 +268,45 @@ class TestAbilityRollHandler(unittest.TestCase):
         with self.assertRaises(ValueError):
             AbilityRollHandler(statblock).skill_check(10, "insight", target, "honor")
         
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SKILL = [{"advantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).skill_check(10, "history", target).success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertFalse(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SKILL = [{"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).skill_check(10, "history", target).success)
-        self.assertFalse(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SKILL = [{"advantage": True}, {"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).skill_check(10, "history", target).success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SKILL = [{"bonus": 4}]
         validate_checks(14, "history")
         self.TARGET_SKILL = [{"bonus": -3}]
         validate_checks(7, "history")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SKILL = [{"bonus": 100}, {"auto_fail": True}]
         validate_checks(0, "history")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SKILL = [{"bonus": -100}, {"auto_succeed": True}]
         validate_checks(30, "history")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SKILL = [{"auto_succeed": True}, {"auto_fail": True}]
         validate_checks(0, "history")
     
-    @patch("src.util.dice.DiceRoller.roll_d20", return_value = 10)
-    def test_saving_throw(self, roller):
+    def test_saving_throw(self):
         statblock = self.STATBLOCK
+        statblock._dice_roller.roll_d20.return_value = 10
 
         def validate_checks(highest_success, ability_name):
             """
@@ -328,39 +328,39 @@ class TestAbilityRollHandler(unittest.TestCase):
         self.CON = 6
         validate_checks(8, "constitution")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SAVING = [{"advantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).saving_throw(10, "strength").success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertFalse(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SAVING = [{"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).saving_throw(10, "strength").success)
-        self.assertFalse(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SAVING = [{"advantage": True}, {"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).saving_throw(10, "strength").success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SAVING = [{"bonus": 4}]
         validate_checks(14, "strength")
         self.SELF_SAVING = [{"bonus": -3}]
         validate_checks(7, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SAVING = [{"bonus": 100}, {"auto_fail": True}]
         validate_checks(0, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SAVING = [{"bonus": -100}, {"auto_succeed": True}]
         validate_checks(30, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_SAVING = [{"auto_succeed": True}, {"auto_fail": True}]
         validate_checks(0, "strength")
 
@@ -369,10 +369,10 @@ class TestAbilityRollHandler(unittest.TestCase):
         self.PROFICIENCIES = [["dexterity_saving_throws"]]
         validate_checks(12, "dexterity")
 
-    @patch("src.util.dice.DiceRoller.roll_d20", return_value = 10)
-    def test_saving_throw_targeted(self, roller):
+    def test_saving_throw_targeted(self):
         statblock = self.STATBLOCK
         target = self.TARGET
+        statblock._dice_roller.roll_d20.return_value = 10
 
         def validate_checks(highest_success, ability_name):
             """
@@ -388,38 +388,38 @@ class TestAbilityRollHandler(unittest.TestCase):
         with self.assertRaises(ValueError):
             AbilityRollHandler(statblock).saving_throw(10, "honor", target)
         
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SAVING = [{"advantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).saving_throw(10, "strength", target).success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertFalse(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SAVING = [{"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).saving_throw(10, "strength", target).success)
-        self.assertFalse(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SAVING = [{"advantage": True}, {"disadvantage": True}]
         self.assertTrue(AbilityRollHandler(statblock).saving_throw(10, "strength", target).success)
-        self.assertTrue(roller.call_args[0][0])
-        self.assertTrue(roller.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SAVING = [{"bonus": 4}]
         validate_checks(14, "strength")
         self.TARGET_SAVING = [{"bonus": -3}]
         validate_checks(7, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SAVING = [{"bonus": 100}, {"auto_fail": True}]
         validate_checks(0, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SAVING = [{"bonus": -100}, {"auto_succeed": True}]
         validate_checks(30, "strength")
 
-        roller.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.TARGET_SAVING = [{"auto_succeed": True}, {"auto_fail": True}]
         validate_checks(0, "strength")

@@ -1,14 +1,15 @@
-from src.util.dice import DiceRoller
+from src.util.dice.dice_roller import DiceRoller
 from src.util.return_status import ReturnStatus
 from src.events.event_context import AttackRollEventContext, TargetedEventContext, TargetedRollResultEventContext
 from src.util.constants import EventType
 from src.stats.handlers.ability_score_handler import AbilityScoreHandler
 from src.stats.handlers.hit_point_handler import HitPointHandler
-from src.util.modifier_values import ModifierValues, ModifierRolls
+from src.util.modifier_values import ModifierRolls
 
 class AttackRollHandler:
-    def __init__(self, statblock):
+    def __init__(self, statblock, dice_roller = None):
         self._statblock = statblock
+        self._dice_roller = self._statblock._dice_roller if dice_roller is None else dice_roller
     
     def melee_attack_roll(self, target, damage_string):
         attack_stats = [AbilityScoreHandler.ABILITIES.STRENGTH.value] + self._statblock._effects.get_function_results("get_melee_attack_stat", self._statblock)
@@ -39,7 +40,7 @@ class AttackRollHandler:
         # TODO: Factor in proficiency bonus for equipped weapons
 
         attack_ability_modifier = AbilityScoreHandler(self._statblock).get_ability_modifier(attack_stat)
-        roll_result = DiceRoller.roll_d20(attack_roll_context.advantage, attack_roll_context.disadvantage)
+        roll_result = self._dice_roller.roll_d20(attack_roll_context.advantage, attack_roll_context.disadvantage)
         success = roll_result >= critical_threshold or attack_roll_context.auto_succeed or \
             (roll_result != 1 and roll_result + attack_ability_modifier + attack_roll_context.bonus >= target.get_armor_class())
         result_context = TargetedRollResultEventContext(self._statblock, target, roll_result, success, roll_result >= critical_threshold)
@@ -58,7 +59,7 @@ class AttackRollHandler:
             hit_context = TargetedEventContext(self._statblock, target)
             target._controller.trigger_reaction(EventType.TRIGGER_HIT_BY_ATTACK, hit_context)
 
-            damage_result = HitPointHandler(target).take_damage(f"{max(0, attack_ability_modifier)}+" + damage_string, 2 if result_context.critical_success else 1)
+            damage_result = HitPointHandler(target, self._dice_roller).take_damage(f"{max(0, attack_ability_modifier)}+" + damage_string, 2 if result_context.critical_success else 1)
 
             return ReturnStatus(True, f"Hit attack for {damage_result} total damage.")
         return ReturnStatus(False, "Attack did not hit.")

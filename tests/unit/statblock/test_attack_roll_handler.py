@@ -39,16 +39,17 @@ class TestAttackRollHandler(unittest.TestCase):
         self.TARGET._hit_points = MagicMock(_hp = 100, _max_hp = 100)
         self.TARGET._hit_points.get_hp.side_effect = lambda: target._hit_points._hp
         self.TARGET._hit_points.reduce_hp.side_effect = lambda amount: setattr(target._hit_points, "_hp", target._hit_points._hp - amount)
+        self.TARGET._abilities._concentration_tracker.concentrating = False
         self.assertEqual(100, target._hit_points._hp)
     
-    @patch('src.util.dice.DiceRoller.roll_d20')
-    @patch('src.util.dice.DiceRoller.roll_custom')
-    def test_attack_roll_bonuses(self, roll_damage, roll_d20):
+    def test_attack_roll_bonuses(self):
         statblock = self.STATBLOCK
         target = self.TARGET
-        roll_damage.side_effect = lambda amount, sides: amount * sides
 
-        roll_d20.return_value = 14
+        statblock._dice_roller.roll_custom = lambda amount, sides: amount * sides
+        target._dice_roller.roll_custom = lambda amount, sides: amount * sides
+        statblock._dice_roller.roll_d20.return_value = 14
+
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
 
@@ -64,49 +65,49 @@ class TestAttackRollHandler(unittest.TestCase):
         self.assertTrue(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(95, target._hit_points._hp)
 
-        roll_d20.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ATTACK = [{"advantage": True}]
         self.TARGET_ATTACKED = []
         target._hit_points._hp = 100
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
-        self.assertTrue(roll_d20.call_args[0][0])
-        self.assertFalse(roll_d20.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roll_d20.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ATTACK = []
         self.TARGET_ATTACKED = [{"advantage": True}]
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
-        self.assertTrue(roll_d20.call_args[0][0])
-        self.assertFalse(roll_d20.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roll_d20.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ATTACK = [{"disadvantage": True}]
         self.TARGET_ATTACKED = []
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
-        self.assertFalse(roll_d20.call_args[0][0])
-        self.assertTrue(roll_d20.call_args[0][1])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roll_d20.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ATTACK = []
         self.TARGET_ATTACKED = [{"disadvantage": True}]
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
-        self.assertFalse(roll_d20.call_args[0][0])
-        self.assertTrue(roll_d20.call_args[0][1])
+        self.assertFalse(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roll_d20.reset_mock()
+        statblock._dice_roller.roll_d20.reset_mock()
         self.SELF_ATTACK = [{"advantage": True}]
         self.TARGET_ATTACKED = [{"disadvantage": True}]
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
-        self.assertTrue(roll_d20.call_args[0][0])
-        self.assertTrue(roll_d20.call_args[0][1])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][0])
+        self.assertTrue(statblock._dice_roller.roll_d20.call_args[0][1])
 
-        roll_d20.reset_mock()
-        roll_d20.return_value = 1
+        statblock._dice_roller.roll_d20.reset_mock()
+        statblock._dice_roller.roll_d20.return_value = 1
         target.get_armor_class.return_value = 50
         self.SELF_ATTACK = [{"auto_succeed": True}]
         self.TARGET_ATTACKED = []
@@ -119,8 +120,8 @@ class TestAttackRollHandler(unittest.TestCase):
         self.assertTrue(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(95, target._hit_points._hp)
 
-        roll_d20.reset_mock()
-        roll_d20.return_value = 19
+        statblock._dice_roller.roll_d20.reset_mock()
+        statblock._dice_roller.roll_d20.return_value = 19
         target.get_armor_class.return_value = 1
         self.SELF_ATTACK = [{"auto_fail": True}]
         self.TARGET_ATTACKED = []
@@ -137,14 +138,13 @@ class TestAttackRollHandler(unittest.TestCase):
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
     
-    @patch('src.util.dice.DiceRoller.roll_d20')
-    @patch('src.util.dice.DiceRoller.roll_custom')
-    def test_melee_attack(self, roll_damage, roll_d20):
+    def test_melee_attack(self):
         statblock = self.STATBLOCK
         target = self.TARGET
-        roll_damage.side_effect = lambda amount, sides: amount * sides
+        statblock._dice_roller.roll_custom.side_effect = lambda amount, sides: amount * sides
+        target._dice_roller.roll_custom.side_effect = lambda amount, sides: amount * sides
 
-        roll_d20.return_value = 14
+        statblock._dice_roller.roll_d20.return_value = 14
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
 
@@ -159,18 +159,16 @@ class TestAttackRollHandler(unittest.TestCase):
         self.STR = 7
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(93, target._hit_points._hp)
-        roll_d20.return_value = 17
+        statblock._dice_roller.roll_d20.return_value = 17
         self.assertTrue(AttackRollHandler(statblock).melee_attack_roll(target, "5 slashing").success)
         self.assertEqual(88, target._hit_points._hp)
     
-    @patch('src.util.dice.DiceRoller.roll_d20')
-    @patch('src.util.dice.DiceRoller.roll_custom')
-    def test_ranged_attack(self, roll_damage, roll_d20):
+    def test_ranged_attack(self):
         statblock = self.STATBLOCK
         target = self.TARGET
-        roll_damage.side_effect = lambda amount, sides: amount * sides
+        statblock._dice_roller.roll_custom.side_effect = lambda amount, sides: amount * sides
 
-        roll_d20.return_value = 14
+        statblock._dice_roller.roll_d20.return_value = 14
         self.assertFalse(AttackRollHandler(statblock).ranged_attack_roll(target, "5 piercing").success)
         self.assertEqual(100, target._hit_points._hp)
 
@@ -185,18 +183,16 @@ class TestAttackRollHandler(unittest.TestCase):
         self.DEX = 7
         self.assertFalse(AttackRollHandler(statblock).ranged_attack_roll(target, "5 piercing").success)
         self.assertEqual(93, target._hit_points._hp)
-        roll_d20.return_value = 17
+        statblock._dice_roller.roll_d20.return_value = 17
         self.assertTrue(AttackRollHandler(statblock).ranged_attack_roll(target, "5 piercing").success)
         self.assertEqual(88, target._hit_points._hp)
-
-    @patch('src.util.dice.DiceRoller.roll_d20')
-    @patch('src.util.dice.DiceRoller.roll_custom')
-    def test_ability_score_attack(self, roll_damage, roll_d20):
+    
+    def test_ability_score_attack(self):
         statblock = self.STATBLOCK
         target = self.TARGET
-        roll_damage.side_effect = lambda amount, sides: amount * sides
+        statblock._dice_roller.roll_custom.side_effect = lambda amount, sides: amount * sides
 
-        roll_d20.return_value = 14
+        statblock._dice_roller.roll_d20.return_value = 14
         self.assertFalse(AttackRollHandler(statblock).ability_attack_roll(target, "charisma", "5 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
 
@@ -215,48 +211,44 @@ class TestAttackRollHandler(unittest.TestCase):
         self.OTHER_ABILITY = 7
         self.assertFalse(AttackRollHandler(statblock).ability_attack_roll(target, "charisma", "5 slashing").success)
         self.assertEqual(93, target._hit_points._hp)
-        roll_d20.return_value = 17
+        statblock._dice_roller.roll_d20.return_value = 17
         self.assertTrue(AttackRollHandler(statblock).ability_attack_roll(target, "charisma", "5 slashing").success)
         self.assertEqual(88, target._hit_points._hp)
     
-    @patch('src.util.dice.DiceRoller.roll_d20')
-    @patch('src.util.dice.DiceRoller.roll_custom')
-    def test_critical_hit(self, roll_damage, roll_d20):
+    def test_critical_hit(self):
         statblock = self.STATBLOCK
         target = self.TARGET
-        roll_damage.side_effect = lambda amount, sides: amount * sides
+        statblock._dice_roller.roll_custom.side_effect = lambda amount, sides: amount * sides
 
-        roll_d20.return_value = 10
+        statblock._dice_roller.roll_d20.return_value = 10
         self.assertFalse(AttackRollHandler(statblock).melee_attack_roll(target, "2d4+1 slashing").success)
         self.assertEqual(100, target._hit_points._hp)
 
-        roll_d20.return_value = 19
+        statblock._dice_roller.roll_d20.return_value = 19
         self.assertTrue(AttackRollHandler(statblock).melee_attack_roll(target, "2d4+1 slashing").success)
         self.assertEqual(91, target._hit_points._hp)
 
-        roll_d20.return_value = 20
+        statblock._dice_roller.roll_d20.return_value = 20
         target._hit_points._hp = 100
         self.assertTrue(AttackRollHandler(statblock).melee_attack_roll(target, "2d4+1 slashing").success)
         self.assertEqual(83, target._hit_points._hp)
 
-        roll_d20.return_value = 20
+        statblock._dice_roller.roll_d20.return_value = 20
         target._hit_points._hp = 100
         target.get_armor_class.return_value = 50
         self.assertTrue(AttackRollHandler(statblock).melee_attack_roll(target, "3d4+1 slashing").success)
         self.assertEqual(75, target._hit_points._hp)
     
-    @patch('src.util.dice.DiceRoller.roll_d20')
-    @patch('src.util.dice.DiceRoller.roll_custom')
-    def test_critical_threshold(self, roll_damage, roll_d20):
+    def test_critical_threshold(self):
         statblock = self.STATBLOCK
         target = self.TARGET
-        roll_damage.side_effect = lambda amount, sides: amount * sides
+        statblock._dice_roller.roll_custom.side_effect = lambda amount, sides: amount * sides
         
         def verify_critical_threshold(critical_threshold):
             target.get_armor_class.return_value = 50
             for i in range(1, 21):
                 target._hit_points._hp = 30
-                roll_d20.return_value = i
+                statblock._dice_roller.roll_d20.return_value = i
                 result = AttackRollHandler(statblock).melee_attack_roll(target, "1d10 slashing")
                 self.assertEqual(i >= critical_threshold, result.success, f"Attack roll was critical hit ({result.success}) at a d20 roll of {i} and threshold of {critical_threshold}, should be {i >= critical_threshold}")
 

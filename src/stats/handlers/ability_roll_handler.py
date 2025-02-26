@@ -2,12 +2,12 @@ from src.stats.handlers.skill_handler import SkillHandler
 from src.stats.proficiencies import Proficiencies
 from src.util.constants import EventType
 from src.events.event_context import RollEventContext, RollResultEventContext
-from src.util.dice import DiceRoller
 from src.util.return_status import ReturnStatus
 
 class AbilityRollHandler(SkillHandler):
-    def __init__(self, statblock):
+    def __init__(self, statblock, dice_roller = None):
         super().__init__(statblock)
+        self._dice_roller = statblock._dice_roller if dice_roller is None else dice_roller
     
     def ability_check(self, dc, ability_name, target = None):
         """
@@ -116,7 +116,7 @@ class AbilityRollHandler(SkillHandler):
         return: ReturnStatus - the result of the roll
         """
         # Roll the die and trigger the roll events for the roll with the context
-        die_result = DiceRoller.roll_d20(roll_modifiers.advantage, roll_modifiers.disadvantage)
+        die_result = self._dice_roller.roll_d20(roll_modifiers.advantage, roll_modifiers.disadvantage)
         roll_context = RollEventContext(self._statblock, roll_modifiers.advantage, roll_modifiers.disadvantage, roll_modifiers.auto_succeed, roll_modifiers.auto_fail, roll_modifiers.bonus)
         self._statblock._controller.trigger_reactions([(event, roll_context) for event in roll_events])
 

@@ -67,6 +67,7 @@ class TestHitPointHandlerTakeDamage(unittest.TestCase):
         self.STATBLOCK._hit_points = MagicMock(_hp = 100, _max_hp = 100)
         self.STATBLOCK._hit_points.get_hp.side_effect = lambda: statblock._hit_points._hp
         self.STATBLOCK._hit_points.reduce_hp.side_effect = lambda amount: setattr(statblock._hit_points, "_hp", statblock._hit_points._hp - amount)
+        self.STATBLOCK._abilities._concentration_tracker.concentrating = False
         self.assertEqual(100, statblock._hit_points._hp)
     
     def test_take_damage_static(self):
@@ -84,12 +85,11 @@ class TestHitPointHandlerTakeDamage(unittest.TestCase):
         HitPointHandler(statblock).take_damage("10 cold, 5 thunder")
         self.assertEqual(55, statblock._hit_points._hp)
     
-    @patch("src.util.dice.DiceRoller.roll_custom")
-    def test_take_damage_rolled(self, roller):
+    def test_take_damage_rolled(self):
         statblock = self.STATBLOCK
 
         # Testing maximum damage rolls
-        roller.side_effect = lambda amount, sides: amount * sides
+        statblock._dice_roller.roll_custom.side_effect = lambda amount, sides: amount * sides
 
         HitPointHandler(statblock).take_damage("2d6 slashing")
         self.assertEqual(88, statblock._hit_points._hp)
@@ -108,7 +108,7 @@ class TestHitPointHandlerTakeDamage(unittest.TestCase):
 
         # Testing minimum damage rolls
         statblock._hit_points._hp = 100
-        roller.side_effect = lambda amount, sides: amount
+        statblock._dice_roller.roll_custom.side_effect = lambda amount, sides: amount
 
         HitPointHandler(statblock).take_damage("2d6 slashing")
         self.assertEqual(98, statblock._hit_points._hp)
