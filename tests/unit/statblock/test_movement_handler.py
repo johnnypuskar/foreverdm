@@ -9,7 +9,7 @@ class TestMovementHandler(unittest.TestCase):
     def setUp(self, statblock):
         self.STATBLOCK = statblock
 
-    def test_expend_speed(self):
+    def test_modify_speed(self):
         statblock = self.STATBLOCK
 
         def verify_movement(starting, movement, expected):
@@ -20,14 +20,14 @@ class TestMovementHandler(unittest.TestCase):
             self.STATBLOCK._speed.burrow = starting[4]
 
             statblock._speed.move.reset_mock()
-            MovementHandler(statblock).expend_speed(movement)
+            MovementHandler(statblock).modify_speed(movement)
 
             movement_cost = statblock._speed.move.call_args[0][0]
-            self.assertEqual(movement_cost.walking, expected[0], f"Expected walk cost to be {expected[0]} but was {movement_cost.walking}")
-            self.assertEqual(movement_cost.flying, expected[1] if expected[1] is not None else expected[0], f"Expected fly cost to be {expected[1] if expected[1] is not None else expected[0]} but was {movement_cost.flying}")
-            self.assertEqual(movement_cost.swimming, expected[2], f"Expected swim cost to be {expected[2]} but was {movement_cost.swimming}")
-            self.assertEqual(movement_cost.climbing, expected[3], f"Expected climb cost to be {expected[3]} but was {movement_cost.climbing}")
-            self.assertEqual(movement_cost.burrowing, expected[4], f"Expected burrow cost to be {expected[4]} but was {movement_cost.burrowing}")
+            self.assertAlmostEqual(movement_cost.walk, expected[0], 4, f"Expected walk cost to be {expected[0]} but was {movement_cost.walk}")
+            self.assertAlmostEqual(movement_cost.fly, expected[1] if expected[1] is not None else expected[0], 4, f"Expected fly cost to be {expected[1] if expected[1] is not None else expected[0]} but was {movement_cost.fly}")
+            self.assertAlmostEqual(movement_cost.swim, expected[2], 4, f"Expected swim cost to be {expected[2]} but was {movement_cost.swim}")
+            self.assertAlmostEqual(movement_cost.climb, expected[3], 4, f"Expected climb cost to be {expected[3]} but was {movement_cost.climb}")
+            self.assertAlmostEqual(movement_cost.burrow, expected[4], 4, f"Expected burrow cost to be {expected[4]} but was {movement_cost.burrow}")
 
         def verify_type(movement_type):
             movement_types = ["walk", "fly", "swim", "climb", "burrow"]
@@ -48,12 +48,12 @@ class TestMovementHandler(unittest.TestCase):
                 )
             
             # Test multiply operation
-            for i in range(100, -5, -5):
+            for i in range(200, -5, -5):
                 base_movement = [0, 0, 0, 0, 0]
                 base_movement[movement_id] = 100
                 
                 result = [None, None, None, None, None]
-                result[movement_id] = 100 - int(100 * (i / 100.0))
+                result[movement_id] = 100 - 100 * (i / 100.0)
 
                 verify_movement(
                     base_movement,
