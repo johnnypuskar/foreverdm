@@ -98,12 +98,13 @@ class NavigationHandler:
             None - if the destination is unreachable
         """
         speed = statblock.get_speed()
+        base_distance += speed.distance_moved
         tile = self._map.get_tile(*destination.node.position)
         ft_mult = max(1 + tile.terrain_difficulty, 2 if len(self._map.get_tokens(*destination.node.position)) else 1, 1) # TODO: Get any increases terrain difficulty from map props
         traversal_distance = 0
 
         if destination.node.height > tile.height:
-            # Destination is above tile ground level, movement will use flight or climb/walk speed.
+            # Destination position is above tile ground level, movement will use flight or climb/walk speed.
             neighbor_distance = destination.distance
             distance_fly = min(max(0, speed.fly - base_distance), neighbor_distance)
             neighbor_distance -= distance_fly
@@ -112,10 +113,11 @@ class NavigationHandler:
             if neighbor_distance <= 0:
                 return traversal_distance
 
-            # Only allow climbing if the current position is climbable and the destination is climbable or at floor height.
-            cur_climb_dc = self._map.get_climb_dc(*current.position, current.height)
-            des_climb_dc = self._map.get_climb_dc(*destination.node.position, destination.node.height)
-            if cur_climb_dc is not None and (des_climb_dc is not None or destination.node.height == tile.height):
+            # Only allow climbing if the current position is climbable or at floor height and the destination is climbable or at floor height.
+            current_tile = self._map.get_tile(*current.position)
+            cur_climb_dc = self._map.get_climb_dc((*current.position, current.height))
+            des_climb_dc = self._map.get_climb_dc((*destination.node.position, destination.node.height))
+            if (cur_climb_dc is not None or current.height == current_tile.height) and (des_climb_dc is not None or destination.node.height == tile.height):
                 distance_climb = min(max(0, speed.climb - base_distance), neighbor_distance)
                 neighbor_distance -= distance_climb
                 traversal_distance += distance_climb
@@ -182,7 +184,7 @@ class NavigationHandler:
         param end: tuple - the ending position, format: (x, y, height)
 
         returns:
-            list[Path] - if path exists, the list of positions from start to end
+            Path - if path exists, the list of positions from start to end
             None - if no path exists
         """
         return self.get_all_paths(statblock, start).get(end, None)
