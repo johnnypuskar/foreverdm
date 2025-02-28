@@ -9,10 +9,14 @@ class AbilityHandler:
     def add_ability(self, ability):
         """Adds an ability to the Statblock's abilities."""
         self._statblock._abilities.add(ability)
+        return ReturnStatus(True, f"Added {ability.name}.")
     
     def remove_ability(self, ability_name):
         """Removes an ability from the Statblock's abilities by name."""
+        if not self._statblock._abilities.has_ability(ability_name):
+            return ReturnStatus(False, f"Ability {ability_name} not found.")
         self._statblock._abilities.remove(ability_name)
+        return ReturnStatus(True, f"Removed {ability_name}.")
     
     def use_ability(self, ability_name, *args):
         """
@@ -27,10 +31,10 @@ class AbilityHandler:
         ability = self._statblock._abilities.get_ability(ability_name)
 
         # Check if any effects prevent the ability from being used through preventing action types.
-        if ability._use_time.is_action() or ability._use_time.is_bonus_action():
+        if ability._use_time.is_action or ability._use_time.is_bonus_action:
             if not all(self._statblock._effects.get_function_results("allow_actions", self, ability)):
                 return ReturnStatus(False, f"Unable to take {str(ability._use_time)}")
-        elif ability._use_time.is_reaction():
+        elif ability._use_time.is_reaction:
             if not all(self._statblock._effects.get_function_results("allow_reactions", self, ability)):
                 return ReturnStatus(False, f"Unable to take {str(ability._use_time)}")
         
@@ -64,8 +68,8 @@ class AbilityHandler:
         for _, modifier_use_time, *_ in self._modifier_ability_calls:
             self._statblock._turn_resources.use_from_use_time(modifier_use_time)
             
-        succeeded, message = self._statblock._abilities.run_ability(ability_name, self._statblock, *args, modifier_calls = [tuple([mod[0]]) + mod[2:] for mod in self._modifier_ability_calls])
+        return_status = self._statblock._abilities.run_ability(ability_name, self._statblock, *args, modifier_abilities = [tuple([mod[0]]) + mod[2:] for mod in self._modifier_ability_calls])
         self._modifier_ability_calls.clear()
-        return ReturnStatus(succeeded, message)
+        return return_status
 
         
