@@ -31,7 +31,7 @@ class Map:
     @property
     def height(self):
         return self._height
-    
+
     def add_token(self, token):
         self._tokens.append(token)
         token._map = self
@@ -49,7 +49,6 @@ class Map:
                 tokens_and_extensions.append(extension)
         return tokens_and_extensions
         
-
     def get_map_props(self, x: int = None, y: int = None):
         if x is None and y is None:
             return self._map_props
