@@ -105,13 +105,13 @@ class ModifierRolls:
 
 class ModifierSpeed:
     def __init__(self, modifier_tables: list = []):
-        self.walk = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "walk"])
-        self.fly = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "fly"])
-        self.swim = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "swim"])
-        self.climb = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "climb"])
-        self.burrow = ModifierValues([modifier for modifier in modifier_tables if modifier["type"] == "burrow"])
+        self.walk = ModifierValues([modifier["walk"] for modifier in modifier_tables if "walk" in modifier.keys()])
+        self.fly = ModifierValues([modifier["fly"] for modifier in modifier_tables if "fly" in modifier.keys()])
+        self.swim = ModifierValues([modifier["swim"] for modifier in modifier_tables if "swim" in modifier.keys()])
+        self.climb = ModifierValues([modifier["climb"] for modifier in modifier_tables if "climb" in modifier.keys()])
+        self.burrow = ModifierValues([modifier["burrow"] for modifier in modifier_tables if "burrow" in modifier.keys()])
         
-        hover_list = [modifier for modifier in modifier_tables if modifier["type"] == "hover"]
+        hover_list = [modifier for modifier in modifier_tables if "hover" in modifier.keys()]
         self.hover = None if len(hover_list) == 0 else all(hover_list)
     
     def _sub_process(self, base, modifier):
