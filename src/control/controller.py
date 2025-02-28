@@ -8,7 +8,6 @@ class Controller:
         self._event_manager = None
         self._statblock = None
 
-
     ## Event Management ##
 
     @property
@@ -26,10 +25,6 @@ class Controller:
         if self._statblock is not None:
             await self._statblock.handle_reaction(event)
 
-    # async def handle_events(self, events, context):
-    #     if self._statblock is not None:
-    #         await self._statblock.handle_events(events, context)
-
     def trigger_reaction(self, event_type: str, context: EventContext):
         if self._event_manager is not None:
             modifiers = self.fire_event(ReactionEvent(event_type, context))
@@ -44,14 +39,6 @@ class Controller:
     def fire_event(self, event):
         if self._event_manager is not None:
             asyncio.run(self._event_manager.fire_event(event))
-
-    # def fire_events(self, events, context):
-    #     if self._event_manager is not None:
-    #         asyncio.run(self._event_manager.fire_events(events, context))
-
-    # def fire_multievents(self, event_data):
-    #     if self._event_manager is not None:
-    #         asyncio.run(self._event_manager.fire_multievents(event_data))
 
     ## Statblock ##
 
@@ -69,7 +56,14 @@ class Controller:
     def select(self, options):
         return options[0]
     
-    ## Control Actions ##
+    ## Controller Events ##
+
+    def start_turn(self):
+        if self._statblock is not None:
+            self._statblock._effects.get_function_results("start_turn", self._statblock)
+        self.fire_event(EventType.TRIGGER_START_TURN, EventContext(self._statblock))
 
     def end_turn(self):
+        if self._statblock is not None:
+            self._statblock._effects.get_function_results("end_turn", self._statblock)
         self.fire_event(EventType.TRIGGER_END_TURN, EventContext(self._statblock))
