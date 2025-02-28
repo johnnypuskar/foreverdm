@@ -4,7 +4,7 @@ class DiceRoller:
     def __init__(self):
         pass
     
-    def _roll_die(sides):
+    def _roll_die(self, sides):
         return random.randint(1, sides)
 
     def roll_custom(self, amount, sides):
