@@ -1,98 +1,89 @@
-import json
-import os
-from src.util.lua_manager import LuaManager
-from src.stats.statblock import Statblock, ResourceIndex, AbilityIndex
-from src.stats.abilities import Ability, CompositeAbility
-from src.stats.item import Weapon
-from src.util.dice import DiceSum, DiceParser
-import copy
-import lupa
+from src.util.combat_instance_viewer import CombatInstanceViewer
+from src.instances.combat_instance import CombatInstance
+from src.combat.map.map import Map
+from src.control.controller import Controller
+from src.stats.statblock import Statblock
+from src.combat.map.map_token import Token
+from src.util.dice.user_roller import UserRoller
+from src.stats.movement.speed import Speed
 
-import base64
+import asyncio
+import random
 
-attacker = Statblock("Attacker")
-sword = Weapon("shortsword", DiceSum(d8=1))
-attacker._equipped_weapon = sword
+from src.control.commands.combat_move_command import CombatMoveCommand
+from src.control.commands.end_turn_command import EndTurnCommand
+from src.control.commands.use_ability_command import UseAbilityCommand
 
-target = Statblock("Target")
+from src.stats.abilities.default_abilities import MeleeAttackAbility, DashAbility
+from src.stats.items.weapon_item import WeaponItem
 
-attack_script = ''
-dash_script = ''
-fire_bolt_script = ''
+async def main():
+    player1 = Controller()
+    player1_statblock = Statblock("Player 1", speed = Speed(30), dice_roller = UserRoller("ABC"))
+    player1.statblock = player1_statblock
 
-# Use a context manager to open and read the file
-with open("foreverdm/scripts/actions/attack.lua", 'r', encoding='utf-8') as file:
-    attack_script = file.read()
-with open("foreverdm/scripts/actions/dash.lua", 'r', encoding='utf-8') as file:
-    dash_script = file.read()
-with open("foreverdm/scripts/spells/fire_bolt.lua", 'r', encoding='utf-8') as file:
-    fire_bolt_script = file.read()
-
-index = AbilityIndex()
-
-# ability = Ability("fire_bolt", fire_bolt_script)
-# ability.initialize({})
-# print(ability._lua.get_defined_functions())
-# print(ability._lua.get_function_script(ability._lua._lua.globals()["run"]))
-
-a = Ability("ability_a", "function run(parameter)\n    return true, parameter\n end")
-b = Ability("ability_b", "function run()\n    return true, 'Ability B.'\n end")
-c_script = '''
-function run()
-    return true, 'Ability C.'
-end
-'''
-c = Ability("ability_c", c_script)
-d = Ability("ability_d", "function run()\n    return true, 'Ability D.'\n end")
-
-composite = CompositeAbility("composite", "")
-composite.add(a)
-composite.add(b)
-
-mega_comp = CompositeAbility("mega_comp", "")
-mega_comp.add(composite)
-
-top_level = CompositeAbility("top_level", "")
-top_level.add(mega_comp)
-
-index.add(c)
-index.add(d)
-index.add(top_level)
-
-print(index.get_all_keys())
-print(index.run("top_level.mega_comp.composite.ability_a", attacker))
-
-attack = Ability("attack", attack_script)
-dash = Ability("dash", dash_script)
-# modifier = Ability("modifier", modifier_script, "modify")
-
-attacker._abilities.add(attack)
-attacker._abilities.add(dash)
-# attacker._abilities.add(modifier)
-attacker._abilities.add(composite)
-
-for header in attacker._abilities.get_headers():
-    print(header)
-
-# print(attacker.name, attacker._hp, attacker._speed, f"{attacker._armor_class} AC")
-# print(target.name, target._hp, target._speed, f"{target._armor_class} AC")
-# print("USING ABILITIES")
-# print(attacker.use_abilities((("modifier", 15), ("attack", target))))
-# print(attacker.name, attacker._hp, attacker._speed, f"{attacker._armor_class} AC")
-# print(target.name, target._hp, target._speed, f"{target._armor_class} AC")
-
-# print(attacker.use_ability("composite.ability_a", 4))
-
-# print("DASHING")
-# print(attacker.__dict__)
-# print(attacker.use_ability("dash"))
-# print(attacker.__dict__)
-
-# print("\nATTACKING")
-# print(target.__dict__)
-# print(attacker.use_ability("attack", target))
-# print(target.__dict__)
-
-print(DiceParser.parse_string("1d4+2d6+3d8+4d10+5d12+6"))
+    player2 = Controller()
+    player2_statblock = Statblock("Player 2", speed = Speed(30, 30), dice_roller = UserRoller("123"))
+    player2.statblock = player2_statblock
 
 
+    player1_statblock._abilities.add(MeleeAttackAbility())
+    player1_statblock._abilities.add(DashAbility())
+
+    sword = WeaponItem("Longsword", "", 3, 0.25, ["weapon_versatile", "martial_weapon", "melee_weapon"], melee_damage = "1d8 slashing")
+    player1_statblock._inventory.main_hand = sword
+
+    player2_statblock._abilities.add(MeleeAttackAbility())
+    player2_statblock._abilities.add(DashAbility())
+
+    battlemap = Map(10, 10, 4)
+
+    for tile in battlemap.get_all_tiles():
+        tile._max_depth = -3
+        if tile.x >= 7:
+            tile._height = 2
+            if tile.x == 7:
+                for h in range(0, 2):
+                    tile._wall_left.set_passable(False, h)
+
+    game = CombatInstance(battlemap)
+
+    player1_ID = game.add_statblock(player1_statblock, "ABC", (3, 3, 0))
+    player2_ID = game.add_statblock(player2_statblock, "123", (5, 2, 0))
+    viewer = CombatInstanceViewer()
+
+    game.initiate_combat()
+
+    viewer.set_instance(game)
+    viewer.start_background_updates()
+
+
+    while True:
+        print("[== New Turn ==]")
+        current_ID = game._turn_order[game._current]
+        command = ""
+        while command != "end":
+            command_input = await asyncio.to_thread(input, "Command (end, move, ability): ")
+            command, *args = command_input.split()
+            print("Press Next to continue.")
+            if command == "move":
+                coords = list(map(int, args))
+                x = coords[0]
+                y = coords[1]
+                height = 0 if len(coords) <= 2 else coords[2]
+                print(game.issue_command(current_ID, CombatMoveCommand((x, y, height))))
+                print("Total Moved:", game.get_statblock(current_ID).get_speed().distance_moved)
+            elif command == "ability":
+                name, *args = args
+                ability_command = UseAbilityCommand()
+                for i in range(len(args)):
+                    if args[i] == "player1":
+                        args[i] = player1_ID
+                    elif args[i] == "player2":
+                        args[i] = player2_ID
+                ability_command.use_ability(name, *args)
+                print(game.issue_command(current_ID, ability_command))
+        print(game.issue_command(current_ID, EndTurnCommand()))
+        await asyncio.sleep(0.1)
+
+asyncio.run(main())
