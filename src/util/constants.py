@@ -201,6 +201,8 @@ class EventType:
     EFFECT_REMOVED_ABILITY = "effect_removed_ability"
     ABILITY_APPLIED_EFFECT = "ability_applied_effect"
     ABILITY_REMOVED_EFFECT = "ability_removed_effect"
+    ITEM_APPLIED_EFFECT = "item_applied_effect"
+    ITEM_REMOVED_EFFECT = "item_removed_effect"
     ABILITY_CONCENTRATION_ENDED = "ability_concentration_ended"
 
     TRIGGER_ABILITY_CHECK_ROLL = "trigger_roll_ability_check"
