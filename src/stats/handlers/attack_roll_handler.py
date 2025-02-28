@@ -51,7 +51,7 @@ class AttackRollHandler:
             events = [(EventType.TRIGGER_ATTACK_ROLL_SUCCEED, result_context)]
             if result_context.critical_success:
                 events.append((EventType.TRIGGER_ATTACK_ROLL_CRITICAL, result_context))
-            self._statblock._controller.trigger_reaction(events)
+            self._statblock._controller.trigger_reactions(events)
 
             if not result_context.proceed:
                 return ReturnStatus(False, "Attack roll failed.")
