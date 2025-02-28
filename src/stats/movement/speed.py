@@ -11,30 +11,38 @@ class Speed:
 
         self.distance_moved = 0
     
-    def cost_to_move(self, cost: MovementCost):
-        minimum_cost = None
-        if cost.walk is not None and self._walk - self.distance_moved >= cost.walk:
-            minimum_cost = cost.walk if minimum_cost is None else min(minimum_cost, cost.walk)
-        if cost.fly is not None and self._fly - self.distance_moved >= cost.fly:
-            minimum_cost = cost.fly if minimum_cost is None else min(minimum_cost, cost.fly)
-        if cost.swim is not None and self._swim - self.distance_moved >= cost.swim:
-            minimum_cost = cost.swim if minimum_cost is None else min(minimum_cost, cost.swim)
-        if cost.climb is not None and self._climb - self.distance_moved >= cost.climb:
-            minimum_cost = cost.climb if minimum_cost is None else min(minimum_cost, cost.climb)
-        if cost.burrow is not None and self._burrow - self.distance_moved >= cost.burrow:
-            minimum_cost = cost.burrow if minimum_cost is None else min(minimum_cost, cost.burrow)
-        return minimum_cost
-
-    def move(self, cost: MovementCost):
-        minimum_cost = self.cost_to_move(cost)
-        if minimum_cost is not None:
-            self.distance_moved += minimum_cost
-            return True
-        return False
+    @property
+    def walk(self):
+        return self._walk
+    
+    @property
+    def fly(self):
+        return self._fly
+    
+    @property
+    def swim(self):
+        return self._swim
+    
+    @property
+    def climb(self):
+        return self._climb
+    
+    @property
+    def burrow(self):
+        return self._burrow
+    
+    @property
+    def hover(self):
+        return self._hover
     
     def reset(self):
         self.distance_moved = 0
     
+    def make_copy(self):
+        copy = Speed(self._walk, self._fly, self._swim, self._climb, self._burrow, self._hover)
+        copy.distance_moved = self.distance_moved
+        return copy
+
     def __eq__(self, other):
         return self._walk == other._walk and \
                 self._fly == other._fly and \
