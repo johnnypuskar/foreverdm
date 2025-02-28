@@ -1102,11 +1102,11 @@ class TestAbilityStatblockWrapper(unittest.TestCase):
     
     def test_add_effect(self):
         self.WRAPPER.add_effect("test_effect", 5)
-        self.STATBLOCK._abilities.emit.assert_called_once_with(EventType.ABILITY_APPLIED_EFFECT, "test_effect", self.ABILITY._script, 5, self.ABILITY._uuid)
+        self.STATBLOCK._abilities.emit.assert_called_once_with(EventType.ABILITY_APPLIED_EFFECT, "test_effect", self.ABILITY._script, 5, self.ABILITY._uuid, self.STATBLOCK)
     
     def test_remove_effect(self):
         self.WRAPPER.remove_effect("test_effect")
-        self.STATBLOCK._abilities.emit.assert_called_once_with(EventType.ABILITY_REMOVED_EFFECT, "test_effect")
+        self.STATBLOCK._abilities.emit.assert_called_once_with(EventType.ABILITY_REMOVED_EFFECT, "test_effect", self.STATBLOCK)
     
     @patch('src.stats.handlers.attack_roll_handler.AttackRollHandler.ability_attack_roll')
     def test_spell_attack_roll(self, ability_attack_roll):
