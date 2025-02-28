@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from src.util.lua_manager import LuaManager
 from src.events.observer import Observer
-from src.util.constants import ScriptData
 
 class MapObject(Observer, ABC):
     def __init__(self, name, script = None):
@@ -19,12 +18,12 @@ class MapObject(Observer, ABC):
             self._script_functions = []
             self._globals = {}
 
-    def __getattribute__(self, name):
-        if name in ['_name', '_script', '_globals', '_script_functions', '_applied_objects', '_get_object_function', 'signal', '_has_object_function', 'apply', 'unapply']:
-            return super().__getattribute__(name)
-        elif name in self._script_functions:
+    def __getattr__(self, name):
+        # if name in ['_name', '_script', '_globals', '_script_functions', '_applied_objects', '_get_object_function', 'signal', '_has_object_function', 'apply', 'unapply']:
+        #     return super().__getattribute__(name)
+        if name in self._script_functions:
             return self._get_object_function(name)
-        return super().__getattribute__(name)
+        return super().__getattr__(name)
     
     def _has_object_function(self, function_name):
         return function_name in self._script_functions
