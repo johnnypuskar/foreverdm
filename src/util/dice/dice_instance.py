@@ -36,9 +36,9 @@ class DiceInstance:
     def roll_from_list(self, die_list):
         return sum([die["result"] for die in die_list]) + self.modifier
 
-    def roll_to_list(self, die_roller, die_multiplier = 1):
+    def roll_to_list(self, dice_roller, die_multiplier = 1):
         roll_results = []
         for die in self._dice:
             for i in range(self._dice[die] * die_multiplier):
-                roll_results.append({"sides": int(die[1:]), "result": die_roller.roll_custom(1, int(die[1:]))})
+                roll_results.append({"sides": int(die[1:]), "result": dice_roller.roll_custom(1, int(die[1:]))})
         return roll_results
