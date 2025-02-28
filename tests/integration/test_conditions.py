@@ -9,7 +9,7 @@ from src.stats.actions import Hide
 
 class TestConditions(unittest.TestCase):
     
-    @patch('src.util.dice.DiceRoller.roll_d20', return_value = 10)
+    @patch('src.util.dice.dice_roller.DiceRoller.roll_d20', return_value = 10)
     def test_blinded(self, Mock_roll_d20):
         # Create primary statblock
         test_controller = Controller()
@@ -80,7 +80,7 @@ class TestConditions(unittest.TestCase):
         target.ability_attack_roll(statblock, "int", "1d4")
         Mock_roll_d20.assert_called_with(True, False)
     
-    @patch('src.util.dice.DiceRoller.roll_d20', return_value = 20)
+    @patch('src.util.dice.dice_roller.DiceRoller.roll_d20', return_value = 20)
     def test_charmed(self, Mock_roll_d20):
         # Create primary statblock
         statblock = Statblock("Source")
@@ -180,7 +180,7 @@ class TestConditions(unittest.TestCase):
         # TODO: Create test for deafened condition once proper hearing senses have been implemented
         pass
 
-    @patch('src.util.dice.DiceRoller.roll_d20', return_value = 12)
+    @patch('src.util.dice.dice_roller.DiceRoller.roll_d20', return_value = 12)
     def test_hiding(self, roll_d20):
         statblock = Statblock("Hider")
         statblock._controller = Controller()
