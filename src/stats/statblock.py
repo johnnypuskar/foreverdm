@@ -7,8 +7,10 @@ from src.stats.elements.level import Level
 from src.stats.elements.hit_points import HitPoints
 from src.stats.abilities.ability_index import AbilityIndex
 from src.stats.effects.effect_index import EffectIndex
+from src.stats.turn_resources import TurnResources
+from src.stats.items.inventory import Inventory
 from src.control.controller import Controller
-from src.util.modifier_values import ModifierValues, ModifierRolls
+from src.util.modifier_values import ModifierValues, ModifierRolls, ModifierSpeed
 
 class Statblock:
     def __init__(self, name, size: int = Size.MEDIUM, speed: Speed = Speed(30), dice_roller = DiceRoller()):
@@ -22,8 +24,11 @@ class Statblock:
         self._level = Level()
         self._abilities = AbilityIndex()
         self._effects = EffectIndex()
+        self._turn_resources = TurnResources()
+        self._inventory = Inventory(self)
 
         self._abilities.connect(self._effects)
+        self._inventory.connect(self._effects)
         self._effects.connect(self._abilities)
 
         self._controller: Controller = None
@@ -40,7 +45,17 @@ class Statblock:
         return Size.from_size_class(base_size)
 
     def get_speed(self):
-        return self._speed
+        base_speed = self._speed.make_copy()
+        speed_modifiers = ModifierSpeed(self._effects.get_function_results("modify_speed", self))
+
+        base_speed._walk = speed_modifiers.process_walk(base_speed.walk)
+        base_speed._fly = speed_modifiers.process_fly(base_speed.fly)
+        base_speed._swim = speed_modifiers.process_swim(base_speed.swim)
+        base_speed._climb = speed_modifiers.process_climb(base_speed.climb)
+        base_speed._burrow = speed_modifiers.process_burrow(base_speed.burrow)
+        base_speed._hover = speed_modifiers.process_hover(base_speed.hover)
+
+        return base_speed
 
     def get_initiative_modifier(self):
         initiative_modifiers = ModifierRolls(self._effects.get_function_results("modify_initiative_roll", self))
@@ -57,6 +72,11 @@ class Statblock:
     def get_proficiency_bonus(self):
         return 2 + max(0, ((self._level.get_level() - 1) // 4))
     
+    def tick(self, rounds = 1):
+        for i in range(rounds):
+            self._effects.tick_timers(self)
+        self._turn_resources.reset()
+
     def wrap(self, wrapper):
         if isinstance(wrapper, StatblockWrapper):
             return wrapper(self)

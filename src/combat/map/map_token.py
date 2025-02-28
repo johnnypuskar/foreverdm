@@ -2,7 +2,7 @@ from src.stats.statblock import Statblock
 from src.combat.map.positioned import Positioned
 
 class Token(Statblock, Positioned):
-    def __init__(self, statblock = None, position = (-1, -1, -1), map = None):
+    def __init__(self, statblock, position = (-1, -1, -1), map = None):
         Positioned.__init__(self, position, map)
         self._statblock = statblock
 
@@ -41,8 +41,15 @@ class Token(Statblock, Positioned):
     def get_proficiency_bonus(self):
         return self._statblock.get_proficiency_bonus()
     
+    def tick(self):
+        return self._statblock.tick()
+
     def wrap(self, wrapper):
         return self._statblock.wrap(wrapper)
+    
+    @property
+    def _dice_roller(self):
+        return self._statblock._dice_roller
     
     @property
     def _hit_points(self):
@@ -65,6 +72,14 @@ class Token(Statblock, Positioned):
         return self._statblock._effects
     
     @property
+    def _turn_resources(self):
+        return self._statblock._turn_resources
+    
+    @property
+    def _inventory(self):
+        return self._statblock._inventory
+    
+    @property
     def _controller(self):
         return self._statblock._controller
 
@@ -78,8 +93,6 @@ class TokenExtension(Token):
     def set_position(self, position):
         self._parent.set_position(position)
 
-
-    
     ## Token Overrides ##
     def get_name(self):
         return self._parent.get_name()
@@ -99,9 +112,16 @@ class TokenExtension(Token):
     def get_proficiency_bonus(self):
         return self._parent.get_proficiency_bonus()
     
+    def tick(self):
+        return self._parent.tick()
+
     def wrap(self, wrapper):
         return self._parent.wrap(wrapper)
     
+    @property
+    def _dice_roller(self):
+        return self._parent._dice_roller
+
     @property
     def _hit_points(self):
         return self._parent._hit_points
@@ -122,6 +142,14 @@ class TokenExtension(Token):
     def _effects(self):
         return self._parent._effects
     
+    @property
+    def _turn_resources(self):
+        return self._parent._turn_resources
+    
+    @property
+    def _inventory(self):
+        return self._parent._inventory
+
     @property
     def _controller(self):
         return self._parent._controller
