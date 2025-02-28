@@ -6,6 +6,7 @@ class Size:
     HUGE = 15
     GARGANTUAN = 20
 
+    TILE_SIZE = 5
     _SIZE_CLASSES = [TINY, SMALL, MEDIUM, LARGE, HUGE, GARGANTUAN]
 
     def __init__(self, radius):
