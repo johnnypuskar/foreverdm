@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from src.util.constants import EventType
 from src.stats.effects.effect import Effect
 from src.stats.effects.sub_effect import SubEffect
@@ -150,7 +150,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal to remove the effect
-        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "ability_effect", 1, {})
+        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "ability_effect", 1, {}, None)
 
         # Verify the effect was removed from the index
         self.assertNotIn("ability_effect", effect_index.effect_names)
@@ -179,8 +179,8 @@ class TestEffect(unittest.TestCase):
         results = effect_index.get_function_results("make_attack_roll", None, None)
 
         # Emit the signal containing the effect data
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1, "")
-        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1, "")
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "first_effect", ability_script, 1, "", None)
+        effect_index.signal(EventType.ABILITY_APPLIED_EFFECT, "second_effect", ability_script, 1, "", None)
 
         # Verify test effects were added to the index
         self.assertIn("first_effect", effect_index.effect_names)
@@ -195,7 +195,7 @@ class TestEffect(unittest.TestCase):
         self.assertEqual(results, expected)
 
         # Emit the signal to remove the first effect
-        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "first_effect")
+        effect_index.signal(EventType.ABILITY_REMOVED_EFFECT, "first_effect", None)
 
         # Verify only the first effect was removed from the index
         self.assertNotIn("first_effect", effect_index.effect_names)
@@ -228,8 +228,8 @@ class TestEffect(unittest.TestCase):
 
         # Emit the signal containing the effect data
         TEST_UUID = "test_uuid"
-        index.signal(EventType.ABILITY_APPLIED_EFFECT, "test_effect", ability_script, 3, TEST_UUID)
-        index.signal(EventType.ABILITY_APPLIED_EFFECT, "alt_effect", ability_script, 3, TEST_UUID)
+        index.signal(EventType.ABILITY_APPLIED_EFFECT, "test_effect", ability_script, 3, TEST_UUID, None)
+        index.signal(EventType.ABILITY_APPLIED_EFFECT, "alt_effect", ability_script, 3, TEST_UUID, None)
 
         # Verify test effect was added to the index
         self.assertIn("test_effect", index.effect_names)
