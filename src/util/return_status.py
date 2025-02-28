@@ -11,6 +11,9 @@ class ReturnStatus:
     def message(self):
         return self._message
     
+    def unpack(self):
+        return (self._success, self._message)
+
     def __eq__(self, value):
         return self._success == value.success and self._message == value.message
     
