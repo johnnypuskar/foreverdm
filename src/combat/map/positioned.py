@@ -16,7 +16,7 @@ class Positioned:
         if isinstance(other, Positioned):
             return self.distance_to(other.get_position())
         elif isinstance(other, tuple) and len(other) == 3 and all(isinstance(x, (int, float)) for x in other):
-            return int((sum((self._position3D[i] - other[i])**2 for i in range(3)))**0.5)
+            return int((sum((self._position3D[i] - other[i])**2 for i in range(3)))**0.5) * self._map.TILE_SIZE
         raise TypeError(f"Expected Positioned or position tuple, got {type(other)}")
     
     def pulled_toward(self, other, distance):
