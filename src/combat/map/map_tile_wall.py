@@ -52,9 +52,8 @@ class MapTileWall(MapObject):
         else:
             self._wall_stats[height].movement_penalty = movement_penalty
 
-    @property
     def get_climb_dc(self, height):
         return self._climb_dc if not self.get_passable(height) else None
 
-    def __getattribute__(self, name):
-        return super().__getattribute__(name)
+    def __getattr__(self, name):
+        return super().__getattr__(name)
