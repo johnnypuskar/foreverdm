@@ -18,10 +18,10 @@ class StatblockAbilityWrapper(StatblockWrapper):
             super().remove_ability(ability_name)
     
     def add_effect(self, effect_name, duration):
-        self._statblock._abilities.emit(EventType.ABILITY_APPLIED_EFFECT, effect_name, self._ability._script, duration, self._ability._uuid)
+        self._statblock._abilities.emit(EventType.ABILITY_APPLIED_EFFECT, effect_name, self._ability._script, duration, self._ability._uuid, self._statblock)
     
     def remove_effect(self, effect_name):
-        self._statblock._abilities.emit(EventType.ABILITY_REMOVED_EFFECT, effect_name)
+        self._statblock._abilities.emit(EventType.ABILITY_REMOVED_EFFECT, effect_name, self._statblock)
 
     def spell_attack_roll(self, target, damage_string):
         if "spellcasting_ability" not in self._ability._globals.keys():
