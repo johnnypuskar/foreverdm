@@ -1,6 +1,9 @@
-openai
-tiktoken
 psycopg2
 lupa
 luaparser
+flask
+flask-cors
+
+openai
+tiktoken
 google-generativeai
