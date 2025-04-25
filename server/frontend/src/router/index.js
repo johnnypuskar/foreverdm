@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HelloWorld from '../components/HelloWorld.vue'
-import CombatGrid from '../components/CombatGrid.vue'
+import PlayView from '../views/PlayView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -11,9 +11,9 @@ const router = createRouter({
       component: HelloWorld,
     },
     {
-      path: '/grid',
-      name: 'grid',
-      component: CombatGrid,
+      path: '/play',
+      name: 'play',
+      component: PlayView,
     }
   ],
 })

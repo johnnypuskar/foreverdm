@@ -3,12 +3,15 @@ import { ref, onMounted, onUnmounted, reactive, watchEffect, defineProps } from 
 
 // Color Palette
 const colors = {
-  background: '#f0f0f0'
+  background: '#f0f0f0',
+  gridBackground: '#ffffff',
+  gridLine: '#000000'
 }
 
 // Props
 const props = defineProps({
-  levelData: {type: Object, required: false, default: null}
+  width: { type: Number, default: 0 },
+  height: { type: Number, default: 0 }
 });
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -40,11 +43,15 @@ function drawGrid() {
   context.translate(panOffset.x, panOffset.y);
   context.scale(zoomLevel.value, zoomLevel.value);
 
-  context.fillStyle = "#0000ff";
-  context.strokeStyle = "#000000";
-  context.lineWidth = 1;
-
-  context.fillRect(100, 150, 2000, 2000);
+  context.fillStyle = colors.gridBackground;
+  context.strokeStyle = colors.gridLine;
+  context.lineWidth = 3;
+  for (let x = 0; x < props.width; x++) {
+    for (let y = 0; y < props.height; y++) {
+      context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      context.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+    }
+  }
 
   context.restore();
 }
@@ -112,23 +119,36 @@ function handleMouseUp(event: MouseEvent) {
 function handleWheel(event: WheelEvent) {
   event.preventDefault();
 
+  const rect = canvasRef.value.getBoundingClientRect();
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
+
+  const oldWorldX = (mouseX - panOffset.x) / zoomLevel.value;
+  const oldWorldY = (mouseY - panOffset.y) / zoomLevel.value;
+
+  const oldZoomLevel = zoomLevel.value;
+  let newZoomLevel = oldZoomLevel;
+
   if (event.deltaY < 0) {
     // Zoom In
-    if (zoomLevel.value >= zoomMax) return;
-    zoomLevel.value *= 1.2;
-    panOffset.x -= event.clientX * 0.2;
-    panOffset.y -= event.clientY * 0.2;
+    if (oldZoomLevel >= zoomMax) return;
+    newZoomLevel *= 1.2;
   }
   else if (event.deltaY > 0) {
     // Zoom Out
-    if (zoomLevel.value <= zoomMin) return;
-    zoomLevel.value *= 0.8;
-    panOffset.x += event.clientX * 0.2;
-    panOffset.y += event.clientY * 0.2;
+    if (oldZoomLevel <= zoomMin) return;
+    newZoomLevel *= 0.8;
   }
-  zoomLevel.value = Math.max(zoomMin, Math.min(zoomMax, (Math.round(zoomLevel.value * 100) / 100)));
-  if (Math.abs(1.0 - zoomLevel.value) < 0.05) { zoomLevel.value = 1.0; }
-  console.log(zoomLevel.value);
+
+  newZoomLevel = Math.max(zoomMin, Math.min(zoomMax, newZoomLevel));
+  if (Math.abs(1.0 - newZoomLevel) < 0.05) { newZoomLevel = 1.0; }
+
+  if (newZoomLevel === oldZoomLevel) return;
+
+  zoomLevel.value = newZoomLevel;
+
+  panOffset.x = mouseX - oldWorldX * zoomLevel.value;
+  panOffset.y = mouseY - oldWorldY * zoomLevel.value;
 }
 
 function handleClick(event: MouseEvent) {
@@ -140,6 +160,9 @@ onMounted(() => {
   ctx.value = canvasRef.value.getContext('2d');
 
   if (!ctx.value) return;
+
+  panOffset.x = (canvasRef.value.clientWidth / 2) - ((cellSize * props.width) / 2);
+  panOffset.y = (canvasRef.value.clientHeight / 2) - ((cellSize * props.height) / 2);
 
   canvasRef.value.addEventListener('mouseup', handleMouseUp);
   canvasRef.value.addEventListener('mousedown', handleMouseDown);
