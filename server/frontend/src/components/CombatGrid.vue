@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive, watchEffect } from 'vue';
+import { ref, onMounted, onUnmounted, reactive, watchEffect, defineProps } from 'vue';
 
 // Color Palette
 const colors = {
   background: '#f0f0f0'
 }
 
+// Props
+const props = defineProps({
+  levelData: {type: Object, required: false, default: null}
+});
+
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const ctx = ref<CanvasRenderingContext2D | null>(null);
+const cellSize = 50;
 
 const panStart = reactive({x: 0, y: 0});
 const panOffset = reactive({x: 0, y: 0});
@@ -27,9 +33,10 @@ function drawGrid() {
   context.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
 
   // Fill Background
-  context.fillStyle = "#ff0000";
+  context.fillStyle = colors.background;
   context.fillRect(0, 0, canvasRef.value.width, canvasRef.value.height);
 
+  // Offset Pan & Zoom
   context.translate(panOffset.x, panOffset.y);
   context.scale(zoomLevel.value, zoomLevel.value);
 
