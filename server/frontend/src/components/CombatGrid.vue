@@ -1,20 +1,43 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, reactive, watchEffect } from 'vue';
 
+// Color Palette
+const colors = {
+  background: '#f0f0f0'
+}
 
-// --- State ---
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const ctx = ref<CanvasRenderingContext2D | null>(null);
+
+const panStart = reactive({x: 0, y: 0});
+const panOffset = reactive({x: 0, y: 0});
+const isPanning = ref(false);
+
+const zoomLevel = ref(1);
+const zoomMin = 0.2;
+const zoomMax = 2.0;
 
 function drawGrid() {
   if (!ctx.value || !canvasRef.value) return;
   const context = ctx.value;
 
   context.save();
+  canvasRef.value.width = canvasRef.value.clientWidth;
+  canvasRef.value.height = canvasRef.value.clientHeight;
   context.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
 
-  context.fillStyle = '#ff0000';
+  // Fill Background
+  context.fillStyle = "#ff0000";
   context.fillRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+
+  context.translate(panOffset.x, panOffset.y);
+  context.scale(zoomLevel.value, zoomLevel.value);
+
+  context.fillStyle = "#0000ff";
+  context.strokeStyle = "#000000";
+  context.lineWidth = 1;
+
+  context.fillRect(100, 150, 2000, 2000);
 
   context.restore();
 }
@@ -30,13 +53,15 @@ function handleMouseDown(event: MouseEvent) {
   const canvas = canvasRef.value;
   if (!canvas || !context) return;
 
-  console.log(event.button);
+  if (isPanning.value) return;
 
   switch (event.button) {
     case 0: // Left Click
       break;
     case 1: // Middle Click
-      console.log('Mouse down at:', event.clientX, event.clientY);
+      isPanning.value = true;
+      panStart.x = event.clientX - panOffset.x;
+      panStart.y = event.clientY - panOffset.y;
       break;
     case 2: // Right Click
       break;
@@ -44,15 +69,55 @@ function handleMouseDown(event: MouseEvent) {
 }
 
 function handleMouseMove(event: MouseEvent) {
-  
+  event.preventDefault();
+  if (isPanning.value) {
+    if (!Boolean(event.buttons & 4)) {
+      // Stop panning if the middle button is somehow released (i.e. cursor offscreen)
+      isPanning.value = false;
+      return;
+    }
+    panOffset.x = event.clientX - panStart.x;
+    panOffset.y = event.clientY - panStart.y;
+  }
 }
 
 function handleMouseUp(event: MouseEvent) {
-  
+  event.preventDefault();
+
+  const context = ctx.value;
+  const canvas = canvasRef.value;
+  if (!canvas || !context) return;
+
+  switch (event.button) {
+    case 0: // Left Click
+      break;
+    case 1: // Middle Click
+      isPanning.value = false;
+      break;
+    case 2: // Right Click
+      break;
+  }
 }
 
 function handleWheel(event: WheelEvent) {
-  
+  event.preventDefault();
+
+  if (event.deltaY < 0) {
+    // Zoom In
+    if (zoomLevel.value >= zoomMax) return;
+    zoomLevel.value += 0.2;
+    panOffset.x -= event.clientX * 0.2;
+    panOffset.y -= event.clientY * 0.2;
+  }
+  else if (event.deltaY > 0) {
+    // Zoom Out
+    if (zoomLevel.value <= zoomMin) return;
+    zoomLevel.value -= 0.2;
+    panOffset.x += event.clientX * 0.2;
+    panOffset.y += event.clientY * 0.2;
+  }
+  zoomLevel.value = Math.max(zoomMin, Math.min(zoomMax, (Math.round(zoomLevel.value * 100) / 100)));
+  console.log(zoomLevel.value);
 }
 
 function handleClick(event: MouseEvent) {
@@ -65,8 +130,13 @@ onMounted(() => {
 
   if (!ctx.value) return;
 
+  canvasRef.value.addEventListener('mouseup', handleMouseUp);
   canvasRef.value.addEventListener('mousedown', handleMouseDown);
+  canvasRef.value.addEventListener('mousemove', handleMouseMove);
+  canvasRef.value.addEventListener('wheel', handleWheel);
   canvasRef.value.addEventListener('contextmenu', handleContextMenu);
+
+  window.addEventListener('resize', drawGrid);
 });
 
 onUnmounted(() => {
@@ -76,8 +146,6 @@ onUnmounted(() => {
 watchEffect(() => {
   drawGrid();
 });
-
-
 </script>
 
 <template>
@@ -98,6 +166,5 @@ watchEffect(() => {
   display: block;
   width: 100%;
   height: 100%;
-  background-color: #f0f0f0; /* Basic background */
 }
 </style>
