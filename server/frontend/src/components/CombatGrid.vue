@@ -14,7 +14,7 @@ const panOffset = reactive({x: 0, y: 0});
 const isPanning = ref(false);
 
 const zoomLevel = ref(1);
-const zoomMin = 0.2;
+const zoomMin = 0.1;
 const zoomMax = 2.0;
 
 function drawGrid() {
@@ -59,6 +59,7 @@ function handleMouseDown(event: MouseEvent) {
     case 0: // Left Click
       break;
     case 1: // Middle Click
+      canvasRef.value.style.cursor = 'grabbing';
       isPanning.value = true;
       panStart.x = event.clientX - panOffset.x;
       panStart.y = event.clientY - panOffset.y;
@@ -74,6 +75,7 @@ function handleMouseMove(event: MouseEvent) {
     if (!Boolean(event.buttons & 4)) {
       // Stop panning if the middle button is somehow released (i.e. cursor offscreen)
       isPanning.value = false;
+      canvasRef.value.style.cursor = 'default';
       return;
     }
     panOffset.x = event.clientX - panStart.x;
@@ -93,6 +95,7 @@ function handleMouseUp(event: MouseEvent) {
       break;
     case 1: // Middle Click
       isPanning.value = false;
+      canvasRef.value.style.cursor = 'default';
       break;
     case 2: // Right Click
       break;
@@ -105,18 +108,19 @@ function handleWheel(event: WheelEvent) {
   if (event.deltaY < 0) {
     // Zoom In
     if (zoomLevel.value >= zoomMax) return;
-    zoomLevel.value += 0.2;
+    zoomLevel.value *= 1.2;
     panOffset.x -= event.clientX * 0.2;
     panOffset.y -= event.clientY * 0.2;
   }
   else if (event.deltaY > 0) {
     // Zoom Out
     if (zoomLevel.value <= zoomMin) return;
-    zoomLevel.value -= 0.2;
+    zoomLevel.value *= 0.8;
     panOffset.x += event.clientX * 0.2;
     panOffset.y += event.clientY * 0.2;
   }
   zoomLevel.value = Math.max(zoomMin, Math.min(zoomMax, (Math.round(zoomLevel.value * 100) / 100)));
+  if (Math.abs(1.0 - zoomLevel.value) < 0.05) { zoomLevel.value = 1.0; }
   console.log(zoomLevel.value);
 }
 
