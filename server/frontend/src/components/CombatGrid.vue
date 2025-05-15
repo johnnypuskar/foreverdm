@@ -53,6 +53,28 @@ function drawGrid() {
     }
   }
 
+  // Drop Shadow
+  const dropShadowDistance = 8;
+  const dropShadowWidth = 12;
+  const cornerPoints = [
+    { x: props.width * cellSize, y: dropShadowDistance },
+    { x: props.width * cellSize, y: props.height * cellSize },
+    { x: dropShadowDistance, y: props.height * cellSize },
+    { x: dropShadowDistance, y: props.height * cellSize + dropShadowWidth },
+    { x: props.width * cellSize + dropShadowWidth, y: props.height * cellSize + dropShadowWidth },
+    { x: props.width * cellSize + dropShadowWidth, y: dropShadowDistance }
+  ];
+  context.fillStyle = 'rgba(0, 0, 0, 0.2)';
+  context.beginPath();
+
+  context.moveTo(cornerPoints[0].x, cornerPoints[0].y);
+  for (let i = 1; i < cornerPoints.length; i++) {
+    const point = cornerPoints[i];
+    context.lineTo(point.x, point.y);
+  }
+  context.closePath();
+  context.fill();
+
   context.restore();
 }
 
