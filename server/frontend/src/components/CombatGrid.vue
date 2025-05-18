@@ -248,6 +248,8 @@ onMounted(() => {
   canvasRef.value.addEventListener('contextmenu', handleContextMenu);
 
   window.addEventListener('resize', drawGrid);
+  window.addEventListener('resize', drawTokens);
+  window.addEventListener('resize', drawHighlights);
 });
 
 onUnmounted(() => {
