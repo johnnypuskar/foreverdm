@@ -3,6 +3,7 @@ lupa
 luaparser
 flask
 flask-cors
+flask-socketio
 
 openai
 tiktoken
