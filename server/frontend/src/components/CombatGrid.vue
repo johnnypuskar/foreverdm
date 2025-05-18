@@ -1,22 +1,50 @@
-<script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive, watchEffect, defineProps } from 'vue';
-
-// Color Palette
-const colors = {
-  background: '#f0f0f0',
-  gridBackground: '#ffffff',
-  gridLine: '#000000'
-}
-
-// Props
-const props = defineProps({
+<script lang="ts">
+import { Token } from '@/composables/gridTokens';
+// Props Definition
+export const combatGridPropsDefinition = {
   width: { type: Number, default: 0 },
   height: { type: Number, default: 0 }
-});
+}
+
+export const colors = {
+  highlightDark: 'rgba(105, 125, 245, 1.0)',
+  highlightLight: 'rgba(0, 55, 255, 0.1)'
+}
+</script>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, reactive, watchEffect, defineProps } from 'vue';
+import { useGridMap } from '@/composables/gridMap';
+import { useGridTokens } from '@/composables/gridTokens';
+import { useGridHighlights } from '@/composables/gridHighlights';
+
+const props = defineProps(combatGridPropsDefinition);
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const ctx = ref<CanvasRenderingContext2D | null>(null);
 const cellSize = 50;
+
+const highlightCellRegions = ref<Record<string, {
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  border: string,
+  fill: string
+}>>({});
+
+const highlightCircleRegions = ref<Record<string, {
+  x: number,
+  y: number,
+  size: number,
+  border: string,
+  fill: string
+}>>({});
+
+const tokenClickable = ref(true);
+const propClickable = ref(false);
+const tileClickable = ref(true);
+const mouseCellPos = reactive({x: null, y: null});
 
 const panStart = reactive({x: 0, y: 0});
 const panOffset = reactive({x: 0, y: 0});
@@ -26,57 +54,32 @@ const zoomLevel = ref(1);
 const zoomMin = 0.1;
 const zoomMax = 2.0;
 
-function drawGrid() {
-  if (!ctx.value || !canvasRef.value) return;
-  const context = ctx.value;
+const tokens = ref<Token[]>([]);
 
-  context.save();
-  canvasRef.value.width = canvasRef.value.clientWidth;
-  canvasRef.value.height = canvasRef.value.clientHeight;
-  context.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+// Set up grid rendering functions
+const { drawGrid } = useGridMap(
+  canvasRef,
+  props,
+  cellSize,
+  panOffset,
+  zoomLevel,
+  highlightCellRegions
+);
 
-  // Fill Background
-  context.fillStyle = colors.background;
-  context.fillRect(0, 0, canvasRef.value.width, canvasRef.value.height);
+// Set up token rendering functions
+const { drawTokens } = useGridTokens(
+  canvasRef,
+  tokens,
+  cellSize
+);
 
-  // Offset Pan & Zoom
-  context.translate(panOffset.x, panOffset.y);
-  context.scale(zoomLevel.value, zoomLevel.value);
-
-  context.fillStyle = colors.gridBackground;
-  context.strokeStyle = colors.gridLine;
-  context.lineWidth = 3;
-  for (let x = 0; x < props.width; x++) {
-    for (let y = 0; y < props.height; y++) {
-      context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-      context.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
-    }
-  }
-
-  // Drop Shadow
-  const dropShadowDistance = 8;
-  const dropShadowWidth = 12;
-  const cornerPoints = [
-    { x: props.width * cellSize, y: dropShadowDistance },
-    { x: props.width * cellSize, y: props.height * cellSize },
-    { x: dropShadowDistance, y: props.height * cellSize },
-    { x: dropShadowDistance, y: props.height * cellSize + dropShadowWidth },
-    { x: props.width * cellSize + dropShadowWidth, y: props.height * cellSize + dropShadowWidth },
-    { x: props.width * cellSize + dropShadowWidth, y: dropShadowDistance }
-  ];
-  context.fillStyle = 'rgba(0, 0, 0, 0.2)';
-  context.beginPath();
-
-  context.moveTo(cornerPoints[0].x, cornerPoints[0].y);
-  for (let i = 1; i < cornerPoints.length; i++) {
-    const point = cornerPoints[i];
-    context.lineTo(point.x, point.y);
-  }
-  context.closePath();
-  context.fill();
-
-  context.restore();
-}
+// Set up highlight selection functions
+const { drawHighlights } = useGridHighlights(
+  canvasRef,
+  cellSize,
+  highlightCellRegions,
+  highlightCircleRegions
+);
 
 function handleContextMenu(event: MouseEvent) {
   event.preventDefault();
@@ -92,16 +95,23 @@ function handleMouseDown(event: MouseEvent) {
   if (isPanning.value) return;
 
   switch (event.button) {
-    case 0: // Left Click
+    case 0: // Left Mouse
       break;
-    case 1: // Middle Click
+    case 1: // Middle Mouse
       canvasRef.value.style.cursor = 'grabbing';
       isPanning.value = true;
       panStart.x = event.clientX - panOffset.x;
       panStart.y = event.clientY - panOffset.y;
       break;
-    case 2: // Right Click
-      break;
+    case 2: // Right Mouse
+      console.log('Right Mouse Button Clicked');
+      tokens.value.push(
+        {
+          x: 0,
+          y: 0,
+          highlighted: false
+        }
+      )
   }
 }
 
@@ -116,6 +126,51 @@ function handleMouseMove(event: MouseEvent) {
     }
     panOffset.x = event.clientX - panStart.x;
     panOffset.y = event.clientY - panStart.y;
+  }
+  else {
+    mouseCellPos.x = Math.floor((event.clientX - panOffset.x) / zoomLevel.value / cellSize);
+    mouseCellPos.y = Math.floor((event.clientY - panOffset.y) / zoomLevel.value / cellSize);
+
+    canvasRef.value.style.cursor = 'default';
+    if (mouseCellPos.x < 0 || mouseCellPos.y < 0 || mouseCellPos.x > props.width - 1 || mouseCellPos.y > props.height - 1) {
+      if (highlightCellRegions.value.hasOwnProperty('mouseCellHighlight')) {
+        delete highlightCellRegions.value['mouseCellHighlight'];
+      }
+      if (highlightCircleRegions.value.hasOwnProperty('mouseTokenHighlight')) {
+        delete highlightCircleRegions.value['mouseTokenHighlight'];
+      }
+    }
+    else {
+      if(tokenClickable.value && tokens.value.some(token => token.x === mouseCellPos.x && token.y === mouseCellPos.y)) {
+        if (highlightCellRegions.value.hasOwnProperty('mouseCellHighlight')) {
+          delete highlightCellRegions.value['mouseCellHighlight'];
+        }
+
+        canvasRef.value.style.cursor = 'grab';
+        
+        highlightCircleRegions.value['mouseTokenHighlight'] = {
+          x: mouseCellPos.x,
+          y: mouseCellPos.y,
+          size: 1,
+          border: colors.highlightDark,
+          fill: colors.highlightLight
+        }
+      }
+      else if(tileClickable.value) {
+        if (highlightCircleRegions.value.hasOwnProperty('mouseTokenHighlight')) {
+          delete highlightCircleRegions.value['mouseTokenHighlight'];
+        }
+
+        highlightCellRegions.value['mouseCellHighlight'] = {
+          x: mouseCellPos.x,
+          y: mouseCellPos.y,
+          width: 1,
+          height: 1,
+          border: colors.highlightDark,
+          fill: colors.highlightLight
+        }
+      }
+    }
   }
 }
 
@@ -201,6 +256,8 @@ onUnmounted(() => {
 
 watchEffect(() => {
   drawGrid();
+  drawTokens();
+  drawHighlights();
 });
 </script>
 
