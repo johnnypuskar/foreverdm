@@ -100,7 +100,7 @@ var mouseState = ref(DefaultState.id);
 const mouseStates = {
   [DefaultState.id]: new DefaultState(canvasRef, convertMousePosToCellPos, mousePickedRenderable, screenRenderables, tokenClickable, propClickable, cellClickable, tokens, highlightCellRegions, highlightCircleRegions),
   [DragState.id]: new DragState(canvasRef, panOffset),
-  [MoveState.id]: new MoveState(canvasRef, render, cellSize, panOffset, convertMousePosToCellPos, tokens, screenRenderables, highlightCircleRegions)
+  [MoveState.id]: new MoveState(canvasRef, cellSize, panOffset, convertMousePosToCellPos, mousePickedRenderable, tokens, screenRenderables, highlightCircleRegions)
 }
 
 function convertMousePosToCellPos(mouseX: number, mouseY: number) {

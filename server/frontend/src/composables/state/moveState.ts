@@ -1,7 +1,7 @@
 import { ref, Ref } from 'vue'
 import { MouseState, MouseStateReturn } from '@/composables/state/mouseState'
 import { DefaultState } from './defaultState';
-import { ScreenRenderable, MapToken } from '../gridRenderable';
+import { ScreenRenderable, MapToken, GridRenderable } from '../gridRenderable';
 
 export class MoveState extends MouseState {
     static id = 'MOUSESTATE_MOVE';
@@ -13,22 +13,23 @@ export class MoveState extends MouseState {
     cellSize: number;
     panOffset: { x: number, y: number };
     convertMousePosToCellPos: Function;
+    mousePickedRenderable: Ref<GridRenderable | null>;
     pickedScreenRenderable: Ref<ScreenRenderable | null>
     screenRenderables: Ref<Array<ScreenRenderable>>;
     tokens: Ref<Array<MapToken>>;
     highlightCircleRegions: Ref<Record<string, { x: number, y: number, size: number, border: string, fill: string }>>;
     originalCellPosition: { x: number, y: number };
 
-    constructor(canvasRef: Ref<HTMLCanvasElement> | null, render: Function, cellSize: number, panOffset: { x: number, y: number }, convertMousePosToCellPos: Function,
-                tokens: Ref<Array<MapToken>>, screenRenderables: Ref<Array<ScreenRenderable>>,
+    constructor(canvasRef: Ref<HTMLCanvasElement> | null, cellSize: number, panOffset: { x: number, y: number }, convertMousePosToCellPos: Function,
+                mousePickedRenderable: Ref<GridRenderable | null>, tokens: Ref<Array<MapToken>>, screenRenderables: Ref<Array<ScreenRenderable>>,
                 highlightCircleRegions: Ref<Record<string, { x: number, y: number, size: number, border: string, fill: string }>>) {
         super(canvasRef);
-        this.render = render;
         this.cellSize = cellSize;
         this.panOffset = panOffset;
         this.convertMousePosToCellPos = convertMousePosToCellPos;
         this.tokens = tokens;
         this.highlightCircleRegions = highlightCircleRegions;
+        this.mousePickedRenderable = mousePickedRenderable;
         this.pickedScreenRenderable = ref<ScreenRenderable | null>(null);
         this.screenRenderables = screenRenderables;
     }
@@ -36,7 +37,6 @@ export class MoveState extends MouseState {
     updateDetails(details: {}): void {
         this.originalCellPosition = details['originalCellPosition'];
         this.pickedScreenRenderable.value = details['pickedScreenRenderable'];
-        console.log(details['pickedScreenRenderable']);
         this.highlightCircleRegions.value["tokenMovementIndicator"] = {
             x: this.originalCellPosition.x,
             y: this.originalCellPosition.y,
@@ -54,10 +54,15 @@ export class MoveState extends MouseState {
         this.pickedScreenRenderable.value.x = event.clientX;
         this.pickedScreenRenderable.value.y = event.clientY;
 
-        console.log(this.pickedScreenRenderable.value.x, this.pickedScreenRenderable.value.y);
-
-        this.highlightCircleRegions.value["tokenMovementIndicator"].x = cellX;
-        this.highlightCircleRegions.value["tokenMovementIndicator"].y = cellY;
+        if (inbounds) {
+            this.highlightCircleRegions.value["tokenMovementIndicator"].x = cellX;
+            this.highlightCircleRegions.value["tokenMovementIndicator"].y = cellY;
+        }
+        else {
+            this.highlightCircleRegions.value["tokenMovementIndicator"].x = this.originalCellPosition.x;
+            this.highlightCircleRegions.value["tokenMovementIndicator"].y = this.originalCellPosition.y;
+            this.mousePickedRenderable.value = null;
+        }
         
         return { "state": MoveState.id, "details": {} };
     }

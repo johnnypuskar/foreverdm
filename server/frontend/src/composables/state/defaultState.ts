@@ -48,13 +48,23 @@ export class DefaultState extends MouseState {
         this.clickableItemOffset = 0;
     }
 
-    processCursor(cellX, cellY, inbounds) {if (!this.mouseCellPos.x || !this.mouseCellPos.y || this.mouseCellPos.x != cellX || this.mouseCellPos.y != cellY) {
+    updateMouseCellPos(event) {
+        const { x: cellX, y: cellY, inbounds: inbounds} = this.convertMousePosToCellPos(event.clientX, event.clientY);
+
+        if (!this.mouseCellPos.x || !this.mouseCellPos.y || this.mouseCellPos.x != cellX || this.mouseCellPos.y != cellY) {
             this.clickableItemOffset = 0;
         }
 
         this.mouseCellPos.x = cellX;
         this.mouseCellPos.y = cellY;
 
+        console.log(this.mouseCellPos.x, this.mouseCellPos.y, inbounds);
+
+        return inbounds;
+    }
+
+    processCursor(inbounds) {
+        console.log("Process Cursor: ", this.mouseCellPos.x, this.mouseCellPos.y, inbounds);
         if (!inbounds) {
             if (this.highlightCellRegions.value.hasOwnProperty("mouseCellHighlight")) { delete this.highlightCellRegions.value["mouseCellHighlight"]; }
             if (this.highlightCircleRegions.value.hasOwnProperty("mouseTokenHighlight")) { delete this.highlightCircleRegions.value["mouseTokenHighlight"]; }
@@ -98,11 +108,12 @@ export class DefaultState extends MouseState {
     }
 
     handleMouseMove(event: MouseEvent): MouseStateReturn { 
-        const { x: cellX, y: cellY, inbounds: inbounds} = this.convertMousePosToCellPos(event.clientX, event.clientY);
-        return this.processCursor(cellX, cellY, inbounds);
+        const inbounds = this.updateMouseCellPos(event);
+        return this.processCursor(inbounds);
     }
 
     handleLeftMouseDown(event: MouseEvent): MouseStateReturn {
+        this.updateMouseCellPos(event);
         if (this.mousePickedRenderable.value instanceof MapToken) {
             const { x: cellX, y: cellY, inbounds: inbounds} = this.convertMousePosToCellPos(event.clientX, event.clientY);
             this.canvasRef.value.style.cursor = 'grabbing';
@@ -143,7 +154,7 @@ export class DefaultState extends MouseState {
                 this.clickableItemOffset += 1;
             }
         }
-        return this.processCursor(this.mouseCellPos.x, this.mouseCellPos.y, true);
+        return this.processCursor(true);
     }
 
     handleRightMouseDown(event: MouseEvent): MouseStateReturn {
