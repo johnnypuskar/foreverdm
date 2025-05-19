@@ -1,7 +1,8 @@
 import { reactive, Ref } from 'vue'
 import { MouseState, MouseStateReturn } from '@/composables/state/mouseState'
 import { DragState } from '@/composables/state/dragState'
-import { GridRenderable, MapToken } from '@/composables/gridRenderable'
+import { MoveState } from '@/composables/state/moveState'
+import { ScreenRenderable, GridRenderable, MapToken } from '@/composables/gridRenderable'
 
 export class DefaultState extends MouseState {
     static id = 'MOUSESTATE_DEFAULT';
@@ -17,6 +18,7 @@ export class DefaultState extends MouseState {
     clickableItemOffset: number;
 
     tokens: Ref<Array<MapToken>>;
+    screenRenderables: Ref<Array<ScreenRenderable>>;
     mousePickedRenderable: Ref<GridRenderable | null>;
 
     // TODO: Create the definitions for these regions in CombatGrid.vue and import them here
@@ -24,7 +26,8 @@ export class DefaultState extends MouseState {
     highlightCircleRegions: Ref<Record<string, {x: number, y: number, size: number, border: string, fill: string}>>;
 
     constructor(canvasRef: Ref<HTMLCanvasElement> | null, convertMousePosToCellPos: Function, mousePickedRenderable: Ref<GridRenderable | null>,
-                tokenClickable: Ref<Boolean>, propClickable: Ref<Boolean>, cellClickable: Ref<Boolean>, tokens: Ref<Array<MapToken>>,
+                screenRenderables: Ref<Array<ScreenRenderable>>, tokenClickable: Ref<Boolean>, propClickable: Ref<Boolean>, cellClickable: Ref<Boolean>,
+                tokens: Ref<Array<MapToken>>, 
                 highlightCellRegions: Ref<Record<string, { x: number; y: number, width: number, height: number, border: string, fill: string }>>,
                 highlightCircleRegions: Ref<Record<string, { x: number, y: number, size: number, border: string, fill: string }>>) {
         super(canvasRef);
@@ -36,6 +39,7 @@ export class DefaultState extends MouseState {
         this.convertMousePosToCellPos = convertMousePosToCellPos;
         this.tokens = tokens;
 
+        this.screenRenderables = screenRenderables;
         this.mousePickedRenderable = mousePickedRenderable;
         this.highlightCellRegions = highlightCellRegions;
         this.highlightCircleRegions = highlightCircleRegions;
@@ -100,7 +104,23 @@ export class DefaultState extends MouseState {
 
     handleLeftMouseDown(event: MouseEvent): MouseStateReturn {
         if (this.mousePickedRenderable.value instanceof MapToken) {
-            
+            const { x: cellX, y: cellY, inbounds: inbounds} = this.convertMousePosToCellPos(event.clientX, event.clientY);
+            this.canvasRef.value.style.cursor = 'grabbing';
+            delete this.tokens.value[this.tokens.value.indexOf(this.mousePickedRenderable.value)];
+            delete this.highlightCircleRegions.value["mouseTokenHighlight"];
+
+            const tokenScreenRenderable = {
+                    x: event.clientX,
+                    y: event.clientY,
+                    renderable: this.mousePickedRenderable.value
+                }
+            this.screenRenderables.value.push(
+                tokenScreenRenderable
+            )
+            return {"state": MoveState.id, "details": {
+                "originalCellPosition": { x: cellX, y: cellY },
+                "pickedScreenRenderable": tokenScreenRenderable
+            }};
         }
         return {"state": DefaultState.id, "details": {}};
     }

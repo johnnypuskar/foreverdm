@@ -16,9 +16,10 @@ import { ref, onMounted, onUnmounted, reactive, watchEffect, defineProps } from 
 import { useGridMap } from '@/composables/gridMap';
 import { useGridTokens } from '@/composables/gridTokens';
 import { useGridHighlights } from '@/composables/gridHighlights';
-import { GridRenderable, MapToken } from '@/composables/gridRenderable';
+import { ScreenRenderable, GridRenderable, MapToken, useGridRenderable } from '@/composables/gridRenderable';
 import { DefaultState } from '@/composables/state/defaultState';
 import { DragState } from '@/composables/state/dragState';
+import { MoveState } from '@/composables/state/moveState';
 
 const props = defineProps(combatGridPropsDefinition);
 
@@ -46,12 +47,10 @@ const highlightCircleRegions = ref<Record<string, {
 const tokenClickable = ref(true);
 const propClickable = ref(false);
 const cellClickable = ref(true);
-var clickableItemOffset = ref(0);
 
-const mouseCellPos = reactive({x: null, y: null});
+const mousePos = reactive({x: 0.0, y: 0.0});
 
-const mousePos = reactive({x: 0, y: 0});
-
+const screenRenderables = ref<Array<ScreenRenderable>>([]);
 const mousePickedRenderable = ref<GridRenderable | null>(null);
 
 const panOffset = reactive({x: 0, y: 0});
@@ -79,6 +78,15 @@ const { drawTokens } = useGridTokens(
   cellSize
 );
 
+// Set up renderable drawing functions
+const { drawRenderables } = useGridRenderable(
+  canvasRef,
+  cellSize,
+  panOffset,
+  zoomLevel,
+  screenRenderables
+);
+
 // Set up highlight selection functions
 const { drawHighlights } = useGridHighlights(
   canvasRef,
@@ -90,8 +98,9 @@ const { drawHighlights } = useGridHighlights(
 // Setup mouse state machines
 var mouseState = ref(DefaultState.id);
 const mouseStates = {
-  [DefaultState.id]: new DefaultState(canvasRef, convertMousePosToCellPos, mousePickedRenderable, tokenClickable, propClickable, cellClickable, tokens, highlightCellRegions, highlightCircleRegions),
-  [DragState.id]: new DragState(canvasRef, panOffset)
+  [DefaultState.id]: new DefaultState(canvasRef, convertMousePosToCellPos, mousePickedRenderable, screenRenderables, tokenClickable, propClickable, cellClickable, tokens, highlightCellRegions, highlightCircleRegions),
+  [DragState.id]: new DragState(canvasRef, panOffset),
+  [MoveState.id]: new MoveState(canvasRef, render, cellSize, panOffset, convertMousePosToCellPos, tokens, screenRenderables, highlightCircleRegions)
 }
 
 function convertMousePosToCellPos(mouseX: number, mouseY: number) {
@@ -122,6 +131,9 @@ function handleMouseDown(event: MouseEvent) {
 
 function handleMouseMove(event: MouseEvent) {
   event.preventDefault();
+
+  mousePos.x = event.clientX;
+  mousePos.y = event.clientY;
 
   const context = ctx.value;
   const canvas = canvasRef.value;
@@ -229,10 +241,15 @@ onUnmounted(() => {
   
 });
 
-watchEffect(() => {
+function render() {
   drawGrid();
   drawTokens();
   drawHighlights();
+  drawRenderables();
+}
+
+watchEffect(() => {
+  render();
 });
 </script>
 

@@ -11,20 +11,6 @@ export function useGridTokens(
     tokens: Ref<Array<MapToken>>,
     cellSize: number
 ) {
-    function drawTokenAtGridPosition(context: CanvasRenderingContext2D, x: number, y: number) {
-        context.save();
-
-        context.fillStyle = "#aaaaff";
-        context.beginPath()
-        context.arc(x * cellSize + cellSize / 2.0, y * cellSize + cellSize / 2.0, cellSize / 2.0 - tokenBorderBuffer, 0, Math.PI * 2);
-        context.fill();
-        context.strokeStyle = "#000000";
-        context.lineWidth = 2;
-        context.stroke();
-        context.closePath();
-
-        context.restore();
-    }
 
     function drawTokens() {
         const ctx = canvasRef.value?.getContext('2d');
