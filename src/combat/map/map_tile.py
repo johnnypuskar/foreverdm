@@ -58,3 +58,14 @@ class MapTile:
             return self._wall_right
         else:
             raise ValueError(f"Invalid wall direction: {direction}")
+    
+    def has_wall(self, direction):
+        if direction == MapTileWall.WallDirection.TOP:
+            return self._wall_top is not None
+        elif direction == MapTileWall.WallDirection.LEFT:
+            return self._wall_left is not None
+        elif direction == MapTileWall.WallDirection.BOTTOM:
+            return self._wall_bottom is not None
+        elif direction == MapTileWall.WallDirection.RIGHT:
+            return self._wall_right is not None
+        return False
