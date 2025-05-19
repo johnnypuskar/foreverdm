@@ -1,5 +1,4 @@
 <script lang="ts">
-import { Token } from '@/composables/gridTokens';
 // Props Definition
 export const combatGridPropsDefinition = {
   width: { type: Number, default: 0 },
@@ -17,6 +16,9 @@ import { ref, onMounted, onUnmounted, reactive, watchEffect, defineProps } from 
 import { useGridMap } from '@/composables/gridMap';
 import { useGridTokens } from '@/composables/gridTokens';
 import { useGridHighlights } from '@/composables/gridHighlights';
+import { GridRenderable, MapToken } from '@/composables/gridRenderable';
+import { DefaultState } from '@/composables/state/defaultState';
+import { DragState } from '@/composables/state/dragState';
 
 const props = defineProps(combatGridPropsDefinition);
 
@@ -43,18 +45,22 @@ const highlightCircleRegions = ref<Record<string, {
 
 const tokenClickable = ref(true);
 const propClickable = ref(false);
-const tileClickable = ref(true);
+const cellClickable = ref(true);
+var clickableItemOffset = ref(0);
+
 const mouseCellPos = reactive({x: null, y: null});
 
-const panStart = reactive({x: 0, y: 0});
+const mousePos = reactive({x: 0, y: 0});
+
+const mousePickedRenderable = ref<GridRenderable | null>(null);
+
 const panOffset = reactive({x: 0, y: 0});
-const isPanning = ref(false);
 
 const zoomLevel = ref(1);
 const zoomMin = 0.1;
 const zoomMax = 2.0;
 
-const tokens = ref<Token[]>([]);
+const tokens = ref<MapToken[]>([]);
 
 // Set up grid rendering functions
 const { drawGrid } = useGridMap(
@@ -81,7 +87,22 @@ const { drawHighlights } = useGridHighlights(
   highlightCircleRegions
 );
 
+// Setup mouse state machines
+var mouseState = ref(DefaultState.id);
+const mouseStates = {
+  [DefaultState.id]: new DefaultState(canvasRef, convertMousePosToCellPos, mousePickedRenderable, tokenClickable, propClickable, cellClickable, tokens, highlightCellRegions, highlightCircleRegions),
+  [DragState.id]: new DragState(canvasRef, panOffset)
+}
+
+function convertMousePosToCellPos(mouseX: number, mouseY: number) {
+    const cellX = Math.floor((mouseX - panOffset.x) / zoomLevel.value / cellSize);
+    const cellY = Math.floor((mouseY - panOffset.y) / zoomLevel.value / cellSize);
+    const inbounds = cellX >= 0 && cellY >= 0 && cellX < props.width && cellY < props.height;
+    return { x: cellX, y: cellY, inbounds: inbounds };
+}
+
 function handleContextMenu(event: MouseEvent) {
+  // Prevent the default context menu from appearing when right-clicking
   event.preventDefault();
 }
 
@@ -92,85 +113,24 @@ function handleMouseDown(event: MouseEvent) {
   const canvas = canvasRef.value;
   if (!canvas || !context) return;
 
-  if (isPanning.value) return;
-
-  switch (event.button) {
-    case 0: // Left Mouse
-      break;
-    case 1: // Middle Mouse
-      canvasRef.value.style.cursor = 'grabbing';
-      isPanning.value = true;
-      panStart.x = event.clientX - panOffset.x;
-      panStart.y = event.clientY - panOffset.y;
-      break;
-    case 2: // Right Mouse
-      console.log('Right Mouse Button Clicked');
-      tokens.value.push(
-        {
-          x: 0,
-          y: 0,
-          highlighted: false
-        }
-      )
+  let stateReturnValues = mouseStates[mouseState.value].handleMouseDown(event);
+  if (stateReturnValues.state != mouseState.value) {
+    mouseState.value = stateReturnValues.state;
+    mouseStates[mouseState.value].updateDetails(stateReturnValues.details);
   }
 }
 
 function handleMouseMove(event: MouseEvent) {
   event.preventDefault();
-  if (isPanning.value) {
-    if (!Boolean(event.buttons & 4)) {
-      // Stop panning if the middle button is somehow released (i.e. cursor offscreen)
-      isPanning.value = false;
-      canvasRef.value.style.cursor = 'default';
-      return;
-    }
-    panOffset.x = event.clientX - panStart.x;
-    panOffset.y = event.clientY - panStart.y;
-  }
-  else {
-    mouseCellPos.x = Math.floor((event.clientX - panOffset.x) / zoomLevel.value / cellSize);
-    mouseCellPos.y = Math.floor((event.clientY - panOffset.y) / zoomLevel.value / cellSize);
 
-    canvasRef.value.style.cursor = 'default';
-    if (mouseCellPos.x < 0 || mouseCellPos.y < 0 || mouseCellPos.x > props.width - 1 || mouseCellPos.y > props.height - 1) {
-      if (highlightCellRegions.value.hasOwnProperty('mouseCellHighlight')) {
-        delete highlightCellRegions.value['mouseCellHighlight'];
-      }
-      if (highlightCircleRegions.value.hasOwnProperty('mouseTokenHighlight')) {
-        delete highlightCircleRegions.value['mouseTokenHighlight'];
-      }
-    }
-    else {
-      if(tokenClickable.value && tokens.value.some(token => token.x === mouseCellPos.x && token.y === mouseCellPos.y)) {
-        if (highlightCellRegions.value.hasOwnProperty('mouseCellHighlight')) {
-          delete highlightCellRegions.value['mouseCellHighlight'];
-        }
-
-        canvasRef.value.style.cursor = 'grab';
-        
-        highlightCircleRegions.value['mouseTokenHighlight'] = {
-          x: mouseCellPos.x,
-          y: mouseCellPos.y,
-          size: 1,
-          border: colors.highlightDark,
-          fill: colors.highlightLight
-        }
-      }
-      else if(tileClickable.value) {
-        if (highlightCircleRegions.value.hasOwnProperty('mouseTokenHighlight')) {
-          delete highlightCircleRegions.value['mouseTokenHighlight'];
-        }
-
-        highlightCellRegions.value['mouseCellHighlight'] = {
-          x: mouseCellPos.x,
-          y: mouseCellPos.y,
-          width: 1,
-          height: 1,
-          border: colors.highlightDark,
-          fill: colors.highlightLight
-        }
-      }
-    }
+  const context = ctx.value;
+  const canvas = canvasRef.value;
+  if (!canvas || !context) return;
+  
+  let stateReturnValues = mouseStates[mouseState.value].handleMouseMove(event);
+  if (stateReturnValues.state != mouseState.value) {
+    mouseState.value = stateReturnValues.state;
+    mouseStates[mouseState.value].updateDetails(stateReturnValues.details);
   }
 }
 
@@ -181,15 +141,10 @@ function handleMouseUp(event: MouseEvent) {
   const canvas = canvasRef.value;
   if (!canvas || !context) return;
 
-  switch (event.button) {
-    case 0: // Left Click
-      break;
-    case 1: // Middle Click
-      isPanning.value = false;
-      canvasRef.value.style.cursor = 'default';
-      break;
-    case 2: // Right Click
-      break;
+  let stateReturnValues = mouseStates[mouseState.value].handleMouseUp(event);
+  if (stateReturnValues.state != mouseState.value) {
+    mouseState.value = stateReturnValues.state;
+    mouseStates[mouseState.value].updateDetails(stateReturnValues.details);
   }
 }
 
@@ -229,7 +184,21 @@ function handleWheel(event: WheelEvent) {
 }
 
 function handleClick(event: MouseEvent) {
+  event.preventDefault();
+}
 
+function handleKeyDown(event: KeyboardEvent) {
+  if (event.repeat) return;
+
+  const context = ctx.value;
+  const canvas = canvasRef.value;
+  if (!canvas || !context) return;
+
+  let stateReturnValues = mouseStates[mouseState.value].handleKeyDown(event);
+  if (stateReturnValues.state != mouseState.value) {
+    mouseState.value = stateReturnValues.state;
+    mouseStates[mouseState.value].updateDetails(stateReturnValues.details);
+  }
 }
 
 onMounted(() => {
@@ -241,6 +210,8 @@ onMounted(() => {
   panOffset.x = (canvasRef.value.clientWidth / 2) - ((cellSize * props.width) / 2);
   panOffset.y = (canvasRef.value.clientHeight / 2) - ((cellSize * props.height) / 2);
 
+  canvasRef.value.addEventListener('click', handleClick);
+
   canvasRef.value.addEventListener('mouseup', handleMouseUp);
   canvasRef.value.addEventListener('mousedown', handleMouseDown);
   canvasRef.value.addEventListener('mousemove', handleMouseMove);
@@ -250,6 +221,8 @@ onMounted(() => {
   window.addEventListener('resize', drawGrid);
   window.addEventListener('resize', drawTokens);
   window.addEventListener('resize', drawHighlights);
+
+  window.addEventListener('keydown', handleKeyDown);
 });
 
 onUnmounted(() => {

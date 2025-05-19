@@ -1,11 +1,6 @@
 import { ref, reactive, Ref, ExtractPropTypes } from 'vue';
 import { combatGridPropsDefinition } from '@/components/CombatGrid.vue';
-
-export interface Token {
-  x: number;
-  y: number;
-  highlighted: boolean;
-}
+import { MapToken } from '@/composables/gridRenderable';
 
 type PropsType = ExtractPropTypes<typeof combatGridPropsDefinition>;
 
@@ -13,7 +8,7 @@ const tokenBorderBuffer = 3;
 
 export function useGridTokens(
     canvasRef: Ref<HTMLCanvasElement | null>,
-    tokens: Ref<Array<Token>>,
+    tokens: Ref<Array<MapToken>>,
     cellSize: number
 ) {
     function drawTokenAtGridPosition(context: CanvasRenderingContext2D, x: number, y: number) {
@@ -37,7 +32,7 @@ export function useGridTokens(
         const context = ctx;
 
         tokens.value.forEach(token => {
-            drawTokenAtGridPosition(context, token.x, token.y);
+            token.draw(context, cellSize);
         });
     }
 
