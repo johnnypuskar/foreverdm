@@ -12,7 +12,7 @@ export const colors = {
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive, watchEffect, defineProps } from 'vue';
+import { ref, onMounted, onUnmounted, reactive, watchEffect } from 'vue';
 import { useGridMap } from '@/composables/gridMap';
 import { useGridTokens } from '@/composables/gridTokens';
 import { useGridHighlights } from '@/composables/gridHighlights';
