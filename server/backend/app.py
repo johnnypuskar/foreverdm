@@ -1,17 +1,15 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
-from server.backend.lobbies.lobby import Lobby
-
-import sys
-import os
+from server.backend.instances.instance_manager import InstanceManager
+from server.backend.login.login_manager import LoginManager
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-active_lobbies = {}
+instance_manager = InstanceManager()
 
 @app.route('/status', methods=['GET'])
 def status():
@@ -20,31 +18,54 @@ def status():
         "version": "0.0.1"
     })
 
-@socketio.on('join')
-def handle_connect(lobby_id, player_id):
-    if lobby_id not in active_lobbies.keys():
-        active_lobbies[lobby_id] = Lobby(lobby_id)
-    active_lobbies[lobby_id].player_join(player_id)
-    emit('join_response', { 'status': 'success', 'lobby_id': lobby_id, 'player_id': player_id })
-
-@socketio.on('leave')
-def handle_disconnect(lobby_id, player_id):
-    if lobby_id not in active_lobbies.keys():
-        emit('leave_response', { 'status': 'error', 'message': 'Lobby not found' })
-        return
-    leave_status = active_lobbies[lobby_id].player_leave(player_id)
-    if len(active_lobbies[lobby_id].players) == 0:
-        del active_lobbies[lobby_id]
-    if leave_status:
-        emit('leave_response', { 'status': 'success', 'message': 'Player left successfully' })
+@app.route('/auth/google', methods=['POST'])
+def auth_google():
+    data = request.get_json()
+    credential = data.get('credential')
+    login = LoginManager()
+    
+    session_key = login.login_google(credential)
+    if session_key is not None:
+        return jsonify({
+            "status": "success",
+            "session_key": session_key
+        }), 200
     else:
-        emit('leave_response', { 'status': 'error', 'message': 'Player not found in lobby' })
+        return jsonify({
+            "status": "error",
+            "message": "Invalid credentials"
+        }), 401
 
-@socketio.on('debug_info')
-def handle_debug_info():
-    emit('debug_info_data', {
-        'lobbies': list(active_lobbies.keys()),
-    })
+@socketio.on('connect')
+def handle_connect(data):
+    try:
+        response = instance_manager.connect_user(
+            data.get('session_id', None),
+            data.get('campaign_id', None)
+        )
+        emit(response.signal, response.data)
+        if response.disconnect:
+            socketio.disconnect()
+    except Exception as e:
+        # Handle other errors
+        emit('error', {'message': str(e)})
+        socketio.disconnect()
+
+@socketio.on('get_instance_data')
+def handle_get_instance_data(data):
+    try:
+        response = instance_manager.get_instance_data(
+            data.get('session_id', None), 
+            data.get('campaign_id', None),
+            data.get('statblock_id', None)
+        )
+        emit(response.signal, response.data)
+        if response.disconnect:
+            socketio.disconnect()
+    except Exception as e:
+        # Handle other errors
+        emit('error', {'message': str(e)})
+        socketio.disconnect()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
