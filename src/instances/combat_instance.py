@@ -11,6 +11,7 @@ from src.combat.map.map_token import Token
 class CombatInstance(TurnInstance):
     def __init__(self, map):
         super().__init__()
+        self.type = 'COMBAT'
         self._map = map
         self._nav = NavigationHandler(self._map)
 
