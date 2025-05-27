@@ -4,7 +4,5 @@ luaparser
 flask
 flask-cors
 flask-socketio
-
-openai
-tiktoken
-google-generativeai
+python-dotenv
+psycopg[binary]
