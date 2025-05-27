@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+    db:
+        image: postgres:15.4-alpine3.18
+        container_name: foreverdm_db
+        restart: always
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+            POSTGRES_DB: foreverdm
+        ports:
+            - "5432:5432"
+        volumes:
+            - db_data:/var/lib/postgresql/data
+            - ./database/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+    db_data:
