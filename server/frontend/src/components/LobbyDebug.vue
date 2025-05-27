@@ -46,7 +46,7 @@ const playerId = ref('');
 const lobbyId = ref('');
 const debugLog = ref([]);
 
-const socket = io('http://localhost:5000');
+const socket = io(import.meta.env.VITE_BACKEND_API_URL);
 const activeLobbyId = ref('');
 
 function log(message: string) {
