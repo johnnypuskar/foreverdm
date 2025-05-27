@@ -1,4 +1,3 @@
-from uuid import uuid4
 
 class Instance:
 
@@ -11,9 +10,8 @@ class Instance:
         self._statblocks = {}
 
     def add_statblock(self, statblock, owner_id):
-        statblock_id = str(uuid4())
-        self._statblocks[statblock_id] = Instance.StatblockData(statblock, owner_id)
-        return statblock_id
+        self._statblocks[statblock.id] = Instance.StatblockData(statblock, owner_id)
+        return statblock.id
     
     def remove_statblock(self, statblock_id):
         del self._statblocks[statblock_id]
