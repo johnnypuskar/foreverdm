@@ -1,3 +1,4 @@
+import secrets
 from src.stats.wrappers.statblock_wrapper import StatblockWrapper
 from src.util.dice.dice_roller import DiceRoller
 from src.stats.elements.ability_scores import AbilityScores
@@ -13,7 +14,8 @@ from src.control.controller import Controller
 from src.util.modifier_values import ModifierValues, ModifierRolls, ModifierSpeed
 
 class Statblock:
-    def __init__(self, name, size: int = Size.MEDIUM, speed: Speed = Speed(30), dice_roller = DiceRoller()):
+    def __init__(self, name, id, size: int = Size.MEDIUM, speed: Speed = Speed(30), dice_roller = DiceRoller()):
+        self.id = id
         self._name = name
         self._speed = speed
         self._dice_roller = dice_roller
