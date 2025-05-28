@@ -15,8 +15,8 @@ class CombatInstance(TurnInstance):
         self._map = map
         self._nav = NavigationHandler(self._map)
 
-    def add_statblock(self, statblock, owner_id, position = (0, 0, 0)):
-        id = super().add_statblock(statblock, owner_id)
+    def add_statblock(self, statblock, position = (0, 0, 0)):
+        id = super().add_statblock(statblock)
         self._map.add_token(Token(statblock, position, map = self._map))
         return id
 
