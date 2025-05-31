@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE TABLE IF NOT EXISTS campaigns (
-    id VARCHAR() PRIMARY KEY NOT NULL
+    id VARCHAR(64) PRIMARY KEY NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS campaign_users (
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS locations (
     id VARCHAR(64) NOT NULL,
     campaign_id VARCHAR(64) NOT NULL REFERENCES campaigns(id),
     name VARCHAR(255) NOT NULL,
-    map_data JSONB,
+    map_data JSONB DEFAULT NULL,
     PRIMARY KEY (id, campaign_id)
 );
 
@@ -32,9 +32,10 @@ CREATE TABLE IF NOT EXISTS statblocks (
     name VARCHAR(255) NOT NULL,
     campaign_id VARCHAR(64) NOT NULL REFERENCES campaigns(id),
     user_id INTEGER NOT NULL REFERENCES users(id),
-    location_id VARCHAR(64) NOT NULL REFERENCES locations(id),
+    location_id VARCHAR(64) NOT NULL,
     data JSONB NOT NULL,
-    PRIMARY KEY (id, campaign_id)
+    PRIMARY KEY (id, campaign_id),
+    CONSTRAINT fk_location_actual FOREIGN KEY (location_id, campaign_id) REFERENCES locations (id, campaign_id)
 );
 
 CREATE TYPE instance_type AS ENUM (
@@ -44,8 +45,10 @@ CREATE TYPE instance_type AS ENUM (
 );
 
 CREATE TABLE IF NOT EXISTS paused_instances (
-    location_id VARCHAR(64) NOT NULL REFERENCES locations(id),
+    location_id VARCHAR(64) NOT NULL,
     campaign_id VARCHAR(64) NOT NULL REFERENCES campaigns(id),
     type instance_type NOT NULL,
-    UNIQUE (location_id, campaign_id)
+    data JSONB NOT NULL DEFAULT '{}',
+    UNIQUE (location_id, campaign_id),
+    CONSTRAINT fk_location_actual FOREIGN KEY (location_id, campaign_id) REFERENCES locations (id, campaign_id)
 );
