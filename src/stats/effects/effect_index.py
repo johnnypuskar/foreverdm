@@ -5,12 +5,15 @@ from src.stats.effects.effect import Effect
 from src.stats.effects.sub_effect import SubEffect
 from src.stats.wrappers.statblock_effect_wrapper import StatblockEffectWrapper
 from src.util.constants import EventType
+from server.backend.database.util.data_storer import DataStorer
 
-class EffectIndex(Observer, Emitter):
+class EffectIndex(Observer, Emitter, DataStorer):
     def __init__(self):
         super().__init__()
         self._effects = {}
         self._condition_manager = ConditionManager()
+
+        self.map_data_property("_effects", "effects")
     
     def signal(self, event: str, *data):
         if event == EventType.ABILITY_APPLIED_EFFECT:

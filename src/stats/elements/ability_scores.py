@@ -1,13 +1,22 @@
 import math
+from server.backend.database.util.data_storer import DataStorer
 
-class AbilityScores:
+class AbilityScores(DataStorer):
     def __init__(self, str, dex, con, int, wis, cha):
+        super().__init__()
         self.strength = AbilityScore("strength", str)
         self.dexterity = AbilityScore("dexterity", dex)
         self.constitution = AbilityScore("constitution", con)
         self.intelligence = AbilityScore("intelligence", int)
         self.wisdom = AbilityScore("wisdom", wis)
         self.charisma = AbilityScore("charisma", cha)
+
+        self.map_data_property("strength", "strength")
+        self.map_data_property("dexterity", "dexterity")
+        self.map_data_property("constitution", "constitution")
+        self.map_data_property("intelligence", "intelligence")
+        self.map_data_property("wisdom", "wisdom")
+        self.map_data_property("charisma", "charisma")
     
     def get_ability(self, ability_name):
         """

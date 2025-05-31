@@ -1,8 +1,9 @@
 from src.events.observer import Observer
 from src.util.constants import ScriptData
 from src.util.lua_manager import LuaManager
+from server.backend.database.util.data_storer import DataStorer
 
-class Effect(Observer):
+class Effect(Observer, DataStorer):
     def __init__(self, name, script, duration = -1):
         super().__init__()
 
@@ -22,6 +23,13 @@ class Effect(Observer):
         self._script = SCRIPT_HEADERS + script
 
         self._conditions = self._globals.get("conditions", [])
+
+        self.map_data_property("_name", "name")
+        self.map_data_property("_globals", "globals")
+        self.map_data_property("_effect_functions", "effect_functions")
+        self.map_data_property("duration", "duration")
+        self.map_data_property("_script", "script")
+        self.map_data_property("_conditions", "conditions")
 
     def signal(self, event, *data):
         if event == "set_reference_variable":

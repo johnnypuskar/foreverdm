@@ -1,9 +1,17 @@
-class TurnResources:
+from server.backend.database.util.data_storer import DataStorer
+
+class TurnResources(DataStorer):
     def __init__(self):
+        super().__init__()
         self._action = True
         self._bonus_action = True
         self._reaction = True
         self._free_object_interaction = True
+
+        self.map_data_property("_action", "action")
+        self.map_data_property("_bonus_action", "bonus_action")
+        self.map_data_property("_reaction", "reaction")
+        self.map_data_property("_free_object_interaction", "free_object_interaction")
 
     def reset(self):
         self._action = True

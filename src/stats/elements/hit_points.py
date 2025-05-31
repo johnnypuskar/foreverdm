@@ -1,11 +1,18 @@
 from src.util.resettable_value import ResettableValue
 from src.util.return_status import ReturnStatus
+from server.backend.database.util.data_storer import DataStorer
 
-class HitPoints:
+class HitPoints(DataStorer):
     def __init__(self, hp: int, current_hp: int = None):
+        super().__init__()
         self._max_hp = hp
+        self.map_data_property("_max_hp", "max_hp")
+
         self._hp = current_hp if current_hp is not None else hp
+        self.map_data_property("_hp", "current_hp")
+
         self._temp_hp = 0
+        self.map_data_property("_temp_hp", "temp_hp")
     
     def get_hp(self):
         """Get current hit points."""

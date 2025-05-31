@@ -6,8 +6,9 @@ from src.stats.abilities.concentration_tracker import ConcentrationTracker
 from src.stats.abilities.ability import Ability
 from src.events.observer import Observer, Emitter
 from src.stats.wrappers.statblock_ability_wrapper import StatblockAbilityWrapper
+from server.backend.database.util.data_storer import DataStorer
 
-class AbilityIndex(Observer, Emitter):
+class AbilityIndex(Observer, Emitter, DataStorer):
     def __init__(self):
         super().__init__()
         self._abilities = {}
@@ -15,6 +16,11 @@ class AbilityIndex(Observer, Emitter):
         self._concentration_tracker.connect(self)
         self._active_use_ability = None
         self._active_use_modifiers = []
+
+        self.map_data_property("_abilities", "abilities")
+        self.map_data_property("_concentration_tracker", "concentration_tracker")
+        self.map_data_property("_active_use_ability", "active_use_ability")
+        self.map_data_property("_active_use_modifiers", "active_use_modifiers")
 
     def signal(self, event: str, *data):
         if event == EventType.EFFECT_GRANTED_ABILITY:
@@ -179,7 +185,7 @@ class AbilityIndex(Observer, Emitter):
         
         ability.regenerate_uuid()
         if ability._concentration:
-            self._concentration_tracker.set_concentration(ability, ability._duration.timestamp)
+            self._concentration_tracker.set_concentration(ability._uuid, ability._duration.timestamp)
         
         if not ability.ready_check():
             return ReturnStatus(False, f"Preparing to use {ability_name}, {ability._use_delay} turns remaining.")

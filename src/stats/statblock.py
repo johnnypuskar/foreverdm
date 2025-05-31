@@ -1,4 +1,3 @@
-import secrets
 from src.stats.wrappers.statblock_wrapper import StatblockWrapper
 from src.util.dice.dice_roller import DiceRoller
 from src.stats.elements.ability_scores import AbilityScores
@@ -12,15 +11,19 @@ from src.stats.turn_resources import TurnResources
 from src.stats.items.inventory import Inventory
 from src.control.controller import Controller
 from src.util.modifier_values import ModifierValues, ModifierRolls, ModifierSpeed
+from server.backend.database.util.data_storer import DataStorer
 
-class Statblock:
+class Statblock(DataStorer):
     def __init__(self, name, id, size: int = Size.MEDIUM, speed: Speed = Speed(30), dice_roller = DiceRoller()):
+        super().__init__()
         self.id = id
+
         self._name = name
         self._speed = speed
+        self._size = Size(size)
+
         self._dice_roller = dice_roller
         
-        self._size = Size(size)
         self._hit_points = HitPoints(10)
         self._ability_scores = AbilityScores(10, 10, 10, 10, 10, 10)
         self._level = Level()
@@ -28,6 +31,18 @@ class Statblock:
         self._effects = EffectIndex()
         self._turn_resources = TurnResources()
         self._inventory = Inventory(self)
+
+        self.map_data_property("id", "id")
+        self.map_data_property("_name", "name")
+        self.map_data_property("_speed", "speed")
+        self.map_data_property("_size", "size")
+        self.map_data_property("_hit_points", "hit_points")
+        self.map_data_property("_ability_scores", "ability_scores")
+        self.map_data_property("_level", "level")
+        self.map_data_property("_abilities", "abilities")
+        self.map_data_property("_effects", "effects")
+        self.map_data_property("_turn_resources", "turn_resources")
+        # self.map_data_property("_inventory", "inventory")
 
         self._abilities.connect(self._effects)
         self._inventory.connect(self._effects)

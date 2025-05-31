@@ -1,6 +1,10 @@
-class Level():
+from server.backend.database.util.data_storer import DataStorer
+
+class Level(DataStorer):
     def __init__(self):
+        super().__init__()
         self._levels = {}
+        self.map_data_property("_levels", "levels")
     
     def get_level(self, class_name = None):
         """

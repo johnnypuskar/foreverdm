@@ -1,4 +1,6 @@
-class Size:
+from server.backend.database.util.data_storer import DataStorer
+
+class Size(DataStorer):
     TINY = 2.5
     SMALL = 5
     MEDIUM = 5.1
@@ -10,10 +12,12 @@ class Size:
     _SIZE_CLASSES = [TINY, SMALL, MEDIUM, LARGE, HUGE, GARGANTUAN]
 
     def __init__(self, radius):
+        super().__init__()
         if radius in self._SIZE_CLASSES:
             self._size_class = self._SIZE_CLASSES.index(radius)
         else:
             raise ValueError(f"Invalid size value ({radius})")
+        self.map_data_property("_size_class", "size_class")
     
     @staticmethod
     def from_size_class(size_class):
