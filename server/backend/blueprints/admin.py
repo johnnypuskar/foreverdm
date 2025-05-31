@@ -1,13 +1,12 @@
-from flask import Blueprint, jsonify, request
+from flask import jsonify, request
+from server.backend.blueprints.main import main
 
 import json
 from server.backend.database.users import UsersTable
 from server.backend.database.statblocks import StatblocksTable
 from server.backend.database.locations import LocationsTable
 
-admin_blueprint = Blueprint('admin', __name__, url_prefix='/admin')
-
-@admin_blueprint.route('add-location', methods=['POST'])
+@main.route('/admin/add-location', methods=['POST'])
 def add_location():
     data = request.get_json()
     
@@ -21,7 +20,7 @@ def add_location():
         "message": "Location added successfully"
     }), 200
 
-@admin_blueprint.route('add-statblock', methods=['POST'])
+@main.route('/admin/add-statblock', methods=['POST'])
 def add_statblock():
     data = request.get_json()
     session_key = data.get('session_key')
