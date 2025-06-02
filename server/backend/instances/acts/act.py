@@ -18,8 +18,13 @@ class Act(DataStorer):
         return self._type.value
     
     @type.setter
-    def type(self, value: ActType):
-        self._type = value
+    def type(self, value):
+        if isinstance(value, ActType):
+            self._type = value
+        elif isinstance(value, str):
+            self._type = ActType(value)
+        else:
+            raise ValueError(f"Invalid type for Act: {value}. Must be ActType or str.")
 
     @property
     def statblock_ids(self):
