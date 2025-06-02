@@ -36,7 +36,7 @@ class Size(DataStorer):
         return self._size_class
     
     @size_class.setter
-    def size_class(self, new_class):
+    def set_size_class(self, new_class):
         """Sets the size class value, throw error if invalid"""
         if new_class in range(6):
             self._size_class = new_class
