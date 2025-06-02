@@ -140,7 +140,7 @@ class InstanceManager:
             signal = "command_response",
             data = {
                 "result": result,
-                "message": message,
+                "message": message
             }
         )
 
