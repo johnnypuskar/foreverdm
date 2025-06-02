@@ -1,7 +1,9 @@
 from src.stats.movement.movement_cost import MovementCost
+from server.backend.database.util.data_storer import DataStorer
 
-class Speed:
+class Speed(DataStorer):
     def __init__(self, walk: int, fly: int = 0, swim: int = 0, climb: int = 0, burrow: int = 0, hover: bool = False):
+        super().__init__()
         self._walk = walk
         self._fly = fly
         self._swim = swim
@@ -10,6 +12,14 @@ class Speed:
         self._hover = hover
 
         self.distance_moved = 0
+
+        self.map_data_property("_walk", "walk")
+        self.map_data_property("_fly", "fly")
+        self.map_data_property("_swim", "swim")
+        self.map_data_property("_climb", "climb")
+        self.map_data_property("_burrow", "burrow")
+        self.map_data_property("_hover", "hover")
+        self.map_data_property("distance_moved", "distance_moved")
     
     @property
     def walk(self):

@@ -19,14 +19,12 @@ class DataStorer:
         return exported_data
     
     def import_data(self, data: dict) -> None:
-        try:
-            for mapping in self._mappings:
+        for mapping in self._mappings:
+            if hasattr(self, mapping.property_name) and mapping.data_entry_name in data:
                 if isinstance(getattr(self, mapping.property_name, None), DataStorer):
                     getattr(self, mapping.property_name).import_data(data[mapping.data_entry_name])
                 else:
                     setattr(self, mapping.property_name, data[mapping.data_entry_name])
-        except KeyError as e:
-            raise KeyError(f"Data Import Error: {e}")
 
     class PropertyMapping:
         def __init__(self, property_name: str, data_entry_name: str):

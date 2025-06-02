@@ -4,7 +4,8 @@ from server.backend.database.util.data_storer import DataStorer
 
 class ConcentrationTracker(Emitter, DataStorer):
     def __init__(self):
-        super().__init__()
+        Emitter.__init__(self)
+        DataStorer.__init__(self)
         self._ability_uuid = None
         self._remaining_ticks = 0
 

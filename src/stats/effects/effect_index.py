@@ -9,7 +9,10 @@ from server.backend.database.util.data_storer import DataStorer
 
 class EffectIndex(Observer, Emitter, DataStorer):
     def __init__(self):
-        super().__init__()
+        Observer.__init__(self)
+        Emitter.__init__(self)
+        DataStorer.__init__(self)
+        
         self._effects = {}
         self._condition_manager = ConditionManager()
 

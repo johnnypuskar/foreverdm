@@ -10,7 +10,10 @@ from server.backend.database.util.data_storer import DataStorer
 
 class AbilityIndex(Observer, Emitter, DataStorer):
     def __init__(self):
-        super().__init__()
+        Observer.__init__(self)
+        Emitter.__init__(self)
+        DataStorer.__init__(self)
+        
         self._abilities = {}
         self._concentration_tracker = ConcentrationTracker()
         self._concentration_tracker.connect(self)
