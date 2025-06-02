@@ -86,4 +86,13 @@ async def main():
         print(game.issue_command(current_ID, EndTurnCommand()))
         await asyncio.sleep(0.1)
 
-asyncio.run(main())
+# asyncio.run(main())
+
+test = Statblock("Test", "abc", speed = Speed(30, 45))
+data = test.export_data()
+print(data)
+
+test2 = Statblock("", "")
+test2.import_data(data)
+print(test2.export_data())
+pass
