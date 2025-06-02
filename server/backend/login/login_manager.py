@@ -16,12 +16,10 @@ class LoginManager:
             idinfo = id_token.verify_oauth2_token(
                 credential, requests.Request(), GOOGLE_OAUTH_CLIENT
             )
-            users = UsersTable()
-            user_id = users.get_user_id(idinfo.get("email"))
+            user_id = UsersTable.get_user_id_from_username(idinfo.get("email"))
             if user_id is not None:
-                session_key = users.new_user_session(user_id)
+                session_key = UsersTable.new_user_session(user_id)
                 return session_key
             return None
         except Exception as e:
-            print(f"Error during Google login: {e}")
             return None
