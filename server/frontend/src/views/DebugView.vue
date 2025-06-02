@@ -1,7 +1,7 @@
 <script setup>
-import LobbyDebug from '../components/LobbyDebug.vue';
+import DebugTools from '../components/DebugTools.vue';
 </script>
 
 <template>
-    <LobbyDebug />
+    <DebugTools />
 </template>

@@ -20,8 +20,18 @@ const router = createRouter({
       path: '/debug',
       name: 'debug',
       component: DebugView
+    },
+    {
+      path: '/campaigns',
+      name: 'campaigns',
+      component: HelloWorld
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: HelloWorld
     }
-  ],
+  ]
 })
 
 export default router
