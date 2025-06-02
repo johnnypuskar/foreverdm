@@ -7,9 +7,9 @@ class Table:
 
     @staticmethod
     @contextmanager
-    def cursor(self):
+    def cursor():
         conn = psycopg.connect(f"""\
-            dbname={self.DB_NAME} \
+            dbname={Table.DB_NAME} \
             user={os.getenv('POSTGRES_USER')} \
             password={os.getenv('POSTGRES_PASSWORD')} \
             host={os.getenv('DB_ADDRESS')} \
