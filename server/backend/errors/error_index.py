@@ -44,6 +44,26 @@ class Errors:
     class InvalidInstanceType(Error):
         def __init__(self):
             super().__init__(1107, "INVALID_INSTANCE_TYPE", "The specified instance type is invalid or not supported.")
+    
+    class PausedInstanceNotFound(Error):
+        def __init__(self):
+            super().__init__(1108, "PAUSED_INSTANCE_NOT_FOUND", "The specified paused instance was not found.")
+
+    class NoInstanceFound(Error):
+        def __init__(self):
+            super().__init__(1109, "NO_INSTANCE_FOUND", "No instance found for the campaign and location.")
+
+    class StatblockNotInInstance(Error):
+        def __init__(self):
+            super().__init__(1110, "STATBLOCK_NOT_IN_INSTANCE", "The specified statblock is not part of the instance.")
+
+    class InvalidCommand(Error):
+        def __init__(self, command):
+            super().__init__(1200, "INVALID_COMMAND", f"The command '{command}' is invalid or not recognized.")
+    
+    class InvalidArguments(Error):
+        def __init__(self):
+            super().__init__(1201, "INVALID_ARGUMENTS", "The provided arguments are invalid or missing.")
 
     class NotImplementedError(Error):
         def __init__(self, feature):
