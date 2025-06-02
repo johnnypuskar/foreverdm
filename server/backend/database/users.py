@@ -7,11 +7,12 @@ class UsersTable(Table):
         pass
     
     @staticmethod
-    def get_user_id(username):
+    def get_user_id_from_username(username):
         with Table.cursor() as cur:
             cur.execute("SELECT id FROM users WHERE username = %s", (username,))
             result = cur.fetchone()
             return result[0] if result else None
+        raise Errors.DataAccessError()
 
     @staticmethod
     def new_user_session(user_id):
@@ -19,6 +20,7 @@ class UsersTable(Table):
             session_key = secrets.token_hex(16)
             cur.execute("INSERT INTO sessions (session_key, user_id) VALUES (%s, %s)", (session_key, user_id))
             return session_key
+        raise Errors.DataAccessError()
     
     @staticmethod
     def get_user_id(session_key):
@@ -28,5 +30,5 @@ class UsersTable(Table):
             if result is not None:
                 return result[0]
             
-            raise Errors.SESSION_NOT_FOUND
-        raise Errors.UNSPECIFIED_ERROR
+            raise Errors.SessionNotFound()
+        raise Errors.DataAccessError()
