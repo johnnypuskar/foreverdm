@@ -2,10 +2,11 @@ class DataStorer:
     def __init__(self):
         self._mappings = []
 
-    def map_data_property(self, property_name: str, data_entry_name: str) -> None:
+    def map_data_property(self, property_name: str, data_entry_name: str, no_import = False) -> None:
         self._mappings.append(DataStorer.PropertyMapping(
             property_name = property_name,
-            data_entry_name = data_entry_name
+            data_entry_name = data_entry_name,
+            no_import = no_import
         ))
     
     def export_data(self) -> dict:
@@ -20,13 +21,14 @@ class DataStorer:
     
     def import_data(self, data: dict) -> None:
         for mapping in self._mappings:
-            if hasattr(self, mapping.property_name) and mapping.data_entry_name in data:
+            if not mapping.no_import and hasattr(self, mapping.property_name) and mapping.data_entry_name in data:
                 if isinstance(getattr(self, mapping.property_name, None), DataStorer):
                     getattr(self, mapping.property_name).import_data(data[mapping.data_entry_name])
                 else:
                     setattr(self, mapping.property_name, data[mapping.data_entry_name])
 
     class PropertyMapping:
-        def __init__(self, property_name: str, data_entry_name: str):
+        def __init__(self, property_name: str, data_entry_name: str, no_import: bool = False):
             self.property_name = property_name
             self.data_entry_name = data_entry_name
+            self.no_import = no_import
