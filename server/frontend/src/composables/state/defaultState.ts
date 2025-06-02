@@ -58,13 +58,10 @@ export class DefaultState extends MouseState {
         this.mouseCellPos.x = cellX;
         this.mouseCellPos.y = cellY;
 
-        console.log(this.mouseCellPos.x, this.mouseCellPos.y, inbounds);
-
         return inbounds;
     }
 
     processCursor(inbounds) {
-        console.log("Process Cursor: ", this.mouseCellPos.x, this.mouseCellPos.y, inbounds);
         if (!inbounds) {
             if (this.highlightCellRegions.value.hasOwnProperty("mouseCellHighlight")) { delete this.highlightCellRegions.value["mouseCellHighlight"]; }
             if (this.highlightCircleRegions.value.hasOwnProperty("mouseTokenHighlight")) { delete this.highlightCircleRegions.value["mouseTokenHighlight"]; }
