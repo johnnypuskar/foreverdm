@@ -1,11 +1,13 @@
 import json
 from src.combat.map.map_tile import MapTile
 from src.combat.map.map_tile_wall import MapTileWall
+from server.backend.database.util.data_storer import DataStorer
 
-class Map:
+class Map(DataStorer):
     TILE_SIZE = 5
 
     def __init__(self, width: int, height: int, max_height: int = 1):
+        super().__init__()
         self._width = width
         self._height = height
         self._max_height = max_height
@@ -38,6 +40,13 @@ class Map:
                 self._walls.append(tile._wall_bottom)
 
                 self._tiles[y].append(tile)
+        
+        self.map_data_property("_width", "width")
+        self.map_data_property("_height", "height")
+        self.map_data_property("_max_height", "max_height")
+        self.map_data_property("_tiles", "tiles")
+        self.map_data_property("_walls", "walls")
+        self.map_data_property("_tokens", "tokens")
     
     @property
     def width(self):

@@ -2,9 +2,11 @@
 from src.util.modifier_values import ModifierSpeed
 from src.stats.movement.movement_cost import MovementCost
 from src.combat.map.map_tile_wall import MapTileWall
+from server.backend.database.util.data_storer import DataStorer
 
-class MapTile:
+class MapTile(DataStorer):
     def __init__(self, x: int, y: int, height: int = 0):
+        super().__init__()
         self._x = x
         self._y = y
 
@@ -22,6 +24,13 @@ class MapTile:
         self._wall_left = None
         self._wall_bottom = None
         self._wall_right = None
+
+        self.map_data_property("_x", "x")
+        self.map_data_property("_y", "x")
+        self.map_data_property("_height", "height")
+        self.map_data_property("_terrain_difficulty", "terrain_difficulty")
+        self.map_data_property("_swimmable", "swimmable")
+        self.map_data_property("_max_depth", "max_depth")
     
     @property
     def x(self):

@@ -1,9 +1,11 @@
 from src.stats.statblock import Statblock
 from src.combat.map.positioned import Positioned
+from server.backend.database.util.data_storer import DataStorer
 
-class Token(Statblock, Positioned):
+class Token(Statblock, Positioned, DataStorer):
     def __init__(self, statblock, position = (-1, -1, -1), map = None):
         Positioned.__init__(self, position, map)
+        DataStorer.__init__(self)
         self._statblock = statblock
 
         self._extensions = {}
@@ -12,8 +14,33 @@ class Token(Statblock, Positioned):
                 if ext_x + ext_y == 0: # Check if both are 0
                     continue
                 self._extensions[(ext_x, ext_y)] = TokenExtension(self, (ext_x, ext_y))
+        
+        self.map_data_property("statblock_id", "statblock_id", no_import = True)
+        self.map_data_property("diameter", "diameter", no_import = True)
+        self.map_data_property("x", "x", no_import = True)
+        self.map_data_property("y", "y", no_import = True)
+        self.map_data_property("height", "height", no_import = True)
 
+    @property
+    def statblock_id(self):
+        return self._statblock.id
     
+    @property
+    def diameter(self):
+        return round(self._statblock.get_size().radius * 2 / 5.0)
+
+    @property
+    def x(self):
+        return self.get_position()[0]
+    
+    @property
+    def y(self):
+        return self.get_position()[1]
+
+    @property
+    def height(self):
+        return self.get_position()[2]
+
     def get_position(self):
         return super().get_position()
     

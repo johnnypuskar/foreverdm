@@ -1,27 +1,53 @@
 from enum import Enum
 from src.combat.map.map_object import MapObject
+from server.backend.database.util.data_storer import DataStorer
 
-class MapTileWall(MapObject):
+class MapTileWall(MapObject, DataStorer):
     class WallDirection(Enum):
         TOP = 1
         LEFT = 2
         BOTTOM = 3
         RIGHT = 4
     
-    class WallStats:
-        def __init__(self, cover, passable, movement_penalty):
+    class WallStats(DataStorer):
+        def __init__(self, cover, passable, movement_penalty, climb_dc):
+            super().__init__()
             self.cover = cover
             self.passable = passable
             self.movement_penalty = movement_penalty
+            self.climb_dc = climb_dc
 
-    def __init__(self, cover = 0, passable = True, movement_penalty = 0, height = 1, name = "MapTileWall", script = None):
-        super().__init__(name, script)
+            self.data_property("cover", cover)
+            self.data_property("passable", passable)
+
+    def __init__(self, wall_pos, cover = 0, passable = True, movement_penalty = 0, height = 1, name = "MapTileWall", script = None):
+        MapObject.__init__(self, name, script)
+        DataStorer.__init__(self)
+        self._tile_x = wall_pos[0]
+        self._tile_y = wall_pos[1]
+        self._wall_side = wall_pos[2]
         self._wall_stats = []
         for i in range(height):
-            self._wall_stats.append(MapTileWall.WallStats(cover, passable, movement_penalty))
+            self._wall_stats.append(MapTileWall.WallStats(cover, passable, movement_penalty, 25))
 
-        self._climb_dc = 25
+        self.map_data_property("_tile_x", "x")
+        self.map_data_property("_tile_y", "y")
+        self.map_data_property("_wall_side", "side")
+        self.map_data_property("_wall_stats", "walls")
     
+    @property
+    def wall_side(self):
+        return self._wall_side.value
+    
+    @wall_side.setter
+    def set_wall_side(self, value):
+        if isinstance(value, MapTileWall.WallDirection):
+            self._wall_side = value
+        elif isinstance(value, int):
+            self._wall_side = MapTileWall.WallDirection(value)
+        else:
+            raise ValueError(f"Invalid type for MapTileWall wall_side: {value}. Must be WallDirection or int.")
+
     def get_cover(self, height):
         return self._wall_stats[height].cover
     
@@ -30,6 +56,9 @@ class MapTileWall(MapObject):
     
     def get_movement_penalty(self, height):
         return self._wall_stats[height].movement_penalty
+
+    def get_climb_dc(self, height):
+        return self._wall_stats[height].climb_dc if not self.get_passable(height) else None
 
     def set_cover(self, cover, height = None):
         if height is None:
@@ -52,8 +81,12 @@ class MapTileWall(MapObject):
         else:
             self._wall_stats[height].movement_penalty = movement_penalty
 
-    def get_climb_dc(self, height):
-        return self._climb_dc if not self.get_passable(height) else None
+    def set_climb_dc(self, dc, height = None):
+        if height is None:
+            for wall_stat in self._wall_stats:
+                wall_stat.climb_dc = dc
+        else:
+            self._wall_stats[height].climb_dc = dc
 
     def __getattr__(self, name):
         return super().__getattr__(name)
