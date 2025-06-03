@@ -35,3 +35,11 @@ class Instance:
             return None
         
         return self.act.get_view_data(statblock_id)
+
+    def serialize(self):
+        return {
+            "campaign_id": self.campaign_id,
+            "location_id": self.location_id,
+            "act": str(self.act.type) if self.act is not None else None,
+            "statblock_ids": list(self.act.statblock_ids) if self.act is not None else []
+        }
