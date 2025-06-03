@@ -26,6 +26,25 @@ def full_disconnect():
     instance_manager.remove_active_statblock(request.sid)
     disconnect()
 
+@socketio.on('set_instance_act_type')
+def handle_set_instance_act_type(data):
+    try:
+        response = instance_manager.set_instance_act_type(
+            data.get('session_key'), 
+            data.get('campaign_id'),
+            data.get('statblock_id'),
+            data.get('act_type'),
+        )
+
+        emit(response.signal, response.data)
+        if response.disconnect:
+            full_disconnect()
+    except Error as e:
+        # Handle other errors
+        print("set_instance_act_type:", e)
+        emit('error', {'message': str(e)})
+        full_disconnect()
+
 @socketio.on('connect')
 def handle_connect(auth):
     try:
