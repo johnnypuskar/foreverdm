@@ -1,3 +1,4 @@
+from crosshash import crossjson
 from server.backend.errors.error_index import Errors
 from server.backend.util.socket_response import SocketResponse
 from server.backend.database.statblocks import StatblocksTable
@@ -25,13 +26,6 @@ class InstanceManager:
             self.instances[campaign_id][location_id] = Instance(campaign_id, location_id)
         
         return self.instances[campaign_id][location_id]
-    
-    def remove_instance(self, campaign_id, location_id) -> None:
-        if self.instances.get(campaign_id) is not None:
-            if self.instances[campaign_id].get(location_id) is not None:
-                del self.instances[campaign_id][location_id]
-                if not self.instances[campaign_id]:
-                    del self.instances[campaign_id]
 
     def add_active_statblock(self, key, campaign_id, statblock_id):
         if self.active_statblocks.get(key) is not None and self.active_statblocks[key] != (campaign_id, statblock_id):
@@ -63,9 +57,22 @@ class InstanceManager:
 
             if not self.is_active_instance(campaign_id, statblock_id):
                 location_id = StatblocksTable.get_location(statblock_id, campaign_id)
-                del self.instances[campaign_id][location_id]
-                if len(self.instances[campaign_id]) == 0:
-                    del self.instances[campaign_id]
+                self.remove_instance(campaign_id, location_id)
+
+    def remove_instance(self, campaign_id, location_id):
+        if self.instances[campaign_id][location_id].act.store_on_close:
+            LocationsTable.set_paused_instance_details(
+                location_id,
+                campaign_id,
+                self.instances[campaign_id][location_id].act.type,
+                crossjson(self.instances[campaign_id][location_id].act.export_data())
+            )
+        else:
+            LocationsTable.delete_paused_instance_details(location_id, campaign_id)
+
+        del self.instances[campaign_id][location_id]
+        if len(self.instances[campaign_id]) == 0:
+            del self.instances[campaign_id]
 
     def get_instance_data(self, session_id, campaign_id, statblock_id):
         has_statblock, id_data = self._validate(session_id, campaign_id, statblock_id)
@@ -106,6 +113,31 @@ class InstanceManager:
             }
         )
     
+    def set_instance_act_type(self, session_id, campaign_id, statblock_id, act_type):
+        # DEBUG TOOL
+        has_statblock, id_data = self._validate(session_id, campaign_id, statblock_id)
+        if not has_statblock:
+            return SocketResponse(
+                signal = "set_instance_data",
+                data = {
+                    'view': 'CHARACTER_SELECT',
+                    'data': id_data
+                }
+            )
+        location_id = id_data
+
+        instance = self.instances[campaign_id][location_id]
+
+        instance.set_act_type(ActType(act_type))
+        
+        return SocketResponse(
+            signal = "set_instance_data",
+            data = {
+                'view': instance.act.type,
+                'data': instance.get_view_data(statblock_id)
+            }
+        )
+    
     def send_command(self, session_id, campaign_id, statblock_id, command_type, args):
         has_statblock, id_data = self._validate(session_id, campaign_id, statblock_id)
         if not has_statblock:
@@ -132,9 +164,7 @@ class InstanceManager:
         result, message = command.execute(instance)
 
         if not self.is_active_instance(campaign_id, location_id):
-            del self.instances[campaign_id][location_id]
-            if len(self.instances[campaign_id]) == 0:
-                del self.instances[campaign_id]
+            self.remove_instance(campaign_id, location_id)
 
         return SocketResponse(
             signal = "command_response",
