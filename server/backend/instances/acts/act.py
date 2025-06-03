@@ -8,10 +8,14 @@ class Act(DataStorer):
         self.campaign_id = campaign_id
         self.location_id = location_id
         self._statblock_ids = statblock_ids
+        self.store_on_close = False
 
         self.map_data_property("campaign_id", "campaign_id")
         self.map_data_property("location_id", "location_id")
-        self.map_data_property("statblock_ids", "statblock_ids")
+        self.map_data_property("statblock_ids", "statblock_ids",
+            export_function = lambda v: list(v),
+            import_function = lambda df, v: set(v)
+        )
     
     @property
     def type(self):
