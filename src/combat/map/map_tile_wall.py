@@ -2,7 +2,7 @@ from enum import Enum
 from src.combat.map.map_object import MapObject
 from server.backend.database.util.data_storer import DataStorer
 
-class MapTileWall(MapObject, DataStorer):
+class MapTileWall(MapObject):
     class WallDirection(Enum):
         TOP = 1
         LEFT = 2
@@ -17,24 +17,37 @@ class MapTileWall(MapObject, DataStorer):
             self.movement_penalty = movement_penalty
             self.climb_dc = climb_dc
 
-            self.data_property("cover", cover)
-            self.data_property("passable", passable)
+            self.map_data_property("cover", "cover")
+            self.map_data_property("passable", "passable")
+            self.map_data_property("movement_penalty", "movement_penalty")
+            self.map_data_property("climb_dc", "climb_dc")
 
-    def __init__(self, wall_pos, cover = 0, passable = True, movement_penalty = 0, height = 1, name = "MapTileWall", script = None):
+    def __init__(self, cover = 0, passable = True, movement_penalty = 0, height = 1, name = "MapTileWall", script = None):
         MapObject.__init__(self, name, script)
-        DataStorer.__init__(self)
-        self._tile_x = wall_pos[0]
-        self._tile_y = wall_pos[1]
-        self._wall_side = wall_pos[2]
         self._wall_stats = []
         for i in range(height):
             self._wall_stats.append(MapTileWall.WallStats(cover, passable, movement_penalty, 25))
 
-        self.map_data_property("_tile_x", "x")
-        self.map_data_property("_tile_y", "y")
-        self.map_data_property("_wall_side", "side")
-        self.map_data_property("_wall_stats", "walls")
+        self.map_data_property("_wall_stats", "wall_stats", 
+            export_function = lambda v: [{
+                "cover": stat.cover,
+                "passable": stat.passable,
+                "movement_penalty": stat.movement_penalty,
+                "climb_dc": stat.climb_dc
+            } for stat in v],
+            import_function = lambda df, v: [MapTileWall.WallStats(
+                cover = stat["cover"],
+                passable = stat["passable"],
+                movement_penalty = stat["movement_penalty"],
+                climb_dc = stat["climb_dc"]
+            ) for stat in v]
+        )
     
+    def export_data(self):
+        data = super().export_data()
+        del data["name"]
+        return data
+
     @property
     def wall_side(self):
         return self._wall_side.value

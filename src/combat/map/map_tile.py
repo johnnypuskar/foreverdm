@@ -26,12 +26,17 @@ class MapTile(DataStorer):
         self._wall_right = None
 
         self.map_data_property("_x", "x")
-        self.map_data_property("_y", "x")
+        self.map_data_property("_y", "y")
         self.map_data_property("_height", "height")
         self.map_data_property("_terrain_difficulty", "terrain_difficulty")
         self.map_data_property("_swimmable", "swimmable")
         self.map_data_property("_max_depth", "max_depth")
-    
+        self.map_data_property("_props", "props")
+        self.map_data_property("_wall_top", "wall_top")
+        self.map_data_property("_wall_left", "wall_left")
+        self.map_data_property("_wall_bottom", "wall_bottom")
+        self.map_data_property("_wall_right", "wall_right")
+
     @property
     def x(self):
         return self._x

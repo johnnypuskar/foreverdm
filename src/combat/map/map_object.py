@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from src.util.lua_manager import LuaManager
 from src.events.observer import Observer
+from server.backend.database.util.data_storer import DataStorer
 
-class MapObject(Observer, ABC):
+class MapObject(Observer, ABC, DataStorer):
     def __init__(self, name, script = None):
+        DataStorer.__init__(self)
         self._name = name
         self._script = script
         self._script_functions = []
@@ -17,6 +19,11 @@ class MapObject(Observer, ABC):
         else:
             self._script_functions = []
             self._globals = {}
+        
+        self.map_data_property("_name", "name")
+        self.map_data_property("_script", "script", export_falsy = False)
+        self.map_data_property("_script_functions", "script_functions", export_falsy = False)
+        self.map_data_property("_applied_objects", "applied_objects", export_falsy = False)
 
     def __getattr__(self, name):
         if name in self._script_functions:

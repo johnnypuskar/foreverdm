@@ -1,11 +1,9 @@
 from src.stats.statblock import Statblock
 from src.combat.map.positioned import Positioned
-from server.backend.database.util.data_storer import DataStorer
 
-class Token(Statblock, Positioned, DataStorer):
+class Token(Statblock, Positioned):
     def __init__(self, statblock, position = (-1, -1, -1), map = None):
         Positioned.__init__(self, position, map)
-        DataStorer.__init__(self)
         self._statblock = statblock
 
         self._extensions = {}
@@ -15,14 +13,14 @@ class Token(Statblock, Positioned, DataStorer):
                     continue
                 self._extensions[(ext_x, ext_y)] = TokenExtension(self, (ext_x, ext_y))
         
-        self.map_data_property("statblock_id", "statblock_id", no_import = True)
-        self.map_data_property("diameter", "diameter", no_import = True)
-        self.map_data_property("x", "x", no_import = True)
-        self.map_data_property("y", "y", no_import = True)
-        self.map_data_property("height", "height", no_import = True)
+        self.map_data_property("statblock_id", "statblock_id")
+        self.map_data_property("x", "x")
+        self.map_data_property("y", "y")
+        self.map_data_property("height", "height")
 
     @property
     def statblock_id(self):
+        # TODO: Populate statblock data from ID
         return self._statblock.id
     
     @property
