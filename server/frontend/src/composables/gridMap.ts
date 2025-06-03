@@ -1,7 +1,4 @@
 import { ref, reactive, Ref, ExtractPropTypes } from 'vue';
-import { combatGridPropsDefinition } from '@/components/CombatGrid.vue';
-
-type PropsType = ExtractPropTypes<typeof combatGridPropsDefinition>;
 
 // Color Palette
 const colors = {
@@ -13,7 +10,8 @@ const colors = {
 
 export function useGridMap(
     canvasRef: Ref<HTMLCanvasElement> | null,
-    props: PropsType,
+    width: Ref<number>,
+    height: Ref<number>,
     cellSize: number,
     panOffset: { x: number; y: number },
     zoomLevel: Ref<number>,
@@ -40,8 +38,8 @@ export function useGridMap(
         context.fillStyle = colors.gridBackground;
         context.strokeStyle = colors.gridLine;
         context.lineWidth = 1;
-        for (let x = 0; x < props.width; x++) {
-            for (let y = 0; y < props.height; y++) {
+        for (let x = 0; x < width.value; x++) {
+            for (let y = 0; y < height.value; y++) {
             context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
             context.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
             }
@@ -49,18 +47,18 @@ export function useGridMap(
 
         context.strokeStyle = colors.borderLine;
         context.lineWidth = 3;
-        context.strokeRect(0, 0, props.width * cellSize, props.height * cellSize);
+        context.strokeRect(0, 0, width.value * cellSize, height.value * cellSize);
 
         // Drop Shadow
         const dropShadowDistance = 8;
         const dropShadowWidth = 12;
         const cornerPoints = [
-            { x: props.width * cellSize, y: dropShadowDistance },
-            { x: props.width * cellSize, y: props.height * cellSize },
-            { x: dropShadowDistance, y: props.height * cellSize },
-            { x: dropShadowDistance, y: props.height * cellSize + dropShadowWidth },
-            { x: props.width * cellSize + dropShadowWidth, y: props.height * cellSize + dropShadowWidth },
-            { x: props.width * cellSize + dropShadowWidth, y: dropShadowDistance }
+            { x: width.value * cellSize, y: dropShadowDistance },
+            { x: width.value * cellSize, y: height.value * cellSize },
+            { x: dropShadowDistance, y: height.value * cellSize },
+            { x: dropShadowDistance, y: height.value * cellSize + dropShadowWidth },
+            { x: width.value * cellSize + dropShadowWidth, y: height.value * cellSize + dropShadowWidth },
+            { x: width.value * cellSize + dropShadowWidth, y: dropShadowDistance }
         ];
         context.fillStyle = 'rgba(0, 0, 0, 0.2)';
         context.beginPath();

@@ -62,6 +62,8 @@ onMounted(() => {
             // console.log("Received instance data:", d);
             viewMode.value = d.view;
             viewData.value = d.data;
+
+            console.log("Set Instance Data:", viewData.value);
         });
 
         socket.on('error', (data) => {
@@ -91,13 +93,22 @@ function sendCommand(playCommand) {
         args: playCommand.args
     });
 }
+
+function setInstanceActType(actType: string) {
+    socket.emit('set_instance_act_type', {
+        session_key: cookies.get('sessionKey') || null,
+        campaign_id: campaignId.value,
+        statblock_id: statblockId.value,
+        act_type: actType
+    });
+}
 </script>
 
 <template>
     <div class="flex w-screen h-screen">
         <div class="flex-grow h-full">
             <div v-if="statblockId" class="w-full h-full">
-                <CombatGrid v-if="viewMode == 'COMBAT'" :width=24 :height=10 />
+                <CombatGrid v-if="viewMode == 'COMBAT'" :data="viewData" @sendCommand="sendCommand" />
                 <WorldView v-else-if="viewMode == 'WORLD'" :data="viewData" @sendCommand="sendCommand" />
             </div>
             <div class="w-full h-full" v-else>
@@ -106,13 +117,8 @@ function sendCommand(playCommand) {
         </div>
         <div class="w-md max-w-md flex-shrink-0 h-full bg-gray-100">
             <p class="text-2xl">Sidebar</p>
+            <button class="bg-blue-500 hover:bg-blue-700 active:bg-blue-900 text-white font-bold py-2 px-4 rounded m-2 cursor-pointer" @click="setInstanceActType('WORLD')">Set World Act</button>
+            <button class="bg-green-500 hover:bg-green-700 active:bg-green-900 text-white font-bold py-2 px-4 rounded m-2 cursor-pointer" @click="setInstanceActType('COMBAT')">Set Combat Act</button>
         </div>
     </div>
 </template>
-
-<style scoped>
-.full-window {
-  width: 100%;
-  height: 100vh;
-}
-</style>
