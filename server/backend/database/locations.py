@@ -25,6 +25,25 @@ class LocationsTable(Table):
         raise Errors.DataAccessError()
 
     @staticmethod
+    def set_paused_instance_details(location_id, campaign_id, act_type, act_data):
+        with Table.cursor() as cur:
+            cur.execute("""
+                INSERT INTO paused_instances (location_id, campaign_id, act_type, act_data)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (location_id, campaign_id) DO
+                UPDATE SET act_type = EXCLUDED.act_type, act_data = EXCLUDED.act_data
+            """, (location_id, campaign_id, act_type, act_data))
+            return 
+        raise Errors.DataAccessError()
+
+    @staticmethod
+    def delete_paused_instance_details(location_id, campaign_id):
+        with Table.cursor() as cur:
+            cur.execute("DELETE FROM paused_instances WHERE location_id = %s AND campaign_id = %s", (location_id, campaign_id))
+            return
+        raise Errors.DataAccessError()
+
+    @staticmethod
     def get_statblocks_at_location(location_id, campaign_id):
         with Table.cursor() as cur:
             cur.execute("SELECT id FROM statblocks WHERE location_id = %s AND campaign_id = %s", (location_id, campaign_id))
@@ -76,6 +95,16 @@ class LocationsTable(Table):
             """, (statblock_id, location_id, campaign_id, campaign_id, statblock_id, location_id, campaign_id, campaign_id))
             result = cur.fetchone()
             return result[0] > 0 if result else False
+        raise Errors.DataAccessError()
+
+    @staticmethod
+    def get_location_map(location_id, campaign_id):
+        with Table.cursor() as cur:
+            cur.execute("SELECT map_data FROM locations WHERE id = %s AND campaign_id = %s", (location_id, campaign_id))
+            result = cur.fetchone()
+            if result is not None:
+                return result[0]
+            return None
         raise Errors.DataAccessError()
 
     @staticmethod
