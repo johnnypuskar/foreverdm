@@ -38,7 +38,6 @@ const emit = defineEmits([
 
 
 watch(() => props.data, (newData) => {
-    console.log("WorldView data updated:", newData);
     locationName.value = newData.name;
     locationDesc.value = newData.description;
     adjacentLocations.value = newData.adjacent.map(element => {
