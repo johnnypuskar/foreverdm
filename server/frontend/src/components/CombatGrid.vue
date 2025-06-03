@@ -1,10 +1,4 @@
 <script lang="ts">
-// Props Definition
-export const combatGridPropsDefinition = {
-  width: { type: Number, default: 0 },
-  height: { type: Number, default: 0 }
-}
-
 export const colors = {
   highlightDark: 'rgba(105, 125, 245, 1.0)',
   highlightLight: 'rgba(0, 55, 255, 0.1)'
@@ -12,7 +6,7 @@ export const colors = {
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive, watchEffect } from 'vue';
+import { ref, onMounted, onUnmounted, reactive, watchEffect, watch } from 'vue';
 import { useGridMap } from '@/composables/gridMap';
 import { useGridTokens } from '@/composables/gridTokens';
 import { useGridHighlights } from '@/composables/gridHighlights';
@@ -21,11 +15,21 @@ import { DefaultState } from '@/composables/state/defaultState';
 import { DragState } from '@/composables/state/dragState';
 import { MoveState } from '@/composables/state/moveState';
 
-const props = defineProps(combatGridPropsDefinition);
+import { crosshash } from 'crosshash';
+
+const props = defineProps({
+    data: {
+        type: Object,
+        required: true
+    }
+});
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const ctx = ref<CanvasRenderingContext2D | null>(null);
 const cellSize = 50;
+
+const width = ref<number>(0);
+const height = ref<number>(0);
 
 const highlightCellRegions = ref<Record<string, {
   x: number,
@@ -64,7 +68,8 @@ const tokens = ref<MapToken[]>([]);
 // Set up grid rendering functions
 const { drawGrid } = useGridMap(
   canvasRef,
-  props,
+  width,
+  height,
   cellSize,
   panOffset,
   zoomLevel,
@@ -106,7 +111,7 @@ const mouseStates = {
 function convertMousePosToCellPos(mouseX: number, mouseY: number) {
     const cellX = Math.floor((mouseX - panOffset.x) / zoomLevel.value / cellSize);
     const cellY = Math.floor((mouseY - panOffset.y) / zoomLevel.value / cellSize);
-    const inbounds = cellX >= 0 && cellY >= 0 && cellX < props.width && cellY < props.height;
+    const inbounds = cellX >= 0 && cellY >= 0 && cellX < width.value && cellY < height.value;
     return { x: cellX, y: cellY, inbounds: inbounds };
 }
 
@@ -219,8 +224,8 @@ onMounted(() => {
 
   if (!ctx.value) return;
 
-  panOffset.x = (canvasRef.value.clientWidth / 2) - ((cellSize * props.width) / 2);
-  panOffset.y = (canvasRef.value.clientHeight / 2) - ((cellSize * props.height) / 2);
+  panOffset.x = (canvasRef.value.clientWidth / 2) - ((cellSize * width.value) / 2);
+  panOffset.y = (canvasRef.value.clientHeight / 2) - ((cellSize * height.value) / 2);
 
   canvasRef.value.addEventListener('click', handleClick);
 
@@ -251,6 +256,13 @@ function render() {
 watchEffect(() => {
   render();
 });
+
+watch(() => props.data, (newData) => {
+  console.log("Map Hash: ", crosshash(newData.map))
+  width.value = newData.map.width;
+  height.value = newData.map.height;
+  render();
+}, { immediate: true });
 </script>
 
 <template>
