@@ -1,4 +1,3 @@
-psycopg2
 lupa
 luaparser
 flask
@@ -6,3 +5,5 @@ flask-cors
 flask-socketio
 python-dotenv
 psycopg[binary]
+crosshash
+google.oauth2
