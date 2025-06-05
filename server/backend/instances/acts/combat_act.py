@@ -1,7 +1,11 @@
 from server.backend.instances.acts.act_type import ActType
 from server.backend.instances.acts.act import Act
+from server.backend.util.data_update import DataUpdate
 from server.backend.database.locations import LocationsTable
+from server.backend.database.statblocks import StatblocksTable
+from src.stats.statblock import Statblock
 from src.combat.map.map import Map
+from src.combat.map.map_token import Token
 from crosshash import crosshash
 
 class CombatAct(Act):
@@ -10,12 +14,19 @@ class CombatAct(Act):
         self.type = ActType.COMBAT
         self.store_on_close = True
 
+        self.current_turn = 0
         self.map = Map(8, 8)
         map_data = LocationsTable.get_location_map(campaign_id, location_id)
         if map_data is not None:
             self.map.import_data(map_data)
 
-        self.current_turn = 0
+        for statblock_id in self._statblock_ids:
+            statblock = Statblock.new_from_data(StatblocksTable.get_statblock_data(statblock_id, campaign_id)) 
+            self.map.add_token(Token(
+                statblock,
+                (0, 0, 0),
+                self.map
+            ))
 
         self.map_data_property("current_turn", "current_turn")
         self.map_data_property("map", "map")
