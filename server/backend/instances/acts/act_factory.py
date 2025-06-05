@@ -11,6 +11,6 @@ class ActFactory:
             ActType.COMBAT: CombatAct
         }
         try:
-            return act_types[ActType(act_type)](campaign_id, location_id, statblock_ids)
+            return act_types[act_type](campaign_id, location_id, statblock_ids)
         except KeyError:
             raise ValueError(f"Unknown Act type: {act_type}")
