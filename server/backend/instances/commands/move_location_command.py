@@ -15,9 +15,9 @@ class MoveLocationCommand(Command):
     
     def execute(self, instance):
         if not LocationsTable.is_statblock_adjacent(self.statblock_id, self.destination_location_id, self.campaign_id):
-            return (False, "Not adjacent to destination.")
+            return Command.Response(False, "Not adjacent to destination."), {}
         
         StatblocksTable.update_location(self.statblock_id, self.campaign_id, self.destination_location_id)
         instance.remove_statblock(self.statblock_id)
         
-        return (True, "Moved.")
+        return Command.Response(True, "Moved."), {}
