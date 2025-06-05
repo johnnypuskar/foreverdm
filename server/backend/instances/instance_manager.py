@@ -99,7 +99,7 @@ class InstanceManager:
                 for sb_id in local_statblocks:
                     instance.add_statblock(sb_id)
             else:
-                instance.set_act_type(act_type)
+                instance.set_act_type(ActType(act_type))
                 instance.act.import_data(act_data)
         else:
             instance = self.instances[campaign_id][location_id]
@@ -161,7 +161,7 @@ class InstanceManager:
         if not command.validate_act(instance.act):
             raise Errors.InvalidCommand(command_type)
         
-        result, message = command.execute(instance)
+        result, data = command.execute(instance)
 
         if not self.is_active_instance(campaign_id, location_id):
             self.remove_instance(campaign_id, location_id)
@@ -169,8 +169,9 @@ class InstanceManager:
         return SocketResponse(
             signal = "command_response",
             data = {
-                "result": result,
-                "message": message
+                "result": result.success,
+                "message": result.message,
+                "data": data
             }
         )
 
