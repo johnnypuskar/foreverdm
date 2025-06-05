@@ -70,6 +70,16 @@ class StatblocksTable(Table):
             result = cur.fetchall()
             return [statblock_id for statblock_id, in result] if result else []
         raise Errors.DataAccessError()
+    
+    @staticmethod
+    def get_statblock_data(statblock_id, campaign_id):
+        with Table.cursor() as cur:
+            cur.execute("SELECT data FROM statblocks WHERE id = %s AND campaign_id = %s", (statblock_id, campaign_id))
+            result = cur.fetchone()
+            if result is not None:
+                return result[0]
+            raise Errors.StatblockNotFound()
+        raise Errors.DataAccessError()
 
     @staticmethod
     def get_location(statblock_id, campaign_id):
