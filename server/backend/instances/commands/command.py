@@ -8,3 +8,8 @@ class Command:
     
     def execute(self, act):
         return (False, "Command not implemented.")
+    
+    class Response:
+        def __init__(self, success, message):
+            self.success = success
+            self.message = message
