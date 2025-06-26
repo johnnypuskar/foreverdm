@@ -1,4 +1,6 @@
 import json
+from src.stats.statblock import Statblock
+from src.combat.map.map_token import Token
 from src.combat.map.map_tile import MapTile
 from src.combat.map.map_tile_wall import MapTileWall
 from server.backend.database.util.data_storer import DataStorer
@@ -36,8 +38,6 @@ class Map(DataStorer):
 
                 tile._wall_bottom = MapTileWall(height = max_height)
                 tile._wall_right = MapTileWall(height = max_height)
-                self._walls.append(tile._wall_right)
-                self._walls.append(tile._wall_bottom)
 
                 self._tiles[y].append(tile)
         
@@ -49,22 +49,32 @@ class Map(DataStorer):
             return tile_list
 
         def _import_tile_data(df, v):
-            tiles = [[None] * self._width] * self._height
+            tiles = [[None for _ in range(self._width)] for _ in range(self._height)]
             for tile_data in v:
                 new_tile = MapTile.new_from_data(tile_data, tile_data["x"], tile_data["y"])
                 new_tile._wall_top = MapTileWall.new_from_data(tile_data["wall_top"])
                 new_tile._wall_left = MapTileWall.new_from_data(tile_data["wall_left"])
                 new_tile._wall_bottom = MapTileWall.new_from_data(tile_data["wall_bottom"])
                 new_tile._wall_right = MapTileWall.new_from_data(tile_data["wall_right"])
-                tiles[tile_data["y"]][tile_data["x"]] = new_tile
+                tiles[new_tile.y][new_tile.x] = new_tile
             return tiles
+
+        def _import_token_data(df, v):
+            tokens = []
+            for token_data in v:
+                statblock = Statblock(id = token_data["statblock_id"])
+                tokens.append(Token(statblock, (token_data["x"], token_data["y"], token_data["height"]), self))
+            return tokens
 
         self.map_data_property("_width", "width")
         self.map_data_property("_height", "height")
         self.map_data_property("_max_height", "max_height")
         self.map_data_property("_tiles", "tiles", export_function = _export_tile_data, import_function = _import_tile_data, import_reliant_properties = ["_width", "_height"])
         # self.map_data_property("_walls", "walls")
-        self.map_data_property("_tokens", "tokens")
+        self.map_data_property("_tokens", "tokens",
+            export_function = lambda v: [token.export_data() for token in v],
+            import_function = _import_token_data
+        )
         self.map_data_property("_map_props", "map_props")
     
     @property
@@ -118,7 +128,6 @@ class Map(DataStorer):
         
         return view_data
 
-        
     def add_token(self, token):
         self._tokens.append(token)
         token._map = self
@@ -128,6 +137,18 @@ class Map(DataStorer):
             return self._tokens
         return [token for token in self._tokens if token.get_position()[2:] == (x, y)]
     
+    def get_token_index(self, statblock_id: str):
+        for index, token in enumerate(self._tokens):
+            if token.statblock_id == statblock_id:
+                return index
+        return None
+
+    def get_token_by_id(self, statblock_id: str):
+        for token in self._tokens:
+            if token.statblock_id == statblock_id:
+                return token
+        return None
+
     def get_token_spaces(self):
         tokens_and_extensions = []
         for token in self._tokens:
@@ -164,71 +185,3 @@ class Map(DataStorer):
         if any([dc is not None for dc in dc_list]):
             return min([dc for dc in dc_list if dc is not None])
         return None
-    
-    def get_json_data(self):
-        data = {
-            "width": self._width,
-            "height": self._height,
-            "tiles": [],
-            "walls": [],
-            "tokens": []
-        }
-
-        for y in range(self._height):
-            for x in range(self._width):
-                tile = self._tiles[y][x]
-                data["tiles"].append({
-                    "x": tile.x,
-                    "y": tile.y,
-                    "height": tile.height,
-                    "max_depth": tile._max_depth,
-                    "terrain_difficulty": tile.terrain_difficulty
-                })
-                if y > 0 and tile.has_wall(MapTileWall.WallDirection.TOP):
-                    wall = tile.get_wall(MapTileWall.WallDirection.TOP)
-                    data["walls"].append({
-                        "x": tile.x,
-                        "y": tile.y,
-                        "direction": "top",
-                        "solidity": wall.get_cover(tile.height),
-                        "passable": wall.get_passable(tile.height)
-                    })
-                if x > 0 and tile.has_wall(MapTileWall.WallDirection.LEFT):
-                    wall = tile.get_wall(MapTileWall.WallDirection.LEFT)
-                    data["walls"].append({
-                        "x": tile.x,
-                        "y": tile.y,
-                        "direction": "left",
-                        "solidity": wall.get_cover(tile.height),
-                        "passable": wall.get_passable(tile.height)
-                    })
-                if tile.has_wall(MapTileWall.WallDirection.RIGHT):
-                    wall = tile.get_wall(MapTileWall.WallDirection.RIGHT)
-                    data["walls"].append({
-                        "x": tile.x,
-                        "y": tile.y,
-                        "direction": "right",
-                        "solidity": wall.get_cover(tile.height),
-                        "passable": wall.get_passable(tile.height)
-                    })
-                if tile.has_wall(MapTileWall.WallDirection.BOTTOM):
-                    wall = tile.get_wall(MapTileWall.WallDirection.BOTTOM)
-                    data["walls"].append({
-                        "x": tile.x,
-                        "y": tile.y,
-                        "direction": "bottom",
-                        "solidity": wall.get_cover(tile.height),
-                        "passable": wall.get_passable(tile.height)
-                    })
-        
-        for token in self._tokens:
-            data["tokens"].append({
-                "x": token.get_position()[0],
-                "y": token.get_position()[1],
-                "height": token.get_position()[2],
-                "name": token.get_name()
-            })
-        
-        return json.dumps(data)
-
-            
