@@ -40,12 +40,61 @@
                     Make Adjacent
                 </button>
             </div>
+
+            <div>
+                <div>
+                    <span class="text-lg mb-2">Precompute Region Configurations</span>
+                    <button @click="precomputeConfigurations" class="bg-green-500 hover:bg-green-700 active:bg-green-900 text-white font-bold py-2 px-4 rounded m-2 cursor-pointer">
+                        Precompute Configurations
+                    </button>
+                </div>
+                <div>
+                    <span class="text-sm inline-block w-42">Length (min/max):</span>
+                    <input type="number" min="1" max="12" v-model="regionsLength.min" class="border rounded px-2 py-1 w-20 ml-2">
+                    <input type="number" min="1" max="12" v-model="regionsLength.max" class="border rounded px-2 py-1 w-20 ml-1">
+                </div>
+                <div class="mt-2">
+                    <span class="text-sm inline-block w-42">Width (min/max):</span>
+                    <input type="number" min="1" max="12" v-model="regionsWidth.min" class="border rounded px-2 py-1 w-20 ml-2">
+                    <input type="number" min="1" max="12" v-model="regionsWidth.max" class="border rounded px-2 py-1 w-20 ml-1">
+                </div>
+                <div class="mt-2">
+                    <span class="text-sm inline-block w-42">Back T Length (min/max):</span>
+                    <input type="number" min="0" max="12" v-model="regionsBackTHeight.min" class="border rounded px-2 py-1 w-20 ml-2">
+                    <input type="number" min="0" max="12" v-model="regionsBackTHeight.max" class="border rounded px-2 py-1 w-20 ml-1">
+                </div>
+                <div class="mt-2">
+                    <span class="text-sm inline-block w-42">Back T Width (min/max):</span>
+                    <input type="number" min="0" max="12" v-model="regionsBackTWidth.min" class="border rounded px-2 py-1 w-20 ml-2">
+                    <input type="number" min="0" max="12" v-model="regionsBackTWidth.max" class="border rounded px-2 py-1 w-20 ml-1">
+                </div>
+                <div class="mt-2">
+                    <span class="text-sm inline-block w-42">Back T Offset (min/max):</span>
+                    <input type="number" min="0" max="12" v-model="regionsBackTOffset.min" class="border rounded px-2 py-1 w-20 ml-2">
+                    <input type="number" min="0" max="12" v-model="regionsBackTOffset.max" class="border rounded px-2 py-1 w-20 ml-1">
+                </div>
+                <div class="mt-2">
+                    <span class="text-sm inline-block w-42">Front T Length (min/max):</span>
+                    <input type="number" min="0" max="12" v-model="regionsFrontTHeight.min" class="border rounded px-2 py-1 w-20 ml-2">
+                    <input type="number" min="0" max="12" v-model="regionsFrontTHeight.max" class="border rounded px-2 py-1 w-20 ml-1">
+                </div>
+                <div class="mt-2">
+                    <span class="text-sm inline-block w-42">Front T Width (min/max):</span>
+                    <input type="number" min="0" max="12" v-model="regionsFrontTWidth.min" class="border rounded px-2 py-1 w-20 ml-2">
+                    <input type="number" min="0" max="12" v-model="regionsFrontTWidth.max" class="border rounded px-2 py-1 w-20 ml-1">
+                </div>
+                <div class="mt-2">
+                    <span class="text-sm inline-block w-42">Front T Offset (min/max):</span>
+                    <input type="number" min="0" max="12" v-model="regionsFrontTOffset.min" class="border rounded px-2 py-1 w-20 ml-2">
+                    <input type="number" min="0" max="12" v-model="regionsFrontTOffset.max" class="border rounded px-2 py-1 w-20 ml-1">
+                </div>
+            </div>
         </div>
     </div>
 </template>
 
 <script lang="ts" setup>
-import { inject, ref } from 'vue';
+import { inject, reactive, ref } from 'vue';
 import { VueCookies } from 'vue-cookies';
 
 const cookies = inject<VueCookies>('$cookies');
@@ -62,6 +111,15 @@ const locationName = ref('');
 const locationDesc = ref('');
 
 const secondaryLocationID = ref('');
+
+const regionsLength = reactive({ min: 1, max: 1 })
+const regionsWidth = reactive({ min: 1, max: 1 });
+const regionsBackTWidth = reactive({ min: 0, max: 0 });
+const regionsBackTHeight = reactive({ min: 0, max: 0 }); 
+const regionsBackTOffset = reactive({ min: 0, max: 0 });
+const regionsFrontTWidth = reactive({ min: 0, max: 0 });
+const regionsFrontTHeight = reactive({ min: 0, max: 0 });
+const regionsFrontTOffset = reactive({ min: 0, max: 0 });
 
 async function addStatblock() {
     lastResponseMessage.value = '--';
@@ -152,5 +210,36 @@ async function joinCampaign() {
     });
     const responseData = await response.json();
     lastResponseMessage.value = responseData.message;
+}
+
+async function precomputeConfigurations() {
+    lastResponseMessage.value = 'Precomputing configurations...';
+    const url = `${import.meta.env.VITE_BACKEND_API_URL}/admin/precompute-room-configs`;
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            min_length: regionsLength.min,
+            max_length: regionsLength.max,
+            min_width: regionsWidth.min,
+            max_width: regionsWidth.max,
+            min_back_t_length: regionsBackTHeight.min,
+            max_back_t_length: regionsBackTHeight.max,
+            min_back_t_width: regionsBackTWidth.min,
+            max_back_t_width: regionsBackTWidth.max,
+            min_back_t_offset: regionsBackTOffset.min,
+            max_back_t_offset: regionsBackTOffset.max,
+            min_front_t_length: regionsFrontTHeight.min,
+            max_front_t_length: regionsFrontTHeight.max,
+            min_front_t_width: regionsFrontTWidth.min,
+            max_front_t_width: regionsFrontTWidth.max,
+            min_front_t_offset: regionsFrontTOffset.min,
+            max_front_t_offset: regionsFrontTOffset.max
+        })
+    });
+    const responseData = await response.json();
+    lastResponseMessage.value = responseData.message || `Status: ${response.status}`;
 }
 </script>
