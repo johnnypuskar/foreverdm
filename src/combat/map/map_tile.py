@@ -65,9 +65,9 @@ class MapTile(DataStorer):
         if direction == MapTileWall.WallDirection.TOP:
             return self._wall_top
         elif direction == MapTileWall.WallDirection.LEFT:
-            return self._wall_top
+            return self._wall_left
         elif direction == MapTileWall.WallDirection.BOTTOM:
-            return self._wall_top
+            return self._wall_bottom
         elif direction == MapTileWall.WallDirection.RIGHT:
             return self._wall_right
         else:
