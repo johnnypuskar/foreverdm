@@ -1,7 +1,7 @@
 <template>
     <div class="flex flex-row justify-center items-center h-screen">
         <div class="flex flex-col">
-            <p class="text-2xl mb-4 text-center">Select Statblock</p>
+            <p class="text-2xl mb-4 text-center">Select Character</p>
             <button
                 v-for="statblock in statblocks"
                 :key="statblock.id"
