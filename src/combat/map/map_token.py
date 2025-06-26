@@ -1,14 +1,16 @@
 from src.stats.statblock import Statblock
 from src.combat.map.positioned import Positioned
+from server.backend.database.util.data_storer import DataStorer
 
-class Token(Statblock, Positioned):
+class Token(Statblock, Positioned, DataStorer):
     def __init__(self, statblock, position = (-1, -1, -1), map = None):
+        DataStorer.__init__(self)
         Positioned.__init__(self, position, map)
         self._statblock = statblock
 
         self._extensions = {}
-        for ext_x in range(0, int(statblock.get_size().radius/5)):
-            for ext_y in range(0, int(statblock.get_size().radius/5)):
+        for ext_x in range(0, int(statblock.get_size().diameter/5)):
+            for ext_y in range(0, int(statblock.get_size().diameter/5)):
                 if ext_x + ext_y == 0: # Check if both are 0
                     continue
                 self._extensions[(ext_x, ext_y)] = TokenExtension(self, (ext_x, ext_y))
@@ -25,7 +27,7 @@ class Token(Statblock, Positioned):
     
     @property
     def diameter(self):
-        return round(self._statblock.get_size().radius * 2 / 5.0)
+        return round(self._statblock.get_size().diameter / 5.0)
 
     @property
     def x(self):
