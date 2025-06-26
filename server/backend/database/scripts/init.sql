@@ -65,3 +65,11 @@ CREATE TABLE IF NOT EXISTS paused_instances (
     UNIQUE (location_id, campaign_id),
     CONSTRAINT fk_location_actual FOREIGN KEY (location_id, campaign_id) REFERENCES locations (id, campaign_id)
 );
+
+CREATE TABLE IF NOT EXISTS dynamic_room_region_configurations (
+    fixed_hash BIGINT NOT NULL,
+    relative_hash  BIGINT NOT NULL,
+    dx INTEGER NOT NULL,
+    dy INTEGER NOT NULL,
+    adjacencies INTEGER NOT NULL
+);
