@@ -11,12 +11,12 @@ class Size(DataStorer):
     TILE_SIZE = 5
     _SIZE_CLASSES = [TINY, SMALL, MEDIUM, LARGE, HUGE, GARGANTUAN]
 
-    def __init__(self, radius):
+    def __init__(self, diameter):
         super().__init__()
-        if radius in self._SIZE_CLASSES:
-            self._size_class = self._SIZE_CLASSES.index(radius)
+        if diameter in self._SIZE_CLASSES:
+            self._size_class = self._SIZE_CLASSES.index(diameter)
         else:
-            raise ValueError(f"Invalid size value ({radius})")
+            raise ValueError(f"Invalid size value ({diameter})")
         self.map_data_property("_size_class", "size_class")
     
     @staticmethod
@@ -25,8 +25,8 @@ class Size(DataStorer):
         return Size(Size._SIZE_CLASSES[size_class])
 
     @property
-    def radius(self):
-        """Returns the size radius in feet"""
+    def diameter(self):
+        """Returns the size diameter in feet"""
         # Note: Currently rounds up Tiny size to 5 feet to fill full grid space
         return max(5, int(self._SIZE_CLASSES[self._size_class]))
     
