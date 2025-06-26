@@ -10,6 +10,9 @@ import { io } from 'socket.io-client';
 const viewMode = ref('CHARACTER_SELECT');
 const viewData = ref(null);
 
+const WorldViewRef = ref(null);
+const CombatGridRef = ref(null);
+
 const cookies = inject<VueCookies>('$cookies');
 const route = useRoute();
 const router = useRouter();
@@ -37,33 +40,34 @@ onMounted(() => {
             }
         });
 
-        socket.on('command_response', (data) => {
-            socket.emit('get_instance_data', {
-                session_key: cookies.get('sessionKey') || null,
-                campaign_id: campaignId.value,
-                statblock_id: statblockId.value || null
-            });
-        });
 
         socket.on('disconnect', () => {
             router.push('/campaigns');
         });
 
         socket.on('connect_response', (response) => {
-            console.log("Connected to server:", response);
-            socket.emit('get_instance_data', {
-                session_key: cookies.get('sessionKey') || null,
-                campaign_id: campaignId.value,
-                statblock_id: statblockId.value || null
-            });
+            refreshInstanceView();
         });
 
         socket.on('set_instance_data', (d) => {
             // console.log("Received instance data:", d);
             viewMode.value = d.view;
             viewData.value = d.data;
+        });
 
-            console.log("Set Instance Data:", viewData.value);
+        socket.on('command_response', (d) => {
+            switch (viewMode.value) {
+                case 'WORLD':
+                    if (WorldViewRef.value) {
+                        WorldViewRef.value.handleCommandResponse(d);
+                    }
+                    break;
+                case 'COMBAT':
+                    if (CombatGridRef.value) {
+                        CombatGridRef.value.handleCommandResponse(d);
+                    }
+                    break;
+            }
         });
 
         socket.on('error', (data) => {
@@ -77,6 +81,14 @@ onMounted(() => {
 
 function handleSetStatblockId(id: string) {
     statblockId.value = id;
+    socket.emit('get_instance_data', {
+        session_key: cookies.get('sessionKey') || null,
+        campaign_id: campaignId.value,
+        statblock_id: statblockId.value
+    });
+}
+
+function refreshInstanceView() {
     socket.emit('get_instance_data', {
         session_key: cookies.get('sessionKey') || null,
         campaign_id: campaignId.value,
@@ -108,8 +120,8 @@ function setInstanceActType(actType: string) {
     <div class="flex w-screen h-screen">
         <div class="flex-grow h-full">
             <div v-if="statblockId" class="w-full h-full">
-                <CombatGrid v-if="viewMode == 'COMBAT'" :data="viewData" @sendCommand="sendCommand" />
-                <WorldView v-else-if="viewMode == 'WORLD'" :data="viewData" @sendCommand="sendCommand" />
+                <CombatGrid v-if="viewMode == 'COMBAT'" ref="CombatGridRef" :data="viewData" @sendCommand="sendCommand" @refreshView="refreshInstanceView" />
+                <WorldView v-else-if="viewMode == 'WORLD'" ref="WorldViewRef" :data="viewData" @sendCommand="sendCommand" @refreshView="refreshInstanceView" />
             </div>
             <div class="w-full h-full" v-else>
                 <StatblockSelect :data="viewData" @setStatblockId="handleSetStatblockId" />
