@@ -1,8 +1,5 @@
 import { ref, reactive, Ref, ExtractPropTypes } from 'vue';
-import { combatGridPropsDefinition } from '@/components/CombatGrid.vue';
 import { MapToken } from '@/composables/gridRenderable';
-
-type PropsType = ExtractPropTypes<typeof combatGridPropsDefinition>;
 
 const tokenBorderBuffer = 3;
 

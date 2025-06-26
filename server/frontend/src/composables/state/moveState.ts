@@ -2,6 +2,7 @@ import { ref, Ref } from 'vue'
 import { MouseState, MouseStateReturn } from '@/composables/state/mouseState'
 import { DefaultState } from './defaultState';
 import { ScreenRenderable, MapToken, GridRenderable } from '../gridRenderable';
+import { makePlayCommand } from '../playCommand';
 
 export class MoveState extends MouseState {
     static id = 'MOUSESTATE_MOVE';
@@ -9,6 +10,7 @@ export class MoveState extends MouseState {
     static indicatorDark = 'rgba(0, 0, 0, 0.5)';
     static indicatorLight = 'rgba(0, 0, 0, 0.2)';
 
+    emit: Function;
     render: Function;
     cellSize: number;
     panOffset: { x: number, y: number };
@@ -20,10 +22,11 @@ export class MoveState extends MouseState {
     highlightCircleRegions: Ref<Record<string, { x: number, y: number, size: number, border: string, fill: string }>>;
     originalCellPosition: { x: number, y: number };
 
-    constructor(canvasRef: Ref<HTMLCanvasElement> | null, cellSize: number, panOffset: { x: number, y: number }, convertMousePosToCellPos: Function,
+    constructor(canvasRef: Ref<HTMLCanvasElement> | null, emit: Function, cellSize: number, panOffset: { x: number, y: number }, convertMousePosToCellPos: Function,
                 mousePickedRenderable: Ref<GridRenderable | null>, tokens: Ref<Array<MapToken>>, screenRenderables: Ref<Array<ScreenRenderable>>,
                 highlightCircleRegions: Ref<Record<string, { x: number, y: number, size: number, border: string, fill: string }>>) {
         super(canvasRef);
+        this.emit = emit;
         this.cellSize = cellSize;
         this.panOffset = panOffset;
         this.convertMousePosToCellPos = convertMousePosToCellPos;
@@ -77,6 +80,10 @@ export class MoveState extends MouseState {
         else {
             this.pickedScreenRenderable.value.renderable.x = cellX;
             this.pickedScreenRenderable.value.renderable.y = cellY;
+            this.emit('sendCommand', makePlayCommand(
+                'MOVE_TOKEN',
+                [(this.pickedScreenRenderable.value.renderable as MapToken).id, cellX, cellY]
+            ));
         }
         delete this.screenRenderables.value[this.screenRenderables.value.indexOf(this.pickedScreenRenderable.value)];
         delete this.highlightCircleRegions.value["tokenMovementIndicator"];

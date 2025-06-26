@@ -19,15 +19,15 @@ export class GridRenderable extends EventTarget {
 }
 
 export class MapToken extends GridRenderable {
-    x: number;
-    y: number;
+    id: string;
     color: string;
     size: number;
 
-    constructor(x: number, y: number, color: string, size: number) {
+    constructor(x: number, y: number, id: string, color: string, size: number) {
         super();
         this.x = x;
         this.y = y;
+        this.id = id;
         this.color = color;
         this.size = size;
     }

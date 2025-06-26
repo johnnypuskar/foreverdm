@@ -157,7 +157,7 @@ export class DefaultState extends MouseState {
     handleRightMouseDown(event: MouseEvent): MouseStateReturn {
         const { x: cellX, y: cellY, inbounds: inbounds} = this.convertMousePosToCellPos(event.clientX, event.clientY);
         if (inbounds) {
-            this.tokens.value.push(new MapToken(cellX, cellY, "#6666AA", 1));
+            this.tokens.value.push(new MapToken(cellX, cellY, "XXX", "#6666AA", 1));
         }
         return {"state": DefaultState.id, "details": {}};
     }

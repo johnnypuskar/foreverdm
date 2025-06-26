@@ -1,4 +1,46 @@
 <script lang="ts">
+
+export interface mapTileWallStructure {
+  wall_stats: Array<{
+    cover: number,
+    passable: boolean,
+    movement_penalty: number,
+    climb_dc: number
+  }>
+}
+
+export interface mapTileStructure {
+  x: number,
+  y: number,
+  height: number,
+  max_depth: number,
+  swimmable: boolean,
+  terrain_difficulty: number,
+  walls: {
+    top: mapTileWallStructure,
+    left: mapTileWallStructure,
+    bottom: mapTileWallStructure | null,
+    right: mapTileWallStructure | null
+  }
+}
+
+export interface mapTokenStructure {
+  id: string,
+  x: number,
+  y: number,
+  height: number,
+  name: string | null,
+  diameter: number,
+}
+
+export interface mapDataStructure {
+  width: number,
+  height: number,
+  max_height: number,
+  tiles: Array<mapTileStructure>,
+  tokens: Array<mapTokenStructure>
+}
+
 export const colors = {
   highlightDark: 'rgba(105, 125, 245, 1.0)',
   highlightLight: 'rgba(0, 55, 255, 0.1)'
@@ -24,12 +66,23 @@ const props = defineProps({
     }
 });
 
+const emit = defineEmits([
+  'sendCommand',
+  'refreshView'
+])
+
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const ctx = ref<CanvasRenderingContext2D | null>(null);
 const cellSize = 50;
 
-const width = ref<number>(0);
-const height = ref<number>(0);
+const mapData = reactive<mapDataStructure>({
+  width: 0,
+  height: 0,
+  max_height: 0,
+  tiles: [],
+  tokens: []
+});
+const mapHash = ref<string | null>(null);
 
 const highlightCellRegions = ref<Record<string, {
   x: number,
@@ -60,19 +113,20 @@ const mousePickedRenderable = ref<GridRenderable | null>(null);
 const panOffset = reactive({x: 0, y: 0});
 
 const zoomLevel = ref(1);
-const zoomMin = 0.1;
+const zoomMin = 0.6;
 const zoomMax = 2.0;
 
+const renderHeight = ref(0);
 const tokens = ref<MapToken[]>([]);
 
 // Set up grid rendering functions
-const { drawGrid } = useGridMap(
+const { drawGrid, drawWalls } = useGridMap(
   canvasRef,
-  width,
-  height,
+  mapData,
   cellSize,
   panOffset,
   zoomLevel,
+  renderHeight,
   highlightCellRegions
 );
 
@@ -105,14 +159,21 @@ var mouseState = ref(DefaultState.id);
 const mouseStates = {
   [DefaultState.id]: new DefaultState(canvasRef, convertMousePosToCellPos, mousePickedRenderable, screenRenderables, tokenClickable, propClickable, cellClickable, tokens, highlightCellRegions, highlightCircleRegions),
   [DragState.id]: new DragState(canvasRef, panOffset),
-  [MoveState.id]: new MoveState(canvasRef, cellSize, panOffset, convertMousePosToCellPos, mousePickedRenderable, tokens, screenRenderables, highlightCircleRegions)
+  [MoveState.id]: new MoveState(canvasRef, emit, cellSize, panOffset, convertMousePosToCellPos, mousePickedRenderable, tokens, screenRenderables, highlightCircleRegions)
 }
 
 function convertMousePosToCellPos(mouseX: number, mouseY: number) {
     const cellX = Math.floor((mouseX - panOffset.x) / zoomLevel.value / cellSize);
     const cellY = Math.floor((mouseY - panOffset.y) / zoomLevel.value / cellSize);
-    const inbounds = cellX >= 0 && cellY >= 0 && cellX < width.value && cellY < height.value;
+    const inbounds = cellX >= 0 && cellY >= 0 && cellX < mapData['width'] && cellY < mapData['height'];
     return { x: cellX, y: cellY, inbounds: inbounds };
+}
+
+function checkMapHash() {
+  const liveHash = crosshash(mapData);
+  if (liveHash !== mapHash.value) {
+    emit('refreshView');
+  }
 }
 
 function handleContextMenu(event: MouseEvent) {
@@ -224,8 +285,8 @@ onMounted(() => {
 
   if (!ctx.value) return;
 
-  panOffset.x = (canvasRef.value.clientWidth / 2) - ((cellSize * width.value) / 2);
-  panOffset.y = (canvasRef.value.clientHeight / 2) - ((cellSize * height.value) / 2);
+  panOffset.x = (canvasRef.value.clientWidth / 2) - ((cellSize * mapData['width']) / 2);
+  panOffset.y = (canvasRef.value.clientHeight / 2) - ((cellSize * mapData['height']) / 2);
 
   canvasRef.value.addEventListener('click', handleClick);
 
@@ -248,6 +309,7 @@ onUnmounted(() => {
 
 function render() {
   drawGrid();
+  drawWalls()
   drawTokens();
   drawHighlights();
   drawRenderables();
@@ -257,12 +319,30 @@ watchEffect(() => {
   render();
 });
 
+// Handle data changes and command responses
+function handleCommandResponse(newData: any) {
+  for (const update of newData.data.updates) {
+    var root = mapData;
+    while (update['path'].length > 1) {
+      root = root[update['path'].shift()];
+    }
+    root[update['path'][0]] = update['value'];
+  }
+  mapHash.value = newData.data.hash;
+  checkMapHash();
+}
+
 watch(() => props.data, (newData) => {
-  console.log("Map Hash: ", crosshash(newData.map))
-  width.value = newData.map.width;
-  height.value = newData.map.height;
+  Object.keys(newData.map).forEach(key => { mapData[key] = newData.map[key]; });
+  tokens.value = newData.map.tokens.map(t => new MapToken(t.x, t.y, t.id, "#00FF00", t.diameter));
+  mapHash.value = newData.hash;
   render();
 }, { immediate: true });
+
+
+defineExpose({
+  handleCommandResponse
+});
 </script>
 
 <template>
