@@ -6,6 +6,8 @@ from server.backend.database.users import UsersTable
 from server.backend.database.statblocks import StatblocksTable
 from server.backend.database.locations import LocationsTable
 from server.backend.database.campaigns import CampaignsTable
+from server.backend.database.generation import MapGenerationTable
+from src.combat.map.generator.DynamicRoomRegion import DynamicRoomRegion
 
 @main.route('/admin/add-location', methods=['POST'])
 def add_location():
@@ -79,3 +81,60 @@ def join_campaign():
         "status": "success",
         "message": "User added to campaign successfully"
     }), 200
+
+@main.route('/admin/precompute-room-configs', methods=['POST'])
+def precompute_room_configs():
+    data = request.get_json()
+    min_length = data.get('min_length')
+    max_length = data.get('max_length')
+    min_width = data.get('min_width')
+    max_width = data.get('max_width')
+    min_back_t_length = data.get('min_back_t_length')
+    max_back_t_length = data.get('max_back_t_length')
+    min_back_t_width = data.get('min_back_t_width')
+    max_back_t_width = data.get('max_back_t_width')
+    min_back_t_offset = data.get('min_back_t_offset')
+    max_back_t_offset = data.get('max_back_t_offset')
+    min_front_t_length = data.get('min_front_t_length')
+    max_front_t_length = data.get('max_front_t_length')
+    min_front_t_width = data.get('min_front_t_width')
+    max_front_t_width = data.get('max_front_t_width')
+    min_front_t_offset = data.get('min_front_t_offset')
+    max_front_t_offset = data.get('max_front_t_offset')
+
+    regions = []
+    for length in range(min_length, max_length + 1):
+        for width in range(min_width, max_width + 1):
+            for back_t_length in range(min_back_t_length, max_back_t_length + 1):
+                for back_t_width in range(min_back_t_width, max_back_t_width + 1):
+                    for back_t_offset in range(min_back_t_offset, max_back_t_offset + 1):
+                        for front_t_length in range(min_front_t_length, max_front_t_length + 1):
+                            for front_t_width in range(min_front_t_width, max_front_t_width + 1):
+                                for front_t_offset in range(min_front_t_offset, max_front_t_offset + 1):
+                                    try:
+                                        regions.append(DynamicRoomRegion(
+                                            length, width, back_t_length, back_t_width, back_t_offset,
+                                            front_t_length, front_t_width, front_t_offset
+                                        ))
+                                    except ValueError:
+                                        continue
+    
+    map_generation_table = MapGenerationTable()
+    map_generation_table.reset_room_region_configurations()
+    remaining = len(regions)
+    for i in range(remaining):
+        region = regions[i]
+        print(f"Processing region {region.hash} ({remaining} remaining)")
+        for j in range(i, len(regions)):
+            other = regions[j]
+            offsets = region.compute_configuration_offsets(other)
+            if len(offsets) > 0:
+                map_generation_table.bulk_insert_room_region_config(region.hash, other.hash, offsets)
+        remaining -= 1
+    map_generation_table.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": f"Precomputed {len(regions)} room configurations"
+    }), 200
+                        
