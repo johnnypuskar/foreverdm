@@ -33,9 +33,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-    'sendCommand'
+    'sendCommand',
+    'refreshView'
 ]);
 
+function handleCommandResponse(data) {
+    emit('refreshView');
+}
 
 watch(() => props.data, (newData) => {
     locationName.value = newData.name;
@@ -45,4 +49,8 @@ watch(() => props.data, (newData) => {
     });
 }, { immediate: true });
 
+
+defineExpose({
+    handleCommandResponse
+});
 </script>
