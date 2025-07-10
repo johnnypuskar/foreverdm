@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-row justify-center items-center h-screen">
+    <div class="flex flex-row justify-center mt-6 h-screen">
         <div class="flex flex-col">
             <p class="text-2xl mb-4 text-center">Debug Tools</p>
             <p class="text-md mb-4 text-center">{{ lastResponseMessage }}</p>
