@@ -16,6 +16,13 @@ class CombatAct(Act):
 
         self.current_turn = 0
         self.map = Map(8, 8)
+        for x in range(2, 6):
+            self.map.get_tile(x, 2)._wall_top.set_passable(False)
+            self.map.get_tile(x, 5)._wall_bottom.set_passable(False)
+        for y in range(2, 6):
+            self.map.get_tile(2, y)._wall_left.set_passable(False)
+            self.map.get_tile(5, y)._wall_right.set_passable(False)
+
         map_data = LocationsTable.get_location_map(campaign_id, location_id)
         if map_data is not None:
             self.map.import_data(map_data)
