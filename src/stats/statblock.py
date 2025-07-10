@@ -14,7 +14,7 @@ from src.util.modifier_values import ModifierValues, ModifierRolls, ModifierSpee
 from server.backend.database.util.data_storer import DataStorer
 
 class Statblock(DataStorer):
-    def __init__(self, name, id, size: int = Size.MEDIUM, speed: Speed = Speed(30), dice_roller = DiceRoller()):
+    def __init__(self, name = None, id = None, size: int = Size.MEDIUM, speed: Speed = Speed(30), dice_roller = DiceRoller()):
         super().__init__()
         self.id = id
 
