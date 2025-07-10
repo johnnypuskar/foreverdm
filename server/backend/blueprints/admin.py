@@ -7,7 +7,7 @@ from server.backend.database.statblocks import StatblocksTable
 from server.backend.database.locations import LocationsTable
 from server.backend.database.campaigns import CampaignsTable
 from server.backend.database.generation import MapGenerationTable
-from src.combat.map.generator.DynamicRoomRegion import DynamicRoomRegion
+from src.combat.map.generator.dynamic_room_region import DynamicRoomRegion
 
 @main.route('/admin/add-location', methods=['POST'])
 def add_location():
