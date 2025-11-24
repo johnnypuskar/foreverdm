@@ -8,4 +8,8 @@ Using VSCode extensions such as *Container Tools* and *Docker DX* can make runni
 
 Once the containers are running, the app should be accessible. To view the Vue server console logs, run `docker-compose logs -f frontend` in the terminal.
 
+# Debug Page
+
+The `/debug` tools page is available during development for easily adding data to the database.
+
 > *Note: If using the PGAdmin4 extension for Docker Desktop on Windows to assist in managing the database for local development, the server address must be set to `host.docker.internal`*

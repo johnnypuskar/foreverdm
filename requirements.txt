@@ -6,4 +6,5 @@ flask-socketio
 python-dotenv
 psycopg[binary]
 crosshash
-google.oauth2
+requests
+google-auth
