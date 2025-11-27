@@ -20,10 +20,26 @@ function sendCommand(playCommand) {
 function refreshInstanceView() {
 
 }
+
+function updateWidth(event: Event) {
+    const value = parseInt((event.target as HTMLInputElement).value);
+    if (!isNaN(value) && value >= 1) {
+        mapData.map.width = value;
+    }
+}
+
+function updateHeight(event: Event) {
+    const value = parseInt((event.target as HTMLInputElement).value);
+    if (!isNaN(value) && value >= 1) {
+        mapData.map.height = value;
+    }
+}
 </script>
 
 <template>
-    <div class="border-red-500 border-4 ml-auto mr-auto mt-6 w-3/4 h-9/12">
+    <input id="grid-width" type="number" :value="mapData.map.width" @input="updateWidth" min="1"/>
+    <input id="grid-height" type="number" :value="mapData.map.height" @input="updateHeight" min="1"/>
+    <div class="border-blue-500 border-4 ml-auto mr-auto mt-6 w-3/4 h-9/12">
         <CombatGrid :data="mapData" @sendCommand="sendCommand" @refreshView="refreshInstanceView"/>
     </div>
 </template>

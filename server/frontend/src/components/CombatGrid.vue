@@ -337,7 +337,7 @@ watch(() => props.data, (newData) => {
   tokens.value = newData.map.tokens.map(t => new MapToken(t.x, t.y, t.id, "#00FF00", t.diameter));
   mapHash.value = newData.hash;
   render();
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
 
 defineExpose({
