@@ -9,7 +9,12 @@ const props = defineProps({
 
 class GridMapLayer extends CanvasLayer {
     public render(): void {
+        const ctx = renderCanvas.getContext();
+        const canvas = renderCanvas.getCanvas();
+        if (!ctx || !canvas) return;
 
+        ctx.fillStyle = 'red';
+        ctx.fillRect(0, 0, 50, 50);
     }
 }
 

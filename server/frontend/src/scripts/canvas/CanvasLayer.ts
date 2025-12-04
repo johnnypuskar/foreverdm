@@ -4,7 +4,7 @@ export abstract class CanvasLayer {
     
     public zIndex: number;
 
-    constructor(zIndex: number) {
+    constructor(zIndex: number = 0) {
         this.zIndex = zIndex;
     }
 
