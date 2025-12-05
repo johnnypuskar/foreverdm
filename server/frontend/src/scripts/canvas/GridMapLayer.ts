@@ -1,7 +1,11 @@
 import { ref } from "vue";
 import { CanvasLayer } from "./CanvasLayer";
+import { GridMapHighlightLayer, RectHighlightRegion } from "./GridMapHighlightLayer";
 
 export class GridMapLayer extends CanvasLayer {
+
+    private static readonly ZOOM_MIN = 0.6;
+    private static readonly ZOOM_MAX = 2.0;
 
     private static readonly CELL_SIZE = 50;
     private static readonly COLORS = {
@@ -13,17 +17,35 @@ export class GridMapLayer extends CanvasLayer {
         gridLine: '#999999'
     }
 
-    private mapWidth = 0;
-    private mapHeight = 0;
+    private mapWidth = 7;
+    private mapHeight = 5;
+
+    private selectedCell = { x: -1, y: -1 };
 
     public initialize(): void {
         this.registerSignal('updateMapData', this.updateMapData);
     }
 
+    public prerender(): void {
+        if (this.selectedCell.x >= 0 && this.selectedCell.y >= 0 && this.selectedCell.x < this.mapWidth && this.selectedCell.y < this.mapHeight) {
+            this.emitSignal(GridMapHighlightLayer.SIGNAL_HIGHLIGHT_REGION, new RectHighlightRegion(
+                this.selectedCell.x * GridMapLayer.CELL_SIZE,
+                this.selectedCell.y * GridMapLayer.CELL_SIZE,
+                GridMapHighlightLayer.COLOR_DARK,
+                GridMapHighlightLayer.COLOR_LIGHT,
+                GridMapLayer.CELL_SIZE,
+                GridMapLayer.CELL_SIZE
+            ));
+            this.getCanvas()?.style.setProperty('cursor', 'pointer');
+        }
+        else {
+            this.getCanvas()?.style.setProperty('cursor', 'default');
+        }
+    }
+
     public render(): void {
         const ctx = this.getContext();
-        const canvas = this.getCanvas();
-        if (!ctx || !canvas) return;
+        if (!ctx ) return;
 
         // Drawing Tile Cells
         ctx.lineWidth = 1;
@@ -57,10 +79,45 @@ export class GridMapLayer extends CanvasLayer {
     public updateMapData(mapData: object): void {
         this.mapWidth = mapData['width'];
         this.mapHeight = mapData['height'];
+
         this.canvasRender();
     }
 
-    public onMouseClick(event: MouseEvent): void {
-        this.updateMapData({ width: 7, height: 5 });
+    public onMouseMove(event: MouseEvent): void {
+        this.selectedCell.x = Math.floor((event.clientX - this.canvasPanZoom.x) / this.canvasPanZoom.zoom / GridMapLayer.CELL_SIZE);
+        this.selectedCell.y = Math.floor((event.clientY - this.canvasPanZoom.y) / this.canvasPanZoom.zoom / GridMapLayer.CELL_SIZE);
+    }
+
+    public onMouseWheel(event: WheelEvent): void {
+        const rect = this.getCanvas()?.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        const oldWorldX = (mouseX - this.canvasPanZoom.x) / this.canvasPanZoom.zoom;
+        const oldWorldY = (mouseY - this.canvasPanZoom.y) / this.canvasPanZoom.zoom;
+
+        const oldZoomLevel = this.canvasPanZoom.zoom;
+        let newZoomLevel = oldZoomLevel;
+
+        if (event.deltaY < 0) {
+            // Zoom In
+            if (oldZoomLevel >= GridMapLayer.ZOOM_MAX) return;
+            newZoomLevel *= 1.2;
+        }
+        else if (event.deltaY > 0) {
+            // Zoom Out
+            if (oldZoomLevel <= GridMapLayer.ZOOM_MIN) return;
+            newZoomLevel *= 0.8;
+        }
+
+        newZoomLevel = Math.max(GridMapLayer.ZOOM_MIN, Math.min(GridMapLayer.ZOOM_MAX, newZoomLevel));
+        if (Math.abs(1.0 - newZoomLevel) < 0.05) { newZoomLevel = 1.0; }
+
+        if (newZoomLevel === oldZoomLevel) return;
+
+        this.canvasPanZoom.zoom = newZoomLevel;
+
+        this.canvasPanZoom.x = mouseX - oldWorldX * this.canvasPanZoom.zoom;
+        this.canvasPanZoom.y = mouseY - oldWorldY * this.canvasPanZoom.zoom;
     }
 }

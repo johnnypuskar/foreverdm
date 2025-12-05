@@ -62,7 +62,7 @@ function render() {
 }
 
 function emitSignal(signalName: string, ...args: any[]) {
-    layers.value.forEach(layer => layer.recieveSignal(signalName, ...args));
+    layers.value.forEach(layer => layer.receiveSignal(signalName, ...args));
 }
 
 function signalOnMouseClick(event: MouseEvent) {

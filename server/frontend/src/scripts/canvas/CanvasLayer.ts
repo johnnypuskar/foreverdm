@@ -18,7 +18,7 @@ export abstract class CanvasLayer {
         this.canvasRender = renderCanvas.render;
         this.canvasPanZoom = renderCanvas.panZoomLevels;
         this.zIndex = zIndex;
-        
+
         this.initialize();
     }
 
@@ -29,10 +29,10 @@ export abstract class CanvasLayer {
     public abstract render(): void;
 
     public registerSignal(signalName: string, handler: Function) {
-        this.signals.set(signalName, handler);
+        this.signals.set(signalName, handler.bind(this));
     }
 
-    public recieveSignal(signalName: string, ...args: any[]) {
+    public receiveSignal(signalName: string, ...args: any[]) {
         const signalHandler = this.signals.get(signalName);
         if (signalHandler) {
             signalHandler(...args);
