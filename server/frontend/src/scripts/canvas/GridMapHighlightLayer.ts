@@ -13,7 +13,6 @@ export class GridMapHighlightLayer extends CanvasLayer {
     }
 
     public addHighlightRegion(region: HighlightRegion): void {
-        console.log(this);
         this.highlightQueue.add(region);
     }
 

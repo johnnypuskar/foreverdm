@@ -1,26 +1,28 @@
 import { ref } from "vue";
 import { CanvasLayer } from "./CanvasLayer";
 import { GridMapHighlightLayer, RectHighlightRegion } from "./GridMapHighlightLayer";
+import { GridMapMouseStateDefault } from "../states/GridMapMouseStates";
 
 export class GridMapLayer extends CanvasLayer {
 
-    private static readonly ZOOM_MIN = 0.6;
-    private static readonly ZOOM_MAX = 2.0;
+    public static readonly ZOOM_MIN = 0.6;
+    public static readonly ZOOM_MAX = 2.0;
 
-    private static readonly CELL_SIZE = 50;
-    private static readonly COLORS = {
+    public static readonly CELL_SIZE = 50;
+    public static readonly COLORS = {
         background: '#f0f0f0',
         borderLine: '#555555',
         wallLine: '#0f0f0f',
         wallShadow: '#808080',
         gridBackground: '#fdfdfd',
         gridLine: '#999999'
-    }
+    } // TODO: Move colors elsewhere
 
     private mapWidth = 7;
     private mapHeight = 5;
 
-    private selectedCell = { x: -1, y: -1 };
+    public mouseState: GridMapMouseStateDefault = new GridMapMouseStateDefault(this);
+    public selectedCell = { x: -1, y: -1 };
 
     public initialize(): void {
         this.registerSignal('updateMapData', this.updateMapData);
@@ -36,10 +38,10 @@ export class GridMapLayer extends CanvasLayer {
                 GridMapLayer.CELL_SIZE,
                 GridMapLayer.CELL_SIZE
             ));
-            this.getCanvas()?.style.setProperty('cursor', 'pointer');
+            // this.getCanvas()?.style.setProperty('cursor', 'pointer');
         }
         else {
-            this.getCanvas()?.style.setProperty('cursor', 'default');
+            // this.getCanvas()?.style.setProperty('cursor', 'default');
         }
     }
 
@@ -76,6 +78,10 @@ export class GridMapLayer extends CanvasLayer {
         ctx.strokeRect(0, 0, this.mapWidth * GridMapLayer.CELL_SIZE, this.mapHeight * GridMapLayer.CELL_SIZE);
     }
 
+    public getMapSize(): { width: number; height: number } {
+        return { width: this.mapWidth, height: this.mapHeight };
+    }
+
     public updateMapData(mapData: object): void {
         this.mapWidth = mapData['width'];
         this.mapHeight = mapData['height'];
@@ -83,41 +89,11 @@ export class GridMapLayer extends CanvasLayer {
         this.canvasRender();
     }
 
-    public onMouseMove(event: MouseEvent): void {
-        this.selectedCell.x = Math.floor((event.clientX - this.canvasPanZoom.x) / this.canvasPanZoom.zoom / GridMapLayer.CELL_SIZE);
-        this.selectedCell.y = Math.floor((event.clientY - this.canvasPanZoom.y) / this.canvasPanZoom.zoom / GridMapLayer.CELL_SIZE);
-    }
+    public onMouseMove(event: MouseEvent): void { this.mouseState.onMouseMove(event); }
 
-    public onMouseWheel(event: WheelEvent): void {
-        const rect = this.getCanvas()?.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
+    public onMouseWheel(event: WheelEvent): void { this.mouseState.onMouseWheel(event); }
 
-        const oldWorldX = (mouseX - this.canvasPanZoom.x) / this.canvasPanZoom.zoom;
-        const oldWorldY = (mouseY - this.canvasPanZoom.y) / this.canvasPanZoom.zoom;
+    public onMouseDown(event: MouseEvent): void { this.mouseState.onMouseDown(event); }
 
-        const oldZoomLevel = this.canvasPanZoom.zoom;
-        let newZoomLevel = oldZoomLevel;
-
-        if (event.deltaY < 0) {
-            // Zoom In
-            if (oldZoomLevel >= GridMapLayer.ZOOM_MAX) return;
-            newZoomLevel *= 1.2;
-        }
-        else if (event.deltaY > 0) {
-            // Zoom Out
-            if (oldZoomLevel <= GridMapLayer.ZOOM_MIN) return;
-            newZoomLevel *= 0.8;
-        }
-
-        newZoomLevel = Math.max(GridMapLayer.ZOOM_MIN, Math.min(GridMapLayer.ZOOM_MAX, newZoomLevel));
-        if (Math.abs(1.0 - newZoomLevel) < 0.05) { newZoomLevel = 1.0; }
-
-        if (newZoomLevel === oldZoomLevel) return;
-
-        this.canvasPanZoom.zoom = newZoomLevel;
-
-        this.canvasPanZoom.x = mouseX - oldWorldX * this.canvasPanZoom.zoom;
-        this.canvasPanZoom.y = mouseY - oldWorldY * this.canvasPanZoom.zoom;
-    }
+    public onMouseUp(event: MouseEvent): void { this.mouseState.onMouseUp(event); }
 }

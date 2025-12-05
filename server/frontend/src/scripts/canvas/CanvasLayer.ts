@@ -3,12 +3,12 @@ import { RenderCanvas } from '@/components/canvas/RenderCanvas.vue';
 export abstract class CanvasLayer {
 
     protected signals: Map<string, Function> = new Map();
-    protected getCanvas: () => HTMLCanvasElement | null;
+    public getCanvas: () => HTMLCanvasElement | null;
     protected getContext: () => CanvasRenderingContext2D | null;
     protected emitSignal: (signalName: string, ...args: any[]) => void;
     protected canvasRender: () => void;
-    protected canvasPanZoom: { x: number; y: number; zoom: number };
-
+    
+    public canvasPanZoom: { x: number; y: number; zoom: number };
     public zIndex: number;
 
     constructor(renderCanvas: RenderCanvas, zIndex: number = 0) {
@@ -48,5 +48,4 @@ export abstract class CanvasLayer {
     public onMouseMove(event: MouseEvent): void { }
 
     public onMouseWheel(event: WheelEvent): void { }
-
 }
