@@ -1,4 +1,4 @@
-import { RenderCanvas } from '@/components/canvas/RenderCanvas.vue';
+import { RenderCanvasData } from '@/components/canvas/RenderCanvas.vue';
 
 export abstract class CanvasLayer {
 
@@ -11,7 +11,7 @@ export abstract class CanvasLayer {
     public canvasPanZoom: { x: number; y: number; zoom: number };
     public zIndex: number;
 
-    constructor(renderCanvas: RenderCanvas, zIndex: number = 0) {
+    constructor(renderCanvas: RenderCanvasData, zIndex: number = 0) {
         this.getCanvas = renderCanvas.getCanvas;
         this.getContext = renderCanvas.getContext;
         this.emitSignal = renderCanvas.emitSignal;
@@ -23,8 +23,6 @@ export abstract class CanvasLayer {
     }
 
     public initialize(): void { }
-
-    public prerender(): void { }
 
     public abstract render(): void;
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, provide, reactive, watchEffect, onUnmounted, withDefaults, defineProps } from 'vue';
+import { ref, onMounted, provide, reactive, watchEffect, onUnmounted } from 'vue';
 import { CanvasLayer } from '@/scripts/canvas/CanvasLayer';
 
 const props = withDefaults(defineProps<{
@@ -21,7 +21,7 @@ const ctx = ref<CanvasRenderingContext2D | null>(null);
 const layers = ref<CanvasLayer[]>([]);
 
 // RenderCanvas data interface for passing to layers
-export interface RenderCanvas {
+export interface RenderCanvasData {
     getCanvas: () => HTMLCanvasElement | null;
     getContext: () => CanvasRenderingContext2D | null;
     panZoomLevels: { x: number, y: number, zoom: number };
@@ -29,7 +29,7 @@ export interface RenderCanvas {
     emitSignal: (signalName: string, ...args: any[]) => void;
     render: () => void;
 }
-const renderCanvas: RenderCanvas = {
+const renderCanvas: RenderCanvasData = {
     getCanvas: () => canvasRef.value,
     getContext: () => ctx.value,
     panZoomLevels: panZoomLevels,
@@ -41,6 +41,10 @@ const renderCanvas: RenderCanvas = {
     render: render
 }
 provide('renderCanvas', renderCanvas);
+
+defineExpose({
+    renderCanvas
+});
 
 function render() {
     if(!ctx.value || !canvasRef.value) { return; }
@@ -55,7 +59,6 @@ function render() {
     ctx.value.translate(panZoomLevels.x, panZoomLevels.y);
     ctx.value.scale(panZoomLevels.zoom, panZoomLevels.zoom);
 
-    layers.value.forEach(layer => layer.prerender());
     layers.value.forEach(layer => layer.render());
 
     ctx.value.restore();
@@ -65,45 +68,9 @@ function emitSignal(signalName: string, ...args: any[]) {
     layers.value.forEach(layer => layer.receiveSignal(signalName, ...args));
 }
 
-function signalOnMouseClick(event: MouseEvent) {
-    event.preventDefault();
-    layers.value.forEach(layer => layer.onMouseClick(event));
-}
-
-function signalOnMouseUp(event: MouseEvent) {
-    event.preventDefault();
-    layers.value.forEach(layer => layer.onMouseUp(event));
-}
-
-function signalOnMouseDown(event: MouseEvent) {
-    event.preventDefault();
-    layers.value.forEach(layer => layer.onMouseDown(event));
-}
-
-function signalOnMouseMove(event: MouseEvent) {
-    event.preventDefault();
-    layers.value.forEach(layer => layer.onMouseMove(event));
-}
-
-function signalOnMouseWheel(event: WheelEvent) {
-    event.preventDefault();
-    layers.value.forEach(layer => layer.onMouseWheel(event));
-}
-
-watchEffect(() => {
-    render();
-});
-
 onMounted(() => {
     ctx.value = canvasRef.value?.getContext('2d') || null;
     window.addEventListener('resize', render);
-    
-    // Attach event listeners to pass mouse events to layers
-    canvasRef.value.addEventListener('click', signalOnMouseClick);
-    canvasRef.value.addEventListener('mouseup', signalOnMouseUp);
-    canvasRef.value.addEventListener('mousedown', signalOnMouseDown);
-    canvasRef.value.addEventListener('mousemove', signalOnMouseMove);
-    canvasRef.value.addEventListener('wheel', signalOnMouseWheel);
 
     // Disable context menu on right-click
     canvasRef.value.addEventListener('contextmenu', (e) => e.preventDefault());

@@ -29,8 +29,6 @@ export class GridMapHighlightLayer extends CanvasLayer {
     }
 }
 
-
-
 // Highlight Region Classes for defining areas to highlight
 export abstract class HighlightRegion {
     x: number;

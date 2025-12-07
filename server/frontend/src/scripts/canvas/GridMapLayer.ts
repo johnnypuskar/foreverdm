@@ -18,31 +18,11 @@ export class GridMapLayer extends CanvasLayer {
         gridLine: '#999999'
     } // TODO: Move colors elsewhere
 
-    private mapWidth = 7;
-    private mapHeight = 5;
-
-    public mouseState: GridMapMouseStateDefault = new GridMapMouseStateDefault(this);
-    public selectedCell = { x: -1, y: -1 };
+    private mapWidth = 0;
+    private mapHeight = 0;
 
     public initialize(): void {
         this.registerSignal('updateMapData', this.updateMapData);
-    }
-
-    public prerender(): void {
-        if (this.selectedCell.x >= 0 && this.selectedCell.y >= 0 && this.selectedCell.x < this.mapWidth && this.selectedCell.y < this.mapHeight) {
-            this.emitSignal(GridMapHighlightLayer.SIGNAL_HIGHLIGHT_REGION, new RectHighlightRegion(
-                this.selectedCell.x * GridMapLayer.CELL_SIZE,
-                this.selectedCell.y * GridMapLayer.CELL_SIZE,
-                GridMapHighlightLayer.COLOR_DARK,
-                GridMapHighlightLayer.COLOR_LIGHT,
-                GridMapLayer.CELL_SIZE,
-                GridMapLayer.CELL_SIZE
-            ));
-            // this.getCanvas()?.style.setProperty('cursor', 'pointer');
-        }
-        else {
-            // this.getCanvas()?.style.setProperty('cursor', 'default');
-        }
     }
 
     public render(): void {
@@ -82,18 +62,19 @@ export class GridMapLayer extends CanvasLayer {
         return { width: this.mapWidth, height: this.mapHeight };
     }
 
-    public updateMapData(mapData: object): void {
-        this.mapWidth = mapData['width'];
-        this.mapHeight = mapData['height'];
+    public updateMapData(width: number, height: number): void {
+        this.mapWidth = width;
+        this.mapHeight = height;
 
         this.canvasRender();
     }
 
-    public onMouseMove(event: MouseEvent): void { this.mouseState.onMouseMove(event); }
-
-    public onMouseWheel(event: WheelEvent): void { this.mouseState.onMouseWheel(event); }
-
-    public onMouseDown(event: MouseEvent): void { this.mouseState.onMouseDown(event); }
-
-    public onMouseUp(event: MouseEvent): void { this.mouseState.onMouseUp(event); }
+    public getCellAtScreenPos(x: number, y: number): { x: number; y: number } | null {
+        const cellX = Math.floor((x - this.canvasPanZoom.x) / this.canvasPanZoom.zoom / GridMapLayer.CELL_SIZE);
+        const cellY = Math.floor((y - this.canvasPanZoom.y) / this.canvasPanZoom.zoom / GridMapLayer.CELL_SIZE);
+        if (cellX < 0 || cellX >= this.mapWidth || cellY < 0 || cellY >= this.mapHeight) {
+            return null;
+        }
+        return { x: cellX, y: cellY };
+    }
 }

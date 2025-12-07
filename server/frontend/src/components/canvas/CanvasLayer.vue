@@ -1,21 +1,25 @@
 <script setup lang="ts">
-import { inject, onMounted, Reactive } from 'vue';
+import { inject, onMounted, Reactive, ref } from 'vue';
 import { CanvasLayer } from '@/scripts/canvas/CanvasLayer';
-import type { RenderCanvas } from '@/components/canvas/RenderCanvas.vue';
+import type { RenderCanvasData } from '@/components/canvas/RenderCanvas.vue';
 
-const renderCanvas = inject('renderCanvas') as RenderCanvas;
+const renderCanvas = inject('renderCanvas') as RenderCanvasData;
 const props = withDefaults(defineProps<{
-    layer: new (renderCanvas: RenderCanvas, zIndex: number) => CanvasLayer;
+    layer: new (renderCanvas: RenderCanvasData, zIndex: number) => CanvasLayer;
     zIndex?: number;
 }>(), {
     zIndex: 0
 });
+const layer = ref<CanvasLayer | null>(null);
 
 onMounted(() => {
-    let layer = new props.layer(renderCanvas, props.zIndex);
-    renderCanvas.insertLayer(layer);
+    layer.value = new props.layer(renderCanvas, props.zIndex);
+    renderCanvas.insertLayer(layer.value as CanvasLayer);
 });
 
+defineExpose({
+    layer
+});
 </script>
 
 <template>
