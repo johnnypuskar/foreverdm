@@ -1,3 +1,4 @@
+import { reactive } from "vue";
 import { CanvasLayer } from "./CanvasLayer";
 
 export class GridMapHighlightLayer extends CanvasLayer {
@@ -6,14 +7,15 @@ export class GridMapHighlightLayer extends CanvasLayer {
     public static readonly COLOR_DARK = 'rgba(105, 125, 245, 1.0)';
     public static readonly COLOR_LIGHT = 'rgba(0, 55, 255, 0.1)';
 
-    private highlightQueue: Set<HighlightRegion> = new Set<HighlightRegion>();
+    public highlightIndex: Record<string, HighlightRegion> = reactive({});
 
-    public initialize(): void {
-        this.registerSignal(GridMapHighlightLayer.SIGNAL_HIGHLIGHT_REGION, this.addHighlightRegion);
+    public addHighlightRegion(id: string, region: HighlightRegion): void {
+        if (this.highlightIndex[id] && this.highlightIndex[id].equals(region)) { return; }
+        this.highlightIndex[id] = region;
     }
 
-    public addHighlightRegion(region: HighlightRegion): void {
-        this.highlightQueue.add(region);
+    public clearHighlightRegion(id: string): void {
+        delete this.highlightIndex[id];
     }
 
     public render(): void {
@@ -21,11 +23,9 @@ export class GridMapHighlightLayer extends CanvasLayer {
         const canvas = this.getCanvas();
         if (!ctx || !canvas) return;
 
-        for (const region of this.highlightQueue) {
+        for (const region of Object.values(this.highlightIndex)) {
             region.draw(ctx);
         }
-
-        this.highlightQueue.clear();
     }
 }
 
@@ -47,6 +47,10 @@ export abstract class HighlightRegion {
         ctx.strokeStyle = this.stroke;
         ctx.fillStyle = this.fill;
     }
+
+    public equals(other: HighlightRegion): boolean {
+        return this.x === other.x && this.y === other.y && this.stroke === other.stroke && this.fill === other.fill;
+    }
 }
 
 export class RectHighlightRegion extends HighlightRegion {
@@ -64,6 +68,10 @@ export class RectHighlightRegion extends HighlightRegion {
         ctx.fillRect(this.x, this.y, this.width, this.height);
         ctx.strokeRect(this.x, this.y, this.width, this.height);
     }
+
+    public equals(other: HighlightRegion): boolean {
+        return other instanceof RectHighlightRegion && super.equals(other) && this.width === other.width && this.height === other.height;
+    }
 }
 
 export class CircleHighlightRegion extends HighlightRegion {
@@ -80,5 +88,9 @@ export class CircleHighlightRegion extends HighlightRegion {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+    }
+
+    public equals(other: HighlightRegion): boolean {
+        return other instanceof CircleHighlightRegion && super.equals(other) && this.radius === other.radius;
     }
 }

@@ -1,18 +1,17 @@
 import RenderCanvas, { RenderCanvasData } from "@/components/canvas/RenderCanvas.vue";
 import { GridMapComponents } from "@/components/GridMap.vue";
+import { GridMapHighlightLayer, RectHighlightRegion } from "../canvas/GridMapHighlightLayer";
+import { reactive } from "vue";
 
 export abstract class GridMapMouseState {
-    public mousePosition: { x: number; y: number } = { x: -1, y: -1 };
+    public reactiveProperties: Record<string, any> = reactive({});
     protected gridMap: GridMapComponents;
 
     constructor(gridMap: GridMapComponents) {
         this.gridMap = gridMap;
     }
 
-    public onMouseMove(event: MouseEvent): void {
-        this.mousePosition.x = event.clientX;
-        this.mousePosition.y = event.clientY;
-    }
+    public onMouseMove(event: MouseEvent): void { }
 
     public onMouseWheel(event: WheelEvent): void { }
 
@@ -44,19 +43,41 @@ export abstract class GridMapMouseState {
 }
 
 export class GridMapMouseStateDefault extends GridMapMouseState {
+    private highlightSelectedCell(): void {
+        if (this.reactiveProperties.selectedCell) {
+            this.gridMap.gridMapHighlightLayer.addHighlightRegion("SELECTED_CELL",
+                new RectHighlightRegion(
+                this.reactiveProperties.selectedCell.x * this.gridMap.gridMapLayer.cellSize,
+                this.reactiveProperties.selectedCell.y * this.gridMap.gridMapLayer.cellSize,
+                GridMapHighlightLayer.COLOR_DARK,
+                GridMapHighlightLayer.COLOR_LIGHT,
+                this.gridMap.gridMapLayer.cellSize,
+                this.gridMap.gridMapLayer.cellSize
+            ));
+        }
+        else {
+            this.gridMap.gridMapHighlightLayer.clearHighlightRegion("SELECTED_CELL");
+        }
+    }
+
     public onMouseMove(event: MouseEvent): void {
         super.onMouseMove(event);
 
-        // Updates selected cell when mouse is moved
         const selectedCell = this.gridMap.gridMapLayer.getCellAtScreenPos(event.clientX, event.clientY);
 
-        if (selectedCell && selectedCell.x >= 0 && selectedCell.x < this.gridMap.gridMapLayer.getMapSize().width && 
-                selectedCell.y >= 0 && selectedCell.y < this.gridMap.gridMapLayer.getMapSize().height) {
+        if (selectedCell && this.gridMap.gridMapLayer.cellExists(selectedCell.x, selectedCell.y)) {
+            if (!this.reactiveProperties.selectedCell) { this.reactiveProperties.selectedCell = { x: selectedCell.x, y: selectedCell.y }; }
+            else {
+                if(selectedCell.x !== this.reactiveProperties.selectedCell.x) { this.reactiveProperties.selectedCell.x = selectedCell.x; }
+                if(selectedCell.y !== this.reactiveProperties.selectedCell.y) { this.reactiveProperties.selectedCell.y = selectedCell.y; }
+            }
             this.gridMap.renderCanvas.getCanvas().style.cursor = 'pointer';
         }
         else {
+            this.reactiveProperties.selectedCell = null;
             this.gridMap.renderCanvas.getCanvas().style.cursor = 'default';
         }
+        this.highlightSelectedCell();
     }
 
     public onMouseWheel(event: WheelEvent): void {
@@ -90,6 +111,8 @@ export class GridMapMouseStateDefault extends GridMapMouseState {
 
         if (newZoomLevel === oldZoomLevel) return;
 
+        this.highlightSelectedCell();
+
         this.gridMap.renderCanvas.panZoomLevels.zoom = newZoomLevel;
 
         this.gridMap.renderCanvas.panZoomLevels.x = mouseX - oldWorldX * this.gridMap.renderCanvas.panZoomLevels.zoom;
@@ -98,6 +121,7 @@ export class GridMapMouseStateDefault extends GridMapMouseState {
 
     public onMiddleMouseDown(event: MouseEvent): void {
         this.gridMap.renderCanvas.getCanvas().style.cursor = 'grabbing';
+        this.gridMap.gridMapHighlightLayer.clearHighlightRegion("SELECTED_CELL");
         this.gridMap.setMouseState(new GridMapMouseStateDragging(this.gridMap));
     }
 }
@@ -113,7 +137,6 @@ export class GridMapMouseStateDragging extends GridMapMouseState {
             this.gridMap.renderCanvas.panZoomLevels.x += event.movementX;
             this.gridMap.renderCanvas.panZoomLevels.y += event.movementY;
         }
-
     }
     
     public onMiddleMouseUp(event: MouseEvent): void {

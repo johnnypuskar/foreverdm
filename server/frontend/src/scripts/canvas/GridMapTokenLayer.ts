@@ -4,10 +4,6 @@ export class GridMapTokenLayer extends CanvasLayer {
 
     public static readonly SIGNAL_DISPLAY_TOKEN = "displayToken";
     private tokens: DisplayToken[] = [];
-    
-    public initialize(): void {
-        this.registerSignal(GridMapTokenLayer.SIGNAL_DISPLAY_TOKEN, this.addDisplayToken);
-    }
 
     public render(): void {
         const ctx = this.getContext();

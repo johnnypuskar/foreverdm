@@ -7,6 +7,10 @@ import { GridMapHighlightLayer, RectHighlightRegion } from '@/scripts/canvas/Gri
 import { GridMapTokenLayer } from '@/scripts/canvas/GridMapTokenLayer';
 import { GridMapMouseState, GridMapMouseStateDefault } from '@/scripts/states/GridMapMouseStates';
 
+const props = defineProps({
+    cellSize: { type: Number, default: 50 }
+});
+
 const mapData = reactive({ width: 7, height: 7 });
 
 const renderCanvas = ref<InstanceType<typeof RenderCanvas> | null>(null);
@@ -39,6 +43,8 @@ onMounted(() => {
     gridMapComponents.gridMapTokenLayer = gridMapTokenLayer.value.layer as GridMapTokenLayer;
     gridMapComponents.gridMapHighlightLayer = gridMapHighlightLayer.value.layer as GridMapHighlightLayer;
 
+    gridMapComponents.gridMapLayer.cellSize = props.cellSize;
+
     mouseState.value = new GridMapMouseStateDefault(gridMapComponents as GridMapComponents);
 
     // Attach event listeners to delegate to current mouse state
@@ -52,27 +58,20 @@ onMounted(() => {
         mapData.width,
         mapData.height
     );
-    gridMapComponents.renderCanvas.render();
-
+    gridMapComponents.gridMapLayer.centerOnScreen();
 });
 
-watchEffect(() => {
-    // Highlight Selected Cell
-    const mousePos = mouseState.value?.mousePosition;
-    const selectedCell = gridMapComponents.gridMapLayer?.getCellAtScreenPos(mousePos?.x || -1, mousePos?.y || -1);
-    if (selectedCell) {
-        gridMapComponents.gridMapHighlightLayer?.addHighlightRegion(new RectHighlightRegion(
-            selectedCell.x * GridMapLayer.CELL_SIZE,
-            selectedCell.y * GridMapLayer.CELL_SIZE,
-            GridMapHighlightLayer.COLOR_DARK,
-            GridMapHighlightLayer.COLOR_LIGHT,
-            GridMapLayer.CELL_SIZE,
-            GridMapLayer.CELL_SIZE
-        ));
-    }
-    
-    gridMapComponents.renderCanvas?.render();
-});
+watch(
+    [
+        () => gridMapComponents.renderCanvas?.panZoomLevels,
+        () => gridMapComponents.gridMapHighlightLayer?.highlightIndex,
+        () => mouseState.value?.reactiveProperties
+    ],
+    () => {
+        gridMapComponents.renderCanvas?.render();
+    },
+    { deep: true, immediate: true }
+);
 
 </script>
 

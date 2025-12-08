@@ -26,7 +26,6 @@ export interface RenderCanvasData {
     getContext: () => CanvasRenderingContext2D | null;
     panZoomLevels: { x: number, y: number, zoom: number };
     insertLayer: (layer: CanvasLayer) => void;
-    emitSignal: (signalName: string, ...args: any[]) => void;
     render: () => void;
 }
 const renderCanvas: RenderCanvasData = {
@@ -37,13 +36,13 @@ const renderCanvas: RenderCanvasData = {
         layers.value.push(layer);
         layers.value.sort((a, b) => a.zIndex - b.zIndex);
     },
-    emitSignal: emitSignal,
     render: render
 }
 provide('renderCanvas', renderCanvas);
 
 defineExpose({
-    renderCanvas
+    renderCanvas,
+    panZoomLevels
 });
 
 function render() {
@@ -62,10 +61,6 @@ function render() {
     layers.value.forEach(layer => layer.render());
 
     ctx.value.restore();
-}
-
-function emitSignal(signalName: string, ...args: any[]) {
-    layers.value.forEach(layer => layer.receiveSignal(signalName, ...args));
 }
 
 onMounted(() => {
