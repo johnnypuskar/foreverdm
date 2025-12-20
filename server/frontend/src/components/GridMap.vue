@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch, watchEffect, } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import RenderCanvas, { RenderCanvasData } from '@/components/canvas/RenderCanvas.vue';
 import CanvasLayer from '@/components/canvas/CanvasLayer.vue';
 import { GridMapLayer } from '@/scripts/canvas/GridMapLayer';
-import { GridMapHighlightLayer, RectHighlightRegion } from '@/scripts/canvas/GridMapHighlightLayer';
+import { GridMapHighlightLayer } from '@/scripts/canvas/GridMapHighlightLayer';
 import { GridMapTokenLayer } from '@/scripts/canvas/GridMapTokenLayer';
 import { GridMapMouseState, GridMapMouseStateDefault } from '@/scripts/states/GridMapMouseStates';
 
@@ -11,7 +11,9 @@ const props = defineProps({
     cellSize: { type: Number, default: 50 }
 });
 
-const mapData = reactive({ width: 7, height: 7 });
+const mapData = reactive({ width: 7, height: 7, tokens: [
+    { name: 'test', x: 2, y: 3, diameter: 1, color: 'red' }
+] });
 
 const renderCanvas = ref<InstanceType<typeof RenderCanvas> | null>(null);
 const gridMapLayer = ref<InstanceType<typeof CanvasLayer> | null>(null);
@@ -20,6 +22,7 @@ const gridMapHighlightLayer = ref<InstanceType<typeof CanvasLayer> | null>(null)
 
 const mouseState = ref<GridMapMouseState | null>(null);
 
+// Define interface used for passing GridMap layers to GridMapMouseState
 export interface GridMapComponents {
     renderCanvas: RenderCanvasData;
     gridMapLayer: GridMapLayer | null;
@@ -38,13 +41,13 @@ const gridMapComponents = reactive<GridMapComponents>({
 });
 
 onMounted(() => {
+    // Populate component interface values
     gridMapComponents.renderCanvas = renderCanvas.value.renderCanvas;
     gridMapComponents.gridMapLayer = gridMapLayer.value.layer as GridMapLayer;
     gridMapComponents.gridMapTokenLayer = gridMapTokenLayer.value.layer as GridMapTokenLayer;
     gridMapComponents.gridMapHighlightLayer = gridMapHighlightLayer.value.layer as GridMapHighlightLayer;
 
-    gridMapComponents.gridMapLayer.cellSize = props.cellSize;
-
+    // Initialize mouse state to default
     mouseState.value = new GridMapMouseStateDefault(gridMapComponents as GridMapComponents);
 
     // Attach event listeners to delegate to current mouse state
@@ -54,17 +57,21 @@ onMounted(() => {
     gridMapComponents.renderCanvas.getCanvas().addEventListener('mouseup', (e) => { mouseState.value?.onMouseUp(e); });
     window.addEventListener('keydown', (e) => { mouseState.value?.onKeyDown(e); });
 
+    // Initialize grid map layer with map and initial display data
+    gridMapComponents.gridMapLayer.cellSize = props.cellSize;
     gridMapComponents.gridMapLayer.updateMapData(
         mapData.width,
         mapData.height
     );
-    gridMapComponents.gridMapLayer.centerOnScreen();
+    gridMapComponents.gridMapLayer.centerOnScreen(); /* Triggers initial render */
 });
 
+// Define component values to reactively render to any value updates
 watch(
     [
         () => gridMapComponents.renderCanvas?.panZoomLevels,
         () => gridMapComponents.gridMapHighlightLayer?.highlightIndex,
+        () => gridMapComponents.gridMapTokenLayer?.tokens,
         () => mouseState.value?.reactiveProperties
     ],
     () => {
@@ -72,7 +79,6 @@ watch(
     },
     { deep: true, immediate: true }
 );
-
 </script>
 
 <template>

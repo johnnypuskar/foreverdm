@@ -1,15 +1,16 @@
+import { reactive } from "vue";
 import { CanvasLayer } from "./CanvasLayer";
 
 export class GridMapTokenLayer extends CanvasLayer {
 
     public static readonly SIGNAL_DISPLAY_TOKEN = "displayToken";
-    private tokens: DisplayToken[] = [];
+    public tokens: Record<string, DisplayToken> = reactive({});
 
     public render(): void {
         const ctx = this.getContext();
         if (!ctx ) return;
 
-        for (const token of this.tokens) {
+        for (const token of Object.values(this.tokens)) {
             ctx.strokeStyle = 'black';
             ctx.lineWidth = 3;
             ctx.fillStyle = token.color;
@@ -18,12 +19,14 @@ export class GridMapTokenLayer extends CanvasLayer {
             ctx.fill();
             ctx.stroke();
         }
-
-        this.tokens.length = 0; // Clear tokens array
     }
 
-    public addDisplayToken(token: DisplayToken): void {
-        this.tokens.push(token);
+    public addDisplayToken(name: string, token: DisplayToken): void {
+        this.tokens[name] = token;
+    }
+
+    public removeDisplayToken(name: string): void {
+        delete this.tokens[name];
     }
 }
 

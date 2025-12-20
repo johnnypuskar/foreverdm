@@ -45,24 +45,22 @@ export abstract class GridMapMouseState {
 export class GridMapMouseStateDefault extends GridMapMouseState {
     private highlightSelectedCell(): void {
         if (this.reactiveProperties.selectedCell) {
-            this.gridMap.gridMapHighlightLayer.addHighlightRegion("SELECTED_CELL",
+            this.gridMap.gridMapHighlightLayer.addHighlightRegion("SELECTION",
                 new RectHighlightRegion(
-                this.reactiveProperties.selectedCell.x * this.gridMap.gridMapLayer.cellSize,
-                this.reactiveProperties.selectedCell.y * this.gridMap.gridMapLayer.cellSize,
-                GridMapHighlightLayer.COLOR_DARK,
-                GridMapHighlightLayer.COLOR_LIGHT,
-                this.gridMap.gridMapLayer.cellSize,
-                this.gridMap.gridMapLayer.cellSize
+                    this.reactiveProperties.selectedCell.x * this.gridMap.gridMapLayer.cellSize,
+                    this.reactiveProperties.selectedCell.y * this.gridMap.gridMapLayer.cellSize,
+                    GridMapHighlightLayer.COLOR_DARK,
+                    GridMapHighlightLayer.COLOR_LIGHT,
+                    this.gridMap.gridMapLayer.cellSize,
+                    this.gridMap.gridMapLayer.cellSize
             ));
         }
         else {
-            this.gridMap.gridMapHighlightLayer.clearHighlightRegion("SELECTED_CELL");
+            this.gridMap.gridMapHighlightLayer.clearHighlightRegion("SELECTION");
         }
     }
 
     public onMouseMove(event: MouseEvent): void {
-        super.onMouseMove(event);
-
         const selectedCell = this.gridMap.gridMapLayer.getCellAtScreenPos(event.clientX, event.clientY);
 
         if (selectedCell && this.gridMap.gridMapLayer.cellExists(selectedCell.x, selectedCell.y)) {
@@ -121,15 +119,13 @@ export class GridMapMouseStateDefault extends GridMapMouseState {
 
     public onMiddleMouseDown(event: MouseEvent): void {
         this.gridMap.renderCanvas.getCanvas().style.cursor = 'grabbing';
-        this.gridMap.gridMapHighlightLayer.clearHighlightRegion("SELECTED_CELL");
+        this.gridMap.gridMapHighlightLayer.clearHighlightRegion("SELECTION");
         this.gridMap.setMouseState(new GridMapMouseStateDragging(this.gridMap));
     }
 }
 
 export class GridMapMouseStateDragging extends GridMapMouseState {
     public onMouseMove(event: MouseEvent): void {
-        super.onMouseMove(event);
-
         if (!Boolean(event.buttons & 4)) { // Middle mouse button is no longer held
             this.exitDrag(event);
         }
@@ -148,5 +144,27 @@ export class GridMapMouseStateDragging extends GridMapMouseState {
         const defaultMouseState = new GridMapMouseStateDefault(this.gridMap);
         this.gridMap.setMouseState(defaultMouseState);
         defaultMouseState.onMouseMove(event);
+    }
+}
+
+export class GridMapMouseStateMovingToken extends GridMapMouseState {
+    private tokenName: string
+
+    public constructor(gridMap: GridMapComponents, tokenName: string) {
+        super(gridMap);
+        this.tokenName = tokenName;
+    }
+
+    public onMouseMove(event: MouseEvent): void {
+        const token = this.gridMap.gridMapTokenLayer.tokens[this.tokenName];
+        if (!token) {
+            const defaultMouseState = new GridMapMouseStateDefault(this.gridMap);
+            this.gridMap.setMouseState(defaultMouseState);
+            defaultMouseState.onMouseMove(event);
+            return;
+        }
+
+        token.x = event.clientX;
+        token.y = event.clientY;
     }
 }
