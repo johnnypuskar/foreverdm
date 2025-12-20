@@ -52,10 +52,9 @@ def handle_connect(auth):
         join_room(auth.get('campaign_id'))
         emit('connect_response', {'success': True})
     except Error as e:
-        # Handle other errors
         print("connect:", e)
         emit('error', {'message': str(e)})
-        full_disconnect()
+        return False
 
 @socketio.on('disconnect')
 def handle_disconnect():
