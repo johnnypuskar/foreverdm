@@ -82,6 +82,20 @@ def join_campaign():
         "message": "User added to campaign successfully"
     }), 200
 
+@main.route('/admin/debug-generate-room', methods=['POST'])
+def debug_generate_room():
+    data = request.get_json()
+    width_a = data.get('width_a')
+    height_a = data.get('height_a')
+    width_b = data.get('width_b')
+    height_b = data.get('height_b')
+
+    return jsonify({
+        "status": "success",
+        "message": "Room generated successfully",
+        "room_data": DynamicRoomRegion.debug_generate_room(width_a, height_a, width_b, height_b)
+    }), 200
+
 @main.route('/admin/precompute-room-configs', methods=['POST'])
 def precompute_room_configs():
     data = request.get_json()
