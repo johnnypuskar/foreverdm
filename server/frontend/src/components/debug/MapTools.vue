@@ -13,6 +13,23 @@ const mapData = reactive({
     'hash': null
 });
 
+async function generateNewRoom() {
+    const url = `${import.meta.env.VITE_BACKEND_API_URL}/admin/debug-generate-room`;
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            'width_a': 4,
+            'height_a': 4,
+            'width_b': 2,
+            'height_b': 2
+        })
+    });
+    const responseData = await response.json();
+}
+
 function sendCommand(playCommand) {
     
 }
@@ -37,6 +54,7 @@ function updateHeight(event: Event) {
 </script>
 
 <template>
+    <button class="bg-blue-500 hover:bg-blue-700 active:bg-blue-900 text-white font-bold py-2 px-4 rounded m-2 cursor-pointer" @click="generateNewRoom">Generate New Room</button>
     <input id="grid-width" type="number" :value="mapData.map.width" @input="updateWidth" min="1"/>
     <input id="grid-height" type="number" :value="mapData.map.height" @input="updateHeight" min="1"/>
     <div class="border-blue-500 border-4 ml-auto mr-auto mt-6 w-3/4 h-9/12">
